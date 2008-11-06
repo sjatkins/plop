@@ -1,9 +1,8 @@
-#summary Installation and Basic Usage of Plop
+#summary Installation instructions and basic learning examples
 
-= Introduction =
+= Requirements =
 
-Add your content here.
-
+Plop should work under [http://clisp.cons.org/ clisp]
 
 = Details =
 
