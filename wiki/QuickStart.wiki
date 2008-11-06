@@ -1,4 +1,4 @@
-#summary Installation instructions and basic learning examples
+#summary Installation instructions and basic examples
 
 *Required:* An implementation of Common Lisp. Plop has been tested under [http://clisp.cons.org/ CLISP] and [http://www.sbcl.org/ SBCL]. If you find that it does or does not work under some other implementation, please let me know!
 
@@ -11,3 +11,18 @@
    * `(asdf:operate 'asdf:load-op 'cl-utilities)`
    * `(asdf:operate 'asdf:load-op 'anaphora)`
    * `(asdf:operate 'asdf:load-op 'plop)`
+You probably want to add the first three of these to your lisp implementation's startup file (`~/.clisprc.lisp` for CLSIP `~/.sbclrc` for SBCL).
+
+*Testing:* Evaluate `(plop:run-tests)`. At the end of the output you should see something like `TOTAL: 13489 assertions passed, 0 failed, 0 execution errors.`.
+
+*Examples:* 
+{{{
+CL-USER> (in-package plop) ; all the code lives here
+#<PACKAGE PLOP>
+PLOP> %(and x y) ; % is the quote operator used for expressions in the plop language
+((AND) X Y)
+PLOP> (p2sexpr (qreduct %(and (or x y) (or (not x) z z) (or y z)))) ; qreduct does simplification with no assumptions and infers the type of the expression - p2sexpr converts the result into a (human-friendly) s-expression
+(AND (OR X Y) (OR (NOT X) Z))
+PLOP> 
+(in-package plop) ; all the code lives here
+   * `(qreduct %(and (or x y) (or (not x) z z) (or y z)
