@@ -1,12 +1,13 @@
 #summary Installation instructions and basic learning examples
 
-= Requirements =
+*Required:* An implementation of Common Lisp. Plop has been tested under [http://clisp.cons.org/ CLISP] and [http://www.sbcl.org/ SBCL]. If you find that it does or does not work under some other implementation, please let me know!
 
-Plop should work under [http://clisp.cons.org/ clisp]
+*Recommended:* [http://www.cliki.net/asdf ASDF] (included with sbcl) for easy builds, and [http://maxima.sourceforge.net/ Maxima] for numerical simplification.
 
-= Details =
+*Setup:* Check out the [http://code.google.com/p/plop/source/checkout source code] to path `foo` (e.g. `/home/madscience/plop/`). Create a symbolic links to `foo/plop/trunk/plop.asd` from your asdf central registry (e.g. `ln -s foo/trunk/plop.asd /central-regisitry-path/plop.asd`). If you don't happen to already have the [http://common-lisp.net/project/anaphora/ anaphora] and [http://common-lisp.net/project/cl-utilities/ cl-utilities] packages installed, create symbolic links to `foo/trunk/thirdparty/anaphora/anaphora.asd` and `foo/trunk/thirdparty/cl-utilities/cl-utilities.asd` as well.
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+*Loading:* In your Common Lisp, do:
+   * `(load "foo/trunk/thirdparty/lisp-unit.lisp")` (where `foo` is where you put the code, as above)
+   * `(asdf:operate 'asdf:load-op 'cl-utilities)`
+   * `(asdf:operate 'asdf:load-op 'anaphora)`
+   * `(asdf:operate 'asdf:load-op 'plop)`
