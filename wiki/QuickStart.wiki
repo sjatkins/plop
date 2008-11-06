@@ -1,4 +1,5 @@
 #summary Installation instructions and basic examples
+#labels Featured
 
 *Required:* An implementation of Common Lisp. Plop has been tested under [http://clisp.cons.org/ CLISP] and [http://www.sbcl.org/ SBCL]. If you find that it does or does not work under some other implementation, please let me know!
 
