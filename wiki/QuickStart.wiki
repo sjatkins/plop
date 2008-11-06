@@ -6,7 +6,9 @@
 
 *Setup:* Check out the [http://code.google.com/p/plop/source/checkout source code] to path `foo` (e.g. `/home/madscience/plop/`). Create a symbolic link to `foo/plop/trunk/plop.asd` from your asdf central registry (e.g. `ln -s foo/trunk/plop.asd /central-regisitry-path/plop.asd`). If you don't happen to already have the [http://common-lisp.net/project/anaphora/ anaphora] and [http://common-lisp.net/project/cl-utilities/ cl-utilities] packages installed, create symbolic links to `foo/trunk/thirdparty/anaphora/anaphora.asd` and `foo/trunk/thirdparty/cl-utilities/cl-utilities.asd` as well.
 
-*Loading:* In your Common Lisp, do:
+*Customization:* If you don't want to use Maxima, comment out `(:file "maxima")` from `trunk/plop.asd`.
+
+*Loading:* In your Common Lisp (or Maxima, after doing `to_lisp()`) do:
    * `(load "foo/trunk/thirdparty/lisp-unit.lisp")` (where `foo` is where you put the code, as above)
    * `(asdf:operate 'asdf:load-op 'cl-utilities)`
    * `(asdf:operate 'asdf:load-op 'anaphora)`
@@ -19,10 +21,18 @@ You probably want to add the first three of these to your lisp implementation's 
 {{{
 CL-USER> (in-package plop) ; all the code lives here
 #<PACKAGE PLOP>
-PLOP> %(and x y) ; % is the quote operator used for expressions in the plop language
+PLOP> %(and x y) ; % is the quote operator used for expressions in the plop 
+                 ; language
 ((AND) X Y)
-PLOP> (p2sexpr (qreduct %(and (or x y) (or (not x) z z) (or y z)))) ; qreduct does simplification with no assumptions and infers the type of the expression - p2sexpr converts the result into a (human-friendly) s-expression
+PLOP> (p2sexpr (qreduct %(and (or x y) (or (not x) z z) (or y z)))) 
+      ; qreduct does simplification with no assumptions and infers the type of
+      ; the expression - p2sexpr converts the result into a human-friendly 
+      ; s-expression
 (AND (OR X Y) (OR (NOT X) Z))
-PLOP> 
-(in-package plop) ; all the code lives here
-   * `(qreduct %(and (or x y) (or (not x) z z) (or y z)
+PLOP> (truth-table %(and (or x y) (or (not x) z))) ; verify the new truth-table
+(T NIL T NIL T T NIL NIL)
+PLOP> (truth-table %(and (or x y) (or (not x) z z) (or y z))) ; vs. original
+(T NIL T NIL T T NIL NIL)
+PLOP> (p2sexpr (qreduct %(log (exp (+ 2 x 3))))) ; with Maxima, numerical exprs
+                                                 ; get simplified as well
+(+ 5 X)
