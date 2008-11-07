@@ -58,8 +58,8 @@ IMPROVED-TO (OR (AND X Z) (AND (NOT X) Y))
 RESULT (OR (AND X Z) (AND (NOT X) Y)) 
 SCORE 0 
 (OR (AND X Z) (AND (NOT X) Y))
-PLOP> (let* ((xs '(-1 .3 .5)) (ys (mapcar (lambda (x) (+ 0.1 (* 2 x) xs)))))
-        (p2sexpr (num-hillclimb-with-target-values xs ys 10000 '(x)))
+PLOP> (let* ((xs '(-1 .3 .5)) (ys (mapcar (lambda (x) (+ 0.1 (* 2 x))) xs)))
+        (p2sexpr (num-hillclimb-with-target-values xs ys 10000 '(x))))
       ; a linear function - quite easy, but the current hillclimber is still
       ; very simplistic
 
