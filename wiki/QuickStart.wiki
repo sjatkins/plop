@@ -46,21 +46,28 @@ PLOP> (p2sexpr (bool-hillclimb-with-target-truth-table
       ; 10000 is the maximum # of evaluations of sample programs (not that we 
       ; need nearly this many for such an easy problem)
 
+EVALS LEFT 10000 
 NEW-BEST -4 
 NEW-BEST -2 
 IMPROVED-TO Z 
-LOCAL-MINIMUM Z 8 
-IMPROVED-TO Z 
-LOCAL-MINIMUM Z 8 
-IMPROVED-TO (AND X (OR (NOT Y) (NOT Z))) 
-IMPROVED-TO (AND Y (NOT Z)) 
-IMPROVED-TO (OR X (AND Y (NOT Z))) 
-IMPROVED-TO (OR Y Z) 
+LOCAL-MAXIMUM Z 8 
+LOCAL-MAXIMUM Y 8 
 NEW-BEST -1 
+IMPROVED-TO (AND Z (OR X (AND Y Z) (AND (NOT Y) (NOT Z)))) 
+LOCAL-MAXIMUM (AND Z (OR X (AND Y Z) (AND (NOT Y) (NOT Z)))) 42 
+IMPROVED-TO Z 
+LOCAL-MAXIMUM Z 8 
+IMPROVED-TO (AND Z (OR (NOT X) Y)) 
+IMPROVED-TO Y 
+LOCAL-MAXIMUM Y 8 
+IMPROVED-TO FALSE 
+IMPROVED-TO Z 
+LOCAL-MAXIMUM Z 8 
+IMPROVED-TO (AND (NOT X) Y) 
 IMPROVED-TO (OR Z (AND (NOT X) Y)) 
 NEW-BEST 0 
-RESULT (OR (AND X Z) (AND (NOT X) Y)) 
-SCORE 0 
+IMPROVED-TO (OR (AND X Z) (AND (NOT X) Y)) 
+FINAL BEST SCORE 0 
 (OR (AND X Z) (AND (NOT X) Y))
 PLOP> (let* ((xs '(-1 .3 .5)) (ys (mapcar (lambda (x) (+ 0.1 (* 2 x))) xs)))
         (p2sexpr (num-hillclimb-with-target-values xs ys 10000 '(x))))
