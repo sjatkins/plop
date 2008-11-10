@@ -17,14 +17,12 @@ understanding (premise #2 elaborates on why this is the case).
 
 ==Rationale==
 
-See [http://metacog.org/aicog.pdf Mixing Cognitive Science Concepts
-with Computer Science Algorithms and Data Structures], by Moshe Looks and
+See [http://metacog.org/aicog.pdf Mixing Cognitive Science Concepts with Computer Science Algorithms and Data Structures], by Moshe Looks and
 Ben Goertzel.
 
 =Premise #1: Insufficient Knowledge and Resources=
 
-My work herein is based on what [http://nars.wang.googlepages.com/ Pei
-Wang] has termed the _assumption of insufficient knowledge and
+My work herein is based on what [http://nars.wang.googlepages.com/ Pei Wang] has termed the _assumption of insufficient knowledge and
 resources_ (AIKR). The system resembles a functional programming language
 inasmuch as it contains the usual mechanisms for defining and invoking
 functions, passing around arguments (including functions themselves),
@@ -45,8 +43,7 @@ _the_ result, or it cannot obtain any result at all.
 
 ==Rationale==
 
-See [http://nars.wang.googlepages.com/wang.logic_intelligence.pdf The
-Logic of Intelligence], by Pei Wang.
+See [http://nars.wang.googlepages.com/wang.logic_intelligence.pdf The Logic of Intelligence], by Pei Wang.
 
 =Premise #2: Understanding equals Compression=
 
@@ -69,8 +66,7 @@ approach are Levin's complexity Kt and Schmidhuber's
 
 ==Rationale==
 
-See [http://whatisthought.com/working.pdf A Working Hypothesis for
-General Intelligence], by Eric Baum.
+See [http://whatisthought.com/working.pdf A Working Hypothesis for General Intelligence], by Eric Baum.
 
 =Premise #3: Necessary Inductive Bias=
 
@@ -149,8 +145,7 @@ the system's design.
 While the third premise posits the necessity of extensive inductive bias in
 order to make general-purpose program induction tractable, the fourth and final
 premise posits sufficiency; specifically that an adequate core for an
-[http://nars.wang.googlepages.com/wang.AGI-Intro.htm artifical general
-intelligence] (AGI) may be designed without addressing natural language
+[http://nars.wang.googlepages.com/wang.AGI-Intro.htm artifical general intelligence] (AGI) may be designed without addressing natural language
 processing, real-world perception and action, or real-time
 interaction. Certainly these capabilities are immensely useful, and will be
 needed eventually - the fourth premise states, rather, that they may be added
@@ -180,12 +175,10 @@ control of fire, hunting with stone tools, etc.). Many grammatical features may
 be seen as having a basis in physical inference (cf. "Grammatical Processing
 Using the Mechanisms of Physical Inference", by Nick Cassmatis). Research into
 analogy and metaphor
-(cf. [http://books.google.com/books?id=2Gfol9An-wEC&dq=Mappings+in+Thought+and+Language&pg=PP1&ots=P2N3skQ-ux&source=bn&sig=6A78r04xHc5Fo4AjyqDxNeawcjk&hl=en&sa=X&oi=book_result&resnum=4&ct=result
-Mappings in Thought and Language], by Gilles Fauconnier), and work on how
+(cf. [http://books.google.com/books?id=2Gfol9An-wEC&dq=Mappings+in+Thought+and+Language&pg=PP1&ots=P2N3skQ-ux&source=bn&sig=6A78r04xHc5Fo4AjyqDxNeawcjk&hl=en&sa=X&oi=book_result&resnum=4&ct=result Mappings in Thought and Language], by Gilles Fauconnier), and work on how
 language arose concurrently with evolutionary adaptations enabling disparate
 mental modules to be linked together in cognition
-(cf. [http://books.google.com/books?id=crp0HAAACAAJ&dq=The+Prehistory+of+Mind&ei=wpIYSbv8CYuCswPD0J2UAg
-The Prehistory of Mind], by Steven Mithen) clearly indicate that linguistic
+(cf. [http://books.google.com/books?id=crp0HAAACAAJ&dq=The+Prehistory+of+Mind&ei=wpIYSbv8CYuCswPD0J2UAg The Prehistory of Mind], by Steven Mithen) clearly indicate that linguistic
 capability is not an independent module, or a foundational style of cognition,
 but rather an ensemble of competencies seated on top of preexisting and more
 fundamental modes of cognition.
@@ -198,8 +191,7 @@ of perception (e.g. the firings of individual photreceptor cells) and action
 (e.g. individual muscle contractions) are generally processed in very rigid
 ways, and cut off from the rest of cognition (a much stronger argument along
 these lines may be found in Jerry Fodor's
-[http://books.google.com/books?id=dDu9AAAACAAJ&dq=The+Language+of+Thought&ei=8pIYSbr_HpjOtAOB3LziDw
-The Language of Thought]). This rigidity and isolation gradually decrease as
+[http://books.google.com/books?id=dDu9AAAACAAJ&dq=The+Language+of+Thought&ei=8pIYSbr_HpjOtAOB3LziDw The Language of Thought]). This rigidity and isolation gradually decrease as
 one ascends the perception-action hierarchy. Accordingly, a system with greatly
 simplified low-level perception and action subsystems should be extensible to
 contain these facilities without any significant redesign of the core.
