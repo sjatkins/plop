@@ -1,4 +1,4 @@
-#summary Immediate, near-term and long-term todo items & goals for plop
+#summary Immediate, near-term and long-term todo items for plop
 
 = Immediate =
 
