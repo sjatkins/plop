@@ -5,7 +5,7 @@
 
 *Recommended:* [http://www.cliki.net/asdf ASDF] (included with sbcl) for easy builds, and [http://maxima.sourceforge.net/ Maxima] for numerical simplification.
 
-*Setup:* Check out the [http://code.google.com/p/plop/source/checkout source code] to path `foo` (e.g. `/home/madscience/plop/`). Create a symbolic link to `foo/plop/trunk/plop.asd` from your asdf central registry (e.g. `ln -s foo/trunk/plop.asd /central-regisitry-path/plop.asd`). If you don't happen to already have the [http://common-lisp.net/project/anaphora/ anaphora] and [http://common-lisp.net/project/cl-utilities/ cl-utilities] packages installed, create symbolic links to `foo/trunk/thirdparty/anaphora/anaphora.asd` and `foo/trunk/thirdparty/cl-utilities/cl-utilities.asd` as well.
+*Setup:* Check out the [http://code.google.com/p/plop/source/checkout source code] to path `foo` (e.g. `/home/madscience/plop/`). Create a symbolic link to `foo/plop/trunk/src/plop.asd` from your asdf central registry (e.g. `ln -s foo/trunk/src/plop.asd /central-regisitry-path/plop.asd`). If you don't happen to already have the [http://common-lisp.net/project/anaphora/ anaphora] and [http://common-lisp.net/project/cl-utilities/ cl-utilities] packages installed, create symbolic links to `foo/trunk/thirdparty/anaphora/anaphora.asd` and `foo/trunk/thirdparty/cl-utilities/cl-utilities.asd` as well.
 
 *Customization:* If you don't want to use Maxima, comment out `(:file "maxima")` from `trunk/plop.asd`.
 
