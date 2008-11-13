@@ -15,11 +15,16 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) |#
 
 (in-package :cl-user)
-(defpackage :plop-asd (:use :cl :cl-utilities :anaphora))
+(defpackage :plop-asd (:use :cl))
 (setf *print-circle* t) ; markup may contain circular references to parents
+
+(assert (find-package :lisp-unit) nil
+        "Package LISP-UNIT not found. Try (laod \"~S\")."
+	"plop-dir/thirdparty/lisp-unit.lisp")
 
 (in-package :plop-asd)
 (asdf:defsystem "plop"
+  :depends-on (:cl-utilities :anaphora)
   :serial t
   :components ((:file "packages")
                (:file "util")
