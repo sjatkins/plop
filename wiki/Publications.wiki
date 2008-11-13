@@ -1,0 +1,8 @@
+#summary Publications related to plop
+
+  * Moshe Looks, [http://metacog.org/main.pdf Competent Program Evolution] Doctoral Dissertation, 2006.
+  * Moshe Looks, [http://metacog.org/papers/gecco07a.pdf Scalable Estimation-of-Distribution Program Evolution], Genetic and Evolutionary Computation COnference (GECCO), 2007. 
+  * Moshe Looks, [http://metacog.org/papers/gecco07c.pdf Meta-Optimizing Semantic Evolutionary Search], Genetic and Evolutionary Computation COnference (GECCO), 2007.
+  * Moshe Looks, Ben Goertzel, Lucio de Souza Coelho, Mauricio Mudado, and Cassio Pennachin, [http://metacog.org/papers/gecco07d.pdf Clustering Gene Expression Data via Mining Ensembles of Classification Rules Evolved Using MOSES], Genetic and Evolutionary Computation COnference (GECCO), 2007. 
+  * Moshe Looks, Ben Goertzel, Lucio de Souza Coelho, Mauricio Mudado, and Cassio Pennachin, [http://metacog.org/papers/gecco07a.pdf Understanding Microarray Data through Applying Competent Program Evolution], Genetic and Evolutionary Computation COnference (GECCO), 2007. 
+  * Moshe Loos [http://goertzel.org/agiri06/%5B9%5D%20moses_agiri_paper_final-1_UPDATED_3_21.pdf Program Evolution for General Intelligence], Artificial General Intel ligence Research Institute Workshop (AGIRI), 2006.
