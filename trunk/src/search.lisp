@@ -112,7 +112,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	      (if (< 2 nknobs) (+ 2 (random (- nknobs 2))) nknobs) knobs))))))
 (defun make-count-or-score-terminator (count score score-target)
   (lambda (expr) 
-    (if (eql 0 (mod count 500)) (print* 'evals 'left count))
+    (if (eql 0 (mod count 50)) (print* 'evals 'left count))
     (or (> 0 (decf count)) (>= (funcall score expr) score-target))))
 (defun make-greedy-scoring-acceptor (score)
   (lambda (from to)

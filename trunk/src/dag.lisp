@@ -65,7 +65,7 @@ only supports edge insertion, not removal. |#
       t))
 
 (defun dag-order-insert (x l dag)
-  (insert-if (bind #'descendantp /1 x dag) x l))
+  (insert-if x l (bind #'descendantp /1 x dag)))
 
 (define-test dag
   (let ((items (iota 10)) (dag (make-dag)))

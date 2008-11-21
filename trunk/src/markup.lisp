@@ -50,11 +50,11 @@ Author: madscience@google.com (Moshe Looks) |#
 	    nil)))
 (defun mark-simp (expr reduction)
   (setf (mark simp expr)
-	(insert-if (lambda (reduction2)
+	(insert-if reduction (mark simp expr)
+		   (lambda (reduction2)
 		     (when (eq reduction reduction2)
 		       (return-from mark-simp expr)) ; no need to modify
-		     (string> reduction2 reduction))
-		   reduction (mark simp expr))))
+		     (string> reduction2 reduction)))))
 
 (defun simpp (expr reduction)
   (awhen (mark simp expr)
