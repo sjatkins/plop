@@ -303,7 +303,6 @@ numerical constants. So the full canonical form for (+ c x y) is:
 		     (canonize %(lambda (l x) x) *empty-context*
 			       '(function ((list bool) bool) bool))
 		     '(function ((list bool) bool) bool))
-
   (validate-canonize `(lambda (first rest)
 			(split (lambda ()
 				 (or (and) (and (or) (or first)

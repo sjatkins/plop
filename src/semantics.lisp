@@ -287,11 +287,13 @@ represent evolved programs. |#
 
 ;;; macro-writing macro for defining functions as sets of toplevel forms,
 ;;; each one acting on a different type
-(defmacro defdefbytype (defname name)
+(defmacro defdefbytype (defname name &key (args '(expr context)))
+  (assert (not (find 'type args)))
   `(progn 
      (defvar ,name nil)
+     (defun ,name (,@args type)
+       (if (consp type)
+	   (funcall (cdr (assoc (car type) ,name)) ,@args type)
+	   (funcall (cdr (assoc type ,name)) ,@args)))
      (defmacro ,defname (typematch args &body body)
-       `(push (cons ',typematch (lambda ,args ,@body)) ,',name))
-     (defun ,name (expr context type)
-       (apply (cdr (assoc (icar type) ,name))
-	      (if (consp type) `(,expr ,context ,type) `(,expr ,context))))))
+       `(push (cons ',typematch (lambda ,args ,@body)) ,',name))))

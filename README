@@ -21,5 +21,5 @@ a consistent skew, e.g. (38 84 86 42), (37 86 89 38), (33 97 91 29), etc.
 I considered using the platform-independent http://www.cliki.net/MT19937
 implementation, but found it to be 5-30 times slower - enough to matter in some
 use-cases. So proceed with caution, and use sbcl if you are running important
-experiments and want good randomness (not however the evolutionary algorithms
+experiments and want good randomness (note however the evolutionary algorithms
 in general don't seem to care how good your randomness is).

@@ -83,7 +83,8 @@ Author: madscience@google.com (Moshe Looks) |#
 					      (if (equal v y) (return v) y)))
 			 ls)))
 (defun mappend (f l) (apply #'append (mapcar f l)))
-(defun iota (n) (loop for i from 0 to (- n 1) collect i))
+(defun iota (n &key (start 0) (step 1))
+  (collecting (do ((i start (incf i step))) ((>= i n)) (collect i))))
 (defun sort-copy (l cmp) (sort (copy-seq l) cmp))
 
 ;;; interleave (copies of) elem between elements of l, with elem itself as
@@ -338,6 +339,8 @@ Author: madscience@google.com (Moshe Looks) |#
     copy))
 (defun maphash-keys (fn table)
   (maphash (bind fn /1) table))
+(defun maphash-values (fn table)
+  (maphash (bind fn /2) table))
 (defun hash-table-empty-p (table) ;;could be faster
   (eql (hash-table-count table) 0))
 (defun keys-to-list (table)
@@ -433,7 +436,7 @@ Author: madscience@google.com (Moshe Looks) |#
   (do ((l fns (if (funcall test x (setf x (funcall (car l) x))) (cdr l) fns)))
       ((not l) x)))
 
-(defun insert-if (pred item list)
+(defun insert-if (item list pred)
   (mapl (lambda (subl)
 	  (when (funcall pred (car subl))
 	    (rplacd subl (cons (car subl) (cdr subl)))
@@ -524,3 +527,5 @@ Author: madscience@google.com (Moshe Looks) |#
 	  (when (funcall cmp max y) (setf max-elem x max y)))
 	(cdr l))
   max-elem)
+
+(defun impulse (x) (if x 1 0))

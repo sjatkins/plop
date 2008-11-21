@@ -15,7 +15,7 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) |#
 
 (in-package :cl-user)
-(defpackage :plop-asd (:use :cl))
+(defpackage :plop-asd (:use :cl :cl-utilities :anaphora))
 (setf *print-circle* t) ; markup may contain circular references to parents
 
 (assert (find-package :lisp-unit) nil
@@ -24,7 +24,7 @@ Author: madscience@google.com (Moshe Looks) |#
 
 (in-package :plop-asd)
 (asdf:defsystem "plop"
-  :depends-on (:cl-utilities :anaphora)
+;  :depends-on (:cl-utilities :anaphora)
   :serial t
   :components ((:file "packages")
                (:file "util")
