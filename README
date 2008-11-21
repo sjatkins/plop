@@ -1,2 +1,25 @@
 See http://code.google.com/p/plop/wiki/QuickStart for an installation guide a
 brief tour.
+
+A note on random numbers: based on some rather unscientific and limited tests,
+it appears that the clisp prng is not very good. For example, consider:
+(defun zzz ()
+  (do ((l (loop for n from 1 to 500 collect 
+	       (< (let ((x 0)) (dotimes (i 99999) (if (eql (random 2) 0) 
+						      (incf x))) x) 50000))
+	  (cddr l))
+       (a 0) (b 0) (c 0) (d 0))
+      ((not l) (list a b c d))
+    (if (car l) 
+	(if (cadr l) (incf a) (incf b))
+	(if (cadr l) (incf c) (incf d)))))
+
+Calling (zzz) repeatedly should produce lists of four elements all having the
+same expectation. This works find in sbcl, but in clisp (v2.43 on OSX) there is
+a consistent skew, e.g. (38 84 86 42), (37 86 89 38), (33 97 91 29), etc.
+
+I considered using the platform-independent http://www.cliki.net/MT19937
+implementation, but found it to be 5-30 times slower - enough to matter in some
+use-cases. So proceed with caution, and use sbcl if you are running important
+experiments and want good randomness (not however the evolutionary algorithms
+in general don't seem to care how good your randomness is).
