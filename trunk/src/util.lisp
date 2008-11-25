@@ -130,33 +130,27 @@ Author: madscience@google.com (Moshe Looks) |#
 			 (vector nil 3) (vector nil 'z))))
 
 ;;; generalized argument-binding construct that works like boost::bind
-(defmacro bindapp (fn &rest args) ; takes arguments /1 ... /9
-  (let ((zero (char-int #\0)))
-    (labels ((char-to-int (c) (- (char-int c) zero))
-	     (max-arg-idx (l)
-	       (reduce (lambda (n arg)
-			 (cond ((symbolp arg)
-				(if (eql (elt (symbol-name arg) 0) #\/)
-				    (max n (char-to-int 
-					    (elt (symbol-name arg) 1)))
-				    n))
-			       ((consp arg)
-				(if (eq (car arg) 'bind) n
-				    (max n (max-arg-idx (cdr arg)))))
-			       (t n)))
-		       l :initial-value 0)))
-      (let ((bind-max-arg-idx (max-arg-idx (butlast args)))
-	    (rest-arg (gensym)))
-	`(lambda ,(append
-		   (mapcar (lambda (i) 
-			     (read-from-string
-			      (concatenate 'string "/" (write-to-string i))))
-			   (loop for i from 1 to bind-max-arg-idx collect i))
-		   `(&rest ,rest-arg)) 
-	   (declare (ignore ,rest-arg))
-	   (apply ,fn ,@args))))))
-(defmacro bind (fn &rest args)
-  `(bindapp ,fn ,@args nil))
+;;; takes arguments /1 ... /9
+(defmacro bind (fn &rest args &aux (appears (make-hash-table)) (rest (gensym)))
+  (labels ((num-to-varname (i)
+	     (read-from-string (concatenate 'string "/" (write-to-string i))))
+	   (num-from-varname (x)
+	     (when (eql (elt (symbol-name x) 0) #\/)
+	       (aprog1 (- (char-int (elt (symbol-name x) 1)) (char-int #\0))
+		 (setf (gethash it appears) t))))
+	   (arg-max-arg-idx (x)
+	     (or (cond ((symbolp x) (num-from-varname x))
+		       ((consp x) (unless (eq (car x) 'bind)
+				    (list-max-arg-idx (cdr x)))))
+		 0))
+	   (list-max-arg-idx (l)
+	     (if l (apply #'max (mapcar #'arg-max-arg-idx l)) 0)))
+    (let ((indices (loop for i from 1 to (list-max-arg-idx args) collect i)))
+      `(lambda (,@(mapcar #'num-to-varname indices) &rest ,rest)
+	 ,@(mapcar (lambda (n) `(declare (ignore ,(num-to-varname n))))
+		   (remove-if (lambda (x) (gethash x appears)) indices))
+	 (declare (ignore ,rest))
+	 (funcall ,fn ,@args)))))
 
 ;;; memoization
 (defun tabulate (fn array &rest indices)
@@ -343,8 +337,8 @@ Author: madscience@google.com (Moshe Looks) |#
   (maphash (bind fn /2) table))
 (defun hash-table-empty-p (table) ;;could be faster
   (eql (hash-table-count table) 0))
-(defun keys-to-list (table)
-  (collecting (maphash-keys (collector) table)))
+(defun keys (table) (collecting (maphash-keys (collector) table)))
+(defun has-key-p (key table) (secondary (gethash key table)))
 
 ;;; mathematical functions
 (macrolet ((declare-argcmp (name cmp)
@@ -473,11 +467,11 @@ Author: madscience@google.com (Moshe Looks) |#
 		submesh))
       (list nil)))
 (define-test mesh
-  (assert-equal '((0.0 0.0) (0.25 0.0) (0.5 0.0) (0.75 0.0) (1.0 0.0)
-		  (0.0 0.25) (0.25 0.25) (0.5 0.25) (0.75 0.25) (1.0 0.25)
-		  (0.0 0.5) (0.25 0.5) (0.5 0.5) (0.75 0.5) (1.0 0.5) 
-		  (0.0 0.75) (0.25 0.75) (0.5 0.75) (0.75 0.75) (1.0 0.75) 
-		  (0.0 1.0) (0.25 1.0) (0.5 1.0) (0.75 1.0) (1.0 1.0))
+  (assert-equalp '((0.0 0.0) (0.25 0.0) (0.5 0.0) (0.75 0.0) (1.0 0.0)
+		   (0.0 0.25) (0.25 0.25) (0.5 0.25) (0.75 0.25) (1.0 0.25)
+		   (0.0 0.5) (0.25 0.5) (0.5 0.5) (0.75 0.5) (1.0 0.5) 
+		   (0.0 0.75) (0.25 0.75) (0.5 0.75) (0.75 0.75) (1.0 0.75) 
+		   (0.0 1.0) (0.25 1.0) (0.5 1.0) (0.75 1.0) (1.0 1.0))
 		(mesh '(5 5) '(0 0) '(1.0 1.0))))
 
 (defun rplac (dst src &aux (car (car src)) (cdr (cdr src)))
@@ -527,5 +521,34 @@ Author: madscience@google.com (Moshe Looks) |#
 	  (when (funcall cmp max y) (setf max-elem x max y)))
 	(cdr l))
   max-elem)
+(defun min-element (l cmp &key (key #'identity) &aux (min-elem (car l)) 
+		    (min (and l (funcall key min-elem))))
+  (mapc (lambda (x &aux (y (funcall key x)))
+	  (when (funcall cmp y min) (setf min-elem x min y)))
+	(cdr l))
+  min-elem)
 
 (defun impulse (x) (if x 1 0))
+
+(flet ((box-muller ()
+	 "Based on code at http://www.taygeta.com/random/gaussian.html"
+	 (loop
+	    for x1 = (1- (* 2.0d0 (random 1d0)))
+	    for x2 = (1- (* 2.0d0 (random 1d0)))
+	    for w = (+ (* x1 x1) (* x2 x2))
+	    while (>= w 1d0)
+	    finally
+	    (let ((w (sqrt (/ (* -2d0 (log w)) w))))
+	      (return (values (* x1 w) (* x2 w)))))))
+  (defun random-normal (&optional (mean 0.0) (sd 1.0))
+    (+ (* (box-muller) sd) mean)))
+
+;;; histogram
+(defun hist (elems &optional (nbins (min (ceiling (/ (length elems) 10)) 20))
+	     &aux (bins (make-array nbins :initial-element 0))
+	     (min (min-element elems #'<)) (max (max-element elems #'<))
+	     (width (/ (- max min) nbins)))
+  (mapc (lambda (x)
+	  (incf (elt bins (min (1- nbins) (floor (/ (- x min) width)))))) 
+	elems)
+  bins)

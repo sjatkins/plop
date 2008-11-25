@@ -85,7 +85,9 @@ Continuous optimization problems
      Matching Inductive Search Bias and Problem Structure in Continuous 
      Estimation-of-Distribution Algorithms, (European Journal of Operational 
      Research, 2008)
-   * De Jong's test suite (http://www.denizyuret.com/pub/aitr1569/node19.html)
+   * De Jong's test suite (cf. 
+     http://www.cs.uwyo.edu/~wspears/functs.dejong.html or
+     http://www.denizyuret.com/pub/aitr1569/node19.html)
      sphere, rosenbrock, step, quartic, & foxholes
    * Ocenasek's two-deceptive continuous optimization problem
 
@@ -186,7 +188,7 @@ abstaction should be far easier. |#
   :cases ((10 :start 1) (100 :start 10 :step 10))
   :cost (* 100 n) :type `(function ,(ntimes n num) num)
   :target
-  (let ((contants (generate (1+ n) #'random-normal)))
+  (let ((constants (generate (1+ n) #'random-normal)))
     (mapcar (lambda (xs) (cons xs (reduce #'+ (mapcar #'* (cdr constants) xs)
 					  :initial-value (car constants))))
 	    (generate (1+ n) (lambda () 
@@ -212,3 +214,36 @@ abstaction should be far easier. |#
 	      (- n (do ((at x (cdddr at)) (v 0)) ((not at) v)
 		     (incf v (trap (reduce #'+ at :key #'impulse :end 3)))))))
   :start (apply #'vector (generate n (lambda () (if (randbool) true false)))))
+
+(defmacro defdejong (name target &key (precision 10));??? &rest args
+		     &aux (max (* 0.01 (ash 1 (1- precision)))) (min (- max)))
+  `(defbenchmark-seq
+       ,(concatenate 'string "dejong-" (write-to-string name)) (n)
+     :cases (11 :start 3) :cost (* 100 n) :type `(tuple ,@(ntimes n num))
+     :target ,target :range (apply #'vector (ntimes n (vector -5.12 5.12)))
+     :precision ,precision ,@args))
+
+(defdejong sphere (lambda (xs) (- (reduce #'+ xs :key (bind #'* /1 /1)))))
+(defdejong rosenbrock (lambda (xs &aux (res 0))
+			(map nil (lambda (x1 x2)
+				   (- (* -100 (expt (+ x2 (expt x1 2)) 2)) 
+				      (expt (- x1 1) 2)))
+			     xs (cdr xs)))); fixme-cdr :P
+(defdejong step (lambda (xs) (- (* -6 n) (reduce #'+ xs :key #'floor))))
+(defdejong noisy-quartic 
+    (lambda (xs &aux (res 0))
+      (dotimes (i n res)
+	(decf res (+ (* (1+ i) (expt (elt xs i) 4)) (random-normal)))))  
+  :precision 8)
+(defdejong foxholes
+    (let ((a (vector -32.0 -16.0 0.0 16.0 32.0))
+	  (b (vector -32.0 -16.0 0.0 16.0 32.0)))
+      (lambda (xs &aux (sum 0))
+	(flet ((f (x) (+ 1 x 
+			 (expt (- (elt xs 0) (svref a (mod x 5))) 6)
+			 (expt (- (elt xs 1) (svref b (/ x 5))) 6))))
+	  (+ -500 (/ 1.0 (+ 0.002 (dotimes (x 25 sum) 
+				    (incf sum (/ 1.0 (f x))))))))))
+  :precision 17)
+
+cost...

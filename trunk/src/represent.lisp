@@ -143,7 +143,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	    (mapcar (lambda (var) 
 		      (apply #'make-inserter-knob expr (args expr)
 			     (numarg-terms expr var context)))
-		    (keys-to-list (symbols-with-type num context)))))))
+		    (keys (symbols-with-type num context)))))))
 
 (defknobs tuple (expr context type)
   (declare (ignore expr context type))
@@ -156,9 +156,9 @@ Author: madscience@google.com (Moshe Looks) |#
        (list (apply #'make-replacer-knob expr 
 		    (args expr) (bool-dual (arg0 expr))
 		    (mapcan (lambda (var) (list var (pcons 'not (list var))))
-			    (keys-to-list (symbols-with-type bool context))))))
+			    (keys (symbols-with-type bool context))))))
      (when (or (atom (arg1 expr)) (atom (arg2 expr)))
-       (let ((xs (keys-to-list (symbols-with-type type context))))
+       (let ((xs (keys (symbols-with-type type context))))
 	 (flet ((mkknob (arglist)
 		  (apply #'make-replacer-knob expr arglist
 			 (aif (car arglist) (remove it xs) xs))))
