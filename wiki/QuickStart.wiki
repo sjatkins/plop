@@ -14,7 +14,7 @@
    * `(asdf:operate 'asdf:load-op 'cl-utilities)`
    * `(asdf:operate 'asdf:load-op 'anaphora)`
    * `(asdf:operate 'asdf:load-op 'plop)`
-You probably want to add the first three of these to your lisp implementation's startup file (`~/.clisprc.lisp` for CLSIP `~/.sbclrc` for SBCL).
+You probably want to add the first three of these to your lisp implementation's startup file (`~/.clisprc.lisp` for CLISP `~/.sbclrc` for SBCL).
 
 *Testing:* Evaluate `(in-package plop) (run-tests)`. At the end of the output you should see something like `TOTAL: 13489 assertions passed, 0 failed, 0 execution errors.`.
 
