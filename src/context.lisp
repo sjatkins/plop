@@ -120,7 +120,7 @@ Author: madscience@google.com (Moshe Looks) |#
 
 (define-test symbol-binding
   (let ((c (make-context)))
-    (flet ((syms (type) (keys-to-list (symbols-with-type type c))))
+    (flet ((syms (type) (keys (symbols-with-type type c))))
       (with-bound-types c '(x y) '(bool num)
 	(assert-equal '(x) (syms bool))
 	(assert-equal '(y) (syms num))
