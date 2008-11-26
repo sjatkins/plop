@@ -42,15 +42,19 @@ Author: madscience@google.com (Moshe Looks) |#
     (dag-insert-node reduction dependencies) ;; then update dependencies
     (mapc (bind #'dag-insert-edge /1 reduction dependencies) assumes)
     (setf (gethash reduction reduction-to-assumes) assumes)
-    (reductions type)               ;; then update the type index
-    (maphash (lambda (type2 list)   ;; and all subtype indices
-	       (when (isa type2 type)
-		 (setf (gethash type2 type-to-reductions)
-		       (dag-order-insert reduction
-					 (delete-if (bind #'member /1 obviates)
-						    list)
-					 dependencies))))
-	     type-to-reductions))
+    (flet ((update-types (type)
+	     (reductions type)		   ;; then update the type index
+	     (maphash (lambda (type2 list) ;; and all subtype indices
+			(when (isa type2 type)
+			  (setf (gethash type2 type-to-reductions)
+				(dag-order-insert 
+				 reduction 
+				 (delete-if (bind #'member /1 obviates) list)
+				 dependencies))))
+		      type-to-reductions)))
+      (if (eq (acar type) 'or)
+	  (mapc #'update-types (cdr type))
+	  (update-types type))))
   (defun reductions (type)
     (or (gethash type type-to-reductions)
 	(setf (gethash type type-to-reductions)
@@ -194,27 +198,29 @@ Author: madscience@google.com (Moshe Looks) |#
 	  (when (consp it)
 	    (push fully-reduced (mark simp it)))))))
 (define-test reduct
-  (with-bound-types *empty-context* '(f g) 
-      '((function (num num) bool) (function (bool) num))
-    (let* ((expr (copy-tree %(and (f 42 (+ (g (or a b)) m)) (or x y))))
-	   (r (reduct expr *empty-context* bool))
-	   (bool-subexprs (list r (arg0 r) (arg1 r)
-				(arg0 (arg0 (arg1 (arg0 r))))))
-	   (num-subexprs (list (arg1 (arg0 r)) (arg0 (arg1 (arg0 r)))))
-	   (subexprs (append bool-subexprs num-subexprs)))
+  (assert-equal 'x (reduct %(and x (or y x)) *empty-context* bool))
+  (when (fboundp 'maxima-reduce) 
+    (with-bound-types *empty-context* '(f g) 
+	'((function (num num) bool) (function (bool) num))
+      (let* ((expr (copy-tree %(and (f 42 (+ (g (or a b)) m)) (or x y))))
+	     (r (reduct expr *empty-context* bool))
+	     (bool-exprs (list r (arg0 r) (arg1 r)
+				  (arg0 (arg0 (arg1 (arg0 r))))))
+	     (num-exprs (list (arg1 (arg0 r)) (arg0 (arg1 (arg0 r)))))
+	     (exprs (append bool-exprs num-exprs)))
 	     
-      (assert-equal (p2sexpr expr) (p2sexpr r))
-      (assert-equal expr r)
-      (assert-eq expr r)
-      (assert-for-all (bind #'exact-simp-p /1 'flatten-associative) subexprs)
+	(assert-equal (p2sexpr expr) (p2sexpr r))
+	(assert-equal expr r)
+	(assert-eq expr r)
+	(assert-for-all (bind #'exact-simp-p /1 'flatten-associative) exprs)
       
-      (assert-for-all (bind #'exact-simp-p /1 'push-nots) bool-subexprs)
-      (assert-for-all (bind #'exact-simp-p /1 'sort-commutative) bool-subexprs)
-      (assert-for-none (bind #'exact-simp-p /1 'maxima-reduce) bool-subexprs)
+	(assert-for-all (bind #'exact-simp-p /1 'push-nots) bool-exprs)
+	(assert-for-all (bind #'exact-simp-p /1 'sort-commutative) bool-exprs)
+	(assert-for-none (bind #'exact-simp-p /1 'maxima-reduce) bool-exprs)
 
-      (assert-for-none (bind #'exact-simp-p /1 'push-nots) num-subexprs)
-      (assert-for-none (bind #'exact-simp-p /1 'sort-commutative) num-subexprs)
-      (assert-for-all (bind #'exact-simp-p /1 'maxima-reduce) num-subexprs))))
+	(assert-for-none (bind #'exact-simp-p /1 'push-nots) num-exprs)
+	(assert-for-none (bind #'exact-simp-p /1 'sort-commutative) num-exprs)
+	(assert-for-all (bind #'exact-simp-p /1 'maxima-reduce) num-exprs)))))
 
 ;; for convenience
 (defun qreduct (expr) 

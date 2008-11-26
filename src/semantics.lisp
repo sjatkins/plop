@@ -21,6 +21,8 @@ represent evolved programs. |#
 ;;; for convenice - the language uses these instead of t and nil
 (define-constant true 'true)
 (define-constant false 'false)
+;;; for convenience - used as not-a-number
+(define-constant nan 'nan)
 
 ;; total-cmp is a total ordering on all plop expressions
 ;; returns less, nil, or greater, with the important property that (not symbol)
@@ -93,6 +95,12 @@ represent evolved programs. |#
 		  (ecase x ,@items)))))
   (build-identity-functions
    ((and 'true) (or 'false) (* 1) (+ 0) (append nil))))
+(defun short-circuits-p (x fn)
+  (case fn 
+    (and (eq x false))
+    (or (eq x true))
+    (+ (eq x nan))
+    (* (or (eq x nan) (and (numberp x) (= x 0))))))
 (defun purep (x) ; for now no side-effects - these will be introduced soon
   (declare (ignore x))
   t)
@@ -101,6 +109,8 @@ represent evolved programs. |#
 
 ;;; properties of expressions
 (defun junctorp (expr) (matches (afn expr) (and or)))
+(defun ring-op-p (expr) ;true if rooted in + or * or and or or
+  (matches (ifn expr) (+ * and or)))
 (defun literalp (expr)
   (if (consp expr)
       (and (eq (fn expr) 'not) (not (consp (arg0 expr))))

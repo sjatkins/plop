@@ -78,3 +78,42 @@ General-purpose reductions that can apply to any type are defined here |#
 		(eval-const %(if true (list 42) nil)))
   (assert-equal '((list simp (eval-const)) 42 42)
 		(eval-const %(append (list 42) (list 42)))))
+
+;; (and true x y)  -> (and x y)  (or true x y)  -> true
+;; (and false x y) -> false      (or false x y) -> x
+;; (and x)         -> x          (or x)         -> x 
+;; (* 1 x y)  -> (* x y)
+;; (* 0 x y) -> false            (+ 0 x y)  -> (+ x y)
+;; (* x)         -> x            (+ x)         -> x 
+(define-reduction ring-op-identities (fn args markup)
+  :type (or bool num)
+  :condition (and (ring-op-p fn) 
+		  (or (singlep args)
+		      (member-if (lambda (x) (or (equalp x (identity-elem fn))
+						 (short-circuits-p x fn)))
+				 args)))
+  :action (if (eq it t) (car args)
+	      (or (find-if (bind #'short-circuits-p /1 fn) it)
+		  (aif (remove (identity-elem fn) args :test #'equalp)
+		       (if (singlep it) (car it) (pcons fn it markup))
+			(identity-elem fn))))
+  :order upwards)
+(define-test ring-op-identities
+  ;; tests for and
+  (assert-equal '(and x y) (p2sexpr (ring-op-identities %(and x true y))))
+  (assert-for-all (compose (bind #'eq 'false /1) #'ring-op-identities)
+		  (mapcar #'sexpr2p 
+			  '((and false x y) (and x false y) (and x y false))))
+  (assert-equal 'x  (eval-const (ring-op-identities %(and x))))
+  ;;; tests for or
+  (assert-equal true (ring-op-identities %(or x true y)))
+  (mapc (lambda (expr) 
+	  (assert-equal '(or x y) 
+			(p2sexpr (ring-op-identities (sexpr2p expr)))))
+	'((or false x y) (or x false y) (or x y false)))
+  (assert-equal 'x  (eval-const (ring-op-identities %(or x))))
+  ;;; test over general boolean expressions
+  (test-by-truth-tables #'ring-op-identities)
+  ;;; numerical tests
+  (assert-equal 'x (ring-op-identities %(+ 0 (* 1 x))))
+  (assert-equal '(< 2 x) (p2sexpr (ring-op-identities %(< 2 (+ 0 (* 1 x)))))))
