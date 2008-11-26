@@ -135,8 +135,8 @@ Author: madscience@google.com (Moshe Looks) |#
     (assert (numberp (arg0 expr)) () "expected numeric first arg for ~S" expr)
     (cons (apply #'make-replacer-knob expr (args expr) 
 		 (numarg-settings expr context))
-	  (with-nil-bound-values context ; the terms
-	      (delete-if 
+	  (with-nil-bound-values context 
+	      (delete-if
 	       #'consp (mapcar (compose (bind #'reduct /1 *empty-context* num)
 					#'canon-clean)
 			       (ternary (split-by-op expr))))

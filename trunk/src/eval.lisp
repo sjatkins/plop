@@ -47,11 +47,11 @@ Author: madscience@google.com (Moshe Looks) |#
 		       (* (reduce #'* args :key eval-fn))
 		       (exp (let ((result (funcall eval-fn (car args))))
 			      (if (> result +largest-exp-arg+)
-				  (throw 'nan 'nan)
+				  (throw nan nan)
 				  (exp result))))
 		       (log (let ((arg (abs (funcall eval-fn (car args)))))
 			      (if (< arg +smallest-log-arg+) 
-				  (throw 'nan 'nan)
+				  (throw nan nan)
 				  (log arg))))
 		       (sin (sin (funcall eval-fn (car args))))
 
@@ -66,15 +66,16 @@ Author: madscience@google.com (Moshe Looks) |#
      (with-error-handling (name result type-fn)
        `(progn
 	  (handler-case 
-	      (catch 'nan 
+	      (catch nan 
 		(return-from ,name (convert-bools ,result ,type-fn)))
 	    #+clisp(system::simple-floating-point-overflow ())
 	    #+clisp(system::simple-arithmetic-error ())
 	    (division-by-zero ()))
-	  'nan)))
+	  nan)))
   ;;; peval-cl behaves like peval, only bools evaluate to t/nil instead
   ;;; of true/false, and doesn't do error handling
   (defun peval-cl (expr context)
+;    (print* 'peval-cl expr)
     (eval-with (bind #'peval-cl /1 context)
 	       ((list (mapcar eval-fn args))
 		(append (apply #'nconc (mapcar eval-fn args)))
@@ -84,7 +85,7 @@ Author: madscience@google.com (Moshe Looks) |#
 		     ((symbolp expr) (case expr 
 				       (true t)
 				       (false nil)
-				       (nan 'nan)
+				       (nan nan)
 				       ((nil) nil)
 				       (t (acase (getvalue expr context)
 						 (true t)
@@ -97,6 +98,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	       (with-error-handling pfuncall (call fn args) 
 				    (funcall-type fn args))))
   (defun peval (expr &optional (context *empty-context*) type)
+;    (print* 'peval expr)
     (with-error-handling peval (peval-cl expr context)
 			 (lambda () (or type (expr-type expr context))))))
 (define-all-equal-test peval

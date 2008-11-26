@@ -162,7 +162,7 @@ Author: madscience@google.com (Moshe Looks) |#
 					    :test #'equalp)))
 	       #+clisp(system::simple-floating-point-overflow ())
 	       #+clisp(system::simple-arithmetic-error ()))
-	     'nan)
+	     nan)
 	   (all-simped-p (mexpr)
 	     (or (atom mexpr) (and (eq (cadar mexpr) 'maxima::simp)
 				   (every #'all-simped-p (cdr mexpr))))))

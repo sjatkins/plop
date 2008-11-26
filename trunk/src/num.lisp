@@ -36,9 +36,6 @@ Author: madscience@google.com (Moshe Looks) |#
 
 (defun num-dual (f) (ecase f (* '+) (+ '*) (1 0) (0 1)))
 
-(defun ring-op-p (expr) ;true if rooted in + or * or and or or
-  (matches (ifn expr) (+ * and or)))
-
 (defun num-table (expr vars table)
   (mapcar (lambda (values)
 	    (with-bound-values *empty-context* vars values
@@ -72,9 +69,9 @@ Author: madscience@google.com (Moshe Looks) |#
 	 (nreverse res))
        (sexprs-size (sexprs) (reduce #'+ sexprs :key #'expr-size))
        (num-mismatch (n1 n2)
-	 (if (eq 'nan n2)
-	     (not (eq 'nan n1))
-	     (and (not (eq 'nan n1))
+	 (if (eq n2 nan)
+	     (not (eq n1 nan))
+	     (and (not (eq n1 nan))
 		  (> (/ (abs (- (abs n1) (abs n2)))
 			(+ 0.01 (abs n1) (abs n2))) 0.01)))))
     (let* ((raw-sexprs (read-stream "sample_real_trees_10k"))

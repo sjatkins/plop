@@ -93,31 +93,23 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun context-empty-p (context) 
   (hash-table-empty-p (context-symbol-bindings context)))
 
-(defmacro with-bound-values (context symbols values &body body)
-  `(unwind-protect
-	(progn (mapc (bind #'bind-value /1 ,context /2) ,symbols ,values)
-	       ,@body)
-     (mapc (bind #'unbind-symbol /1 ,context) ,symbols)))
-
-(defmacro with-nil-bound-values (context symbols &body body)
-  `(unwind-protect
-	(progn (mapc (bind #'bind-value /1 ,context nil) ,symbols)
-	       ,@body)
-     (mapc (bind #'unbind-symbol /1 ,context) ,symbols)))
-
-(defmacro with-bound-types (context symbols types &body body)
-  `(unwind-protect
-	(progn (mapc (bind #'bind-type /1 ,context /2) ,symbols ,types)
-	       ,@body)
-     (mapc (bind #'unbind-symbol /1 ,context) ,symbols)))
-
-(defmacro with-bound-type (context symbols type &body body)
-  `(unwind-protect
-	(progn (mapc (bind #'bind-type /1 ,context ,type) ,symbols)
-	       ,@body)
-     (mapc (bind #'unbind-symbol /1 ,context) ,symbols)))
-
-
+(flet ((make-binder-body (context symbols body &rest mapargs &aux
+			  (sname (gensym)))
+	   `(let ((,sname ,symbols))
+	      (unwind-protect (progn (mapc ,@mapargs) ,@body)
+		(mapc (bind #'unbind-symbol /1 ,context) ,sname)))))
+  (defmacro with-bound-values (context symbols values &body body)
+    (make-binder-body context symbols body
+      `(bind #'bind-value /1 ,context /2) symbols values))
+  (defmacro with-nil-bound-values (context symbols &body body)
+    (make-binder-body context symbols body
+      `(bind #'bind-value /1 ,context nil) symbols))
+  (defmacro with-bound-types (context symbols types &body body)
+    (make-binder-body context symbols body
+      `(bind #'bind-type /1 ,context /2) symbols types))
+  (defmacro with-bound-type (context symbols type &body body)
+    (make-binder-body context symbols body
+      `(bind #'bind-type /1 ,context ,type) symbols)))
 (define-test symbol-binding
   (let ((c (make-context)))
     (flet ((syms (type) (keys (symbols-with-type type c))))

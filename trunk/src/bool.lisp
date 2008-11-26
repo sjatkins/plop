@@ -74,50 +74,6 @@ Author: madscience@google.com (Moshe Looks) |#
 		 (p2sexpr (push-nots (copy-tree %(not (or p q))))))
   (test-by-truth-tables #'push-nots))
 
-(defmacro define-bool-dual-reductions (and-name or-name
-				       (operator identity complement expr)
-				       &body body)
-  (flet ((dosub (x y z)
-	   (subst x operator (subst y identity (subst z complement body)))))
-    `(progn (define-reduction ,and-name (,expr)
-	      :type bool
-	      ,@(dosub ''and ''true ''false))
-	    (define-reduction ,or-name (,expr)
-	      :type bool
-	      ,@(dosub ''or ''false ''true)))))
-
-;; ;; (and true x y)  -> (and x y)  (or true x y)  -> true
-;; ;; (and false x y) -> false      (or false x y) -> x
-;; ;; (and x)         -> x          (or x)         -> x 
-(define-bool-dual-reductions bool-and-identities bool-or-identities 
-  (operator identity complement expr)
-  :condition (and (eq operator (fn expr))
-		  (or (singlep (args expr))
-		      (member-if #'const-atom-p (args expr))))
-  :action (cond ((eq it t) (arg0 expr))
-		((find complement it) complement)
-		(t (aif (remove identity (args expr))
-			(if (singlep it) 
-			    (car it)
-			    (pcons (fn expr) it (markup expr)))
-			identity)))
-  :order upwards)
-(define-test bool-and-identities
-  (assert-equal '(and x y) (p2sexpr (bool-and-identities %(and x true y))))
-   (assert-for-all (compose (bind #'eq 'false /1) #'bool-and-identities)
-		   (mapcar #'sexpr2p 
-			   '((and false x y) (and x false y) (and x y false))))
-   (assert-equal 'x  (eval-const (bool-and-identities %(and x))))
-   (test-by-truth-tables #'bool-and-identities))
-(define-test bool-or-identities
-  (assert-equal true (bool-or-identities %(or x true y)))
-  (mapc (lambda (expr) 
-	  (assert-equal '(or x y) 
-			(p2sexpr (bool-or-identities (sexpr2p expr)))))
-	'((or false x y) (or x false y) (or x y false)))
-  (assert-equal 'x  (eval-const (bool-or-identities %(or x))))
-  (test-by-truth-tables #'bool-or-identities))
-
 (defun negate (expr)
   (if (eq (afn expr) 'not) (arg0 expr) (pcons 'not (list expr))))
 (defun litvariable (x) (if (consp x) (arg0 x) x))
@@ -261,7 +217,8 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-reduction reduce-bool-by-clauses (expr)
   :type bool
   :assumes (sort-commutative flatten-associative remove-bool-duplicates
-	    bool-and-identities bool-or-identities eval-const)
+	    ;bool-and-identities bool-or-identities
+	    ring-op-identities eval-const)
   :order upwards
   :condition (junctorp expr)
   :action 

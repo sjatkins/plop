@@ -108,7 +108,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	     (weak-kick-until 
 	      (lambda () 
 		(not (eq (setf expr (funcall simplifier 
-					     (canon-clean canonical))) 'nan)))
+					     (canon-clean canonical))) nan)))
 	      (if (< 2 nknobs) (+ 2 (random (- nknobs 2))) nknobs) knobs))))))
 (defun make-count-or-score-terminator (count score score-target)
   (lambda (expr) 
@@ -148,7 +148,7 @@ Author: madscience@google.com (Moshe Looks) |#
     (blockn (mapc (lambda (input target)
 		    (with-bound-values *empty-context* vars input
 		      (let ((x (peval expr *empty-context* num)))
-			(when (eq 'nan x) (return most-negative-single-float))
+			(when (eq x nan) (return most-negative-single-float))
 			(decf sum (abs (- target x))))))
 		  input-values target-values)
 	    (- sum (* 0.001 (log (expr-size expr) 2.0))))))
