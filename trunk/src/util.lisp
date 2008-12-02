@@ -552,3 +552,60 @@ Author: madscience@google.com (Moshe Looks) |#
 	  (incf (elt bins (min (1- nbins) (floor (/ (- x min) width)))))) 
 	elems)
   bins)
+
+;;; for debugging doubly-linked lists
+(defun validate-dll (dll)
+  (do ((at dll (cddr at)))
+      ((eq at (cadr dll)))
+    (assert (eq at (cddadr at)) () "prev mismatch, ~S vs. ~S" at (cddadr at))
+    (assert (eq at (cadddr at)) () "next mismatch, ~S vs. ~S" at (cadddr at)))
+  t)
+
+;;; least-recently-used cache for memoizing the last n calls to the function f
+;;; test must be either equal or equalp so that it can be used on arg-lists
+;;; lru uses a hash table for the cache, and a doubly linked list organized as
+;;; ((args . value) (prev . next)) for the queue of least-recently-used items
+;;; the keys in the hash table are args, the values are nodes in the list
+(defun make-lru (f n &key (test 'equal) (hash-size (ceiling (* 1.35 n))) &aux
+		 q (cache (make-hash-table :test test :size hash-size)))
+  (when (= n 0) (return-from make-lru f))
+  (lambda (&rest args)
+    (labels
+	((make-node () (cons (cons args (apply f args)) (cons nil nil)))
+	 (update (node &aux (miss (eq node cache)))
+	   (when miss
+	     (setf node 
+		   (if (eql (hash-table-count cache) n) ; replace the lru?
+		       (aprog1 (cadr q)
+			 (remhash (caar it) cache)
+			 (setf (caar it) args (cdar it) (apply f args)
+			       (cddadr it) (cddr it) (cadddr it) (cadr it)))
+		       (make-node))))
+	   (setf (cadr node) (cadr q) (cddr node) q
+		 (cddadr q) node (cadr q) node q node)
+	   miss)
+	 (init-q () (setf q (make-node) (cadr q) q (cddr q) q)))
+      (when (if q (update (gethash args cache cache)) (init-q))
+	(setf (gethash args cache) q))
+      (assert (validate-dll q))
+      (cdar q))))
+(define-test make-lru
+  (let* ((ncalls 0) (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3)))
+    (assert-equal '(1 2 3 1 2 3) 
+		  (mapcar lru (nconc (iota 3) (iota 3))))
+    (assert-equal 3 ncalls)
+    (assert-equal '(1 2 3 4) (mapcar lru (iota 4)))
+    (assert-equal 4 ncalls))
+  (let* ((ncalls 0) (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 5)))
+    (assert-equal '(1 2 3 4 5 1 2 3 4 5) 
+		  (mapcar lru (nconc (iota 5) (iota 5))))
+    (assert-equal 5 ncalls)
+    (assert-equal '(1 2 3 4 5 6) (mapcar lru (iota 6)))
+    (assert-equal 6 ncalls)
+    (assert-equal '(6 5 4 3 2 1) (mapcar lru (nreverse (iota 6))))
+    (assert-equal 7 ncalls)
+    (assert-equal '(1 2 3 4 5 6) (mapcar lru (iota 6)))
+    (assert-equal 8 ncalls)
+    (let ((l (shuffle (iota 6 :start 1))))
+      (assert-equal (mapcar #'1+ l) (mapcar lru l)))
+    (assert-equal 8 ncalls)))
