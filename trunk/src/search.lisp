@@ -83,7 +83,7 @@ Author: madscience@google.com (Moshe Looks) |#
   (unless (funcall pred)
     (weak-kick-until pred n knobs)))
 
-(defun hillclimb (expr context type simplifier acceptsp terminationp 
+(defun hillclimb (simplifier acceptsp terminationp expr context type
 		  &aux maxima)
   (labels
       ((find-improvement (canonical &aux (best expr))
@@ -131,10 +131,10 @@ Author: madscience@google.com (Moshe Looks) |#
      (scorer (print-when-best-wrapper 
 	      (make-truth-table-scorer target-tt vars)))
      (maxima (with-bound-type *empty-context* vars bool
-	       (hillclimb true *empty-context* bool 
-			  (bind #'reduct /1 *empty-context* bool)
+	       (hillclimb (bind #'reduct /1 *empty-context* bool)
 			  (make-greedy-scoring-acceptor scorer)
-			  (make-count-or-score-terminator nsteps scorer 0)))))
+			  (make-count-or-score-terminator nsteps scorer 0)
+			  true *empty-context* bool))))
   (aprog1 (max-element maxima #'< :key scorer) ;extracts the best
     (print* 'final 'best 'score (funcall scorer it))))
 
@@ -160,11 +160,10 @@ Author: madscience@google.com (Moshe Looks) |#
       ((scorer (print-when-best-wrapper
 	      (make-num-abs-scorer input-vals target-vals vars)))
        (maxima (with-bound-type *empty-context* vars num
-  	         (hillclimb 0 *empty-context* num
-			    (bind #'reduct /1 *empty-context* num)
+  	         (hillclimb (bind #'reduct /1 *empty-context* num)
 			    (make-greedy-scoring-acceptor scorer)
-			    (make-count-or-score-terminator 
-			     nsteps scorer -0.01)))))
+			    (make-count-or-score-terminator nsteps scorer -.01)
+			    0 *empty-context* num))))
     (aprog1 (max-element maxima #'< :key scorer) ;extracts the best
       (print* 'final 'best 'score (funcall scorer it)))))
 
