@@ -621,4 +621,7 @@ Author: madscience@google.com (Moshe Looks) |#
     (dotimes (i 100)
       (let ((l (shuffle (iota 6 :start 1))))
 	(assert-equal (mapcar #'1+ l) (mapcar lru l)))
-      (assert-equal 8 ncalls))))
+      (assert-equal 8 ncalls))
+    (dotimes (i 100)
+      (let ((l (shuffle (iota 6))))
+	(assert-equal (mapcar #'1+ l) (mapcar lru l))))))
