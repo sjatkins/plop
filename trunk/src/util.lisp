@@ -556,10 +556,14 @@ Author: madscience@google.com (Moshe Looks) |#
 ;;; for debugging doubly-linked lists
 (defun validate-dll (dll)
   (do ((at dll (cddr at)))
-      ((eq at (cadr dll)))
+      ((eq at (cadr dll)) t)
     (assert (eq at (cddadr at)) () "prev mismatch, ~S vs. ~S" at (cddadr at))
-    (assert (eq at (cadddr at)) () "next mismatch, ~S vs. ~S" at (cadddr at)))
-  t)
+    (assert (eq at (cadddr at)) () "next mismatch, ~S vs. ~S" at (cadddr at))))
+(defun dll-length (dll)
+  (if dll
+      (do ((n 1 (1+ n)) (at dll (cddr at))) 
+	  ((eq at (cadr dll)) n))
+      0))  
 
 ;;; least-recently-used cache for memoizing the last n calls to the function f
 ;;; test must be either equal or equalp so that it can be used on arg-lists
@@ -572,22 +576,30 @@ Author: madscience@google.com (Moshe Looks) |#
   (lambda (&rest args)
     (labels
 	((make-node () (cons (cons args (apply f args)) (cons nil nil)))
-	 (update (node &aux (miss (eq node cache)))
-	   (when miss
-	     (setf node 
-		   (if (eql (hash-table-count cache) n) ; replace the lru?
-		       (aprog1 (cadr q)
-			 (remhash (caar it) cache)
-			 (setf (caar it) args (cdar it) (apply f args)
-			       (cddadr it) (cddr it) (cadddr it) (cadr it)))
-		       (make-node))))
+	 (link (node)
 	   (setf (cadr node) (cadr q) (cddr node) q
-		 (cddadr q) node (cadr q) node q node)
-	   miss)
+		 (cddadr q) node (cadr q) node q node))
+	 (unlink (node)
+	   (setf (cddadr node) (cddr node) (cadddr node) (cadr node)))	 
+	 (update (node)
+	   (if (eq node cache) ; miss?
+	       (link (if (eql (hash-table-count cache) n) ; replace the lru?
+			 (aprog1 (cadr q)
+			   (remhash (caar it) cache)
+			   (setf (caar it) args (cdar it) (apply f args))
+			   (unlink it))
+			 (make-node)))
+	       (unless (eq node q) 
+		 (unlink node)
+		 (link node)
+		 nil))) ; to always return nil
 	 (init-q () (setf q (make-node) (cadr q) q (cddr q) q)))
       (when (if q (update (gethash args cache cache)) (init-q))
 	(setf (gethash args cache) q))
       (assert (validate-dll q))
+      (assert (eql (dll-length q) (hash-table-count cache)) ()
+	      "length mismatch; |q|=~S, |cache|=~S" 
+	      (dll-length q) (hash-table-count cache))
       (cdar q))))
 (define-test make-lru
   (let* ((ncalls 0) (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3)))
@@ -606,6 +618,7 @@ Author: madscience@google.com (Moshe Looks) |#
     (assert-equal 7 ncalls)
     (assert-equal '(1 2 3 4 5 6) (mapcar lru (iota 6)))
     (assert-equal 8 ncalls)
-    (let ((l (shuffle (iota 6 :start 1))))
-      (assert-equal (mapcar #'1+ l) (mapcar lru l)))
-    (assert-equal 8 ncalls)))
+    (dotimes (i 100)
+      (let ((l (shuffle (iota 6 :start 1))))
+	(assert-equal (mapcar #'1+ l) (mapcar lru l)))
+      (assert-equal 8 ncalls))))
