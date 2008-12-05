@@ -83,8 +83,9 @@ Author: madscience@google.com (Moshe Looks) |#
 					      (if (equal v y) (return v) y)))
 			 ls)))
 (defun mappend (f l) (apply #'append (mapcar f l)))
-(defun iota (n &key (start 0) (step 1))
-  (collecting (do ((i start (incf i step))) ((>= i n)) (collect i))))
+(defun iota (n &key (start 0) (step 1) (key #'identity))
+  (collecting (do ((i start (incf i step))) ((>= i n))
+		(collect (funcall key i)))))
 (defun sort-copy (l cmp) (sort (copy-seq l) cmp))
 
 ;;; interleave (copies of) elem between elements of l, with elem itself as
@@ -246,6 +247,22 @@ Author: madscience@google.com (Moshe Looks) |#
     (check '(3) '(3 3))
     (check '(4) '(4))
     (check '(1 2) '(1 1 2))))
+
+(defun map-adjacent (result-type fn seq)
+  (map result-type fn seq 
+       (etypecase seq
+	 (list (cdr seq))
+	 (array (let ((l (length seq)))
+		  (when (> l 1)
+		    (make-array (1- l) :displaced-to seq 
+				:displaced-index-offset 1)))))))
+(define-test map-adjacent
+  (assert-equal '((1 2) (2 3)) (map-adjacent 'list #'list '(1 2 3)))
+  (assert-equal '((1 2) (2 3)) (map-adjacent 'list #'list (vector 1 2 3)))
+  (assert-equal nil (map-adjacent 'list #'list '(1)))
+  (assert-equal nil (map-adjacent 'list #'list (vector 1)))
+  (assert-equal nil (map-adjacent 'list #'list nil))
+  (assert-equal nil (map-adjacent 'list #'list (vector))))
 
 (defun includesp (l1 l2 cmp)
   (assert (sortedp l1 cmp) () "includesp expects sorted args, got ~S ~S" l1 l2)
