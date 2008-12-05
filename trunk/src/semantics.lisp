@@ -306,4 +306,7 @@ represent evolved programs. |#
 	   (funcall (cdr (assoc (car type) ,name)) ,@args type)
 	   (funcall (cdr (assoc type ,name)) ,@args)))
      (defmacro ,defname (typematch args &body body)
-       `(push (cons ',typematch (lambda ,args ,@body)) ,',name))))
+       `(let ((fn (lambda ,args ,@body)))
+	  (aif (assoc ',typematch ,',name)
+	       (rplacd it fn)
+	       (push (cons ',typematch fn) ,',name))))))

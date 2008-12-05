@@ -99,9 +99,15 @@ Mixed discrete-continuous optimization problems
 |#
 (in-package :plop)
 
+(defun make-cost-terminator (terminationp cost)
+  (let ((counter 0))
+    (lambda (err)
+      (when (or (>= (incf counter) cost) (funcall terminationp err))
+	counter))))
+
 (defstruct benchmark
   (name nil :type symbol) (cost 0 :type integer)
-  (type) (score) (dominates) (start))
+  (type) (score) (score-args) (terminationp) (start))
 
 (defparameter *benchmarks* (make-hash-table))
 
@@ -115,26 +121,29 @@ Mixed discrete-continuous optimization problems
 	#'< :key #'benchmark-cost))
 
 (defmacro defbenchmark (name &key cost type target start)
-  `(mvbind (score dominates) (make-problem ,target ,type)
+  `(mvbind (score score-args terminationp) (make-problem ,target ,type)
      (setf (gethash ',name *benchmarks*)
-	   (make-benchmark :name ',name :cost ,cost 
-			   :type ,type :score score :dominates dominates 
-			   :start (or ,start 
-				      (lambda () (default-expr ,type)))))))
+	   (make-benchmark :name ',name :cost ,cost :type ,type :score score
+			   :score-args score-args :terminationp
+			   (make-cost-terminator terminationp ,cost) :start
+			   (or ,start (lambda () (default-expr ,type)))))))
 (defmacro defbenchmark-seq (name (range) &key cases cost type target start)
-  `(mapcar (lambda (,range)
-	     (defbenchmark (read-from-string
-			    (concatenate 'string (symbol-name ',name) "-"
-					 (write-to-string ,range)))
-		 :cost ,cost :type ,type :target ,target :start ,start))
-	   ',(if (consp (car cases))
-		 (mapcan (bind #'apply #'iota /1) cases)
-		 (apply #'iota cases))))
+  `(progn
+     ,@(mapcar (lambda (n)
+		 `(let ((,range ,n))
+		    (defbenchmark ,(read-from-string
+				    (concatenate 'string (symbol-name name) "-"
+						 (write-to-string n)))
+ 			:cost ,cost :type ,type :target ,target 
+			:start ,start)))
+	       (if (consp (car cases))
+		   (mapcan (bind #'apply #'iota /1) cases)
+		   (apply #'iota cases)))))
 
 (defun run-benchmark (name fn &aux (b (if (benchmark-p name) name 
 					  (gethash name *benchmarks*))))
   (mvbind (success scored-solutions cost)
-      (funcall fn (benchmark-score b) (benchmark-dominates b)
+      (funcall fn (benchmark-score b) (benchmark-score-args b)
 	       (funcall (benchmark-start b)) *empty-context* 
 	       (benchmark-type b))
     (if success
@@ -172,7 +181,7 @@ abstaction should be far easier. |#
 (defbenchmark-seq even-parity (n)
   :cases (8 :start 2) :cost (+ 500 (expt n (+ n 4)))
   :type `(function ,(ntimes n 'bool) bool)
-  :target (lambda (&rest args) 
+  :target (lambda (&rest args)
 	    (reduce (lambda (x y) (not (eq x y))) args :initial-value t)))
 (defbenchmark-seq multiplexer (n)
   :cases (4 :start 1) :cost (ecase n (1 500) (2 20000) (3 350000) (4 10000000))
@@ -180,7 +189,7 @@ abstaction should be far easier. |#
   :target (lambda (&rest args) 
 	    (reduce (lambda (x y) (not (eq x y))) args :initial-value t)))
 
-#| Numerical function |#
+#| Numerical functions |#
 (defbenchmark easy-num
     :cost 200 :type '(function (num) num)
     :target (mapcar (lambda (x) (cons x (+ 0.1 (* 2 x)))) '(-1 .3 .5)))
@@ -198,42 +207,47 @@ abstaction should be far easier. |#
   :cases (9 :start 1) :cost (* 100 (expt n 2)) :type '(function (num) num)
   :target 
   (mapcar (lambda (x &aux (y 0))
-	    (cons x (dotimes (k n y) (incf y (expt x (1+ k))))))
+	    (cons (list x) (dotimes (k n y) (incf y (expt x (1+ k))))))
 	  (generate 20 (lambda () (1- (random 2.0))))))
 
+#| Discrete optimization |#
 (defbenchmark-seq onemax (n)
   :cases ((300 :start 60 :step 60) (1200 :start 300 :step 300))
   :cost (* 10 n) :type `(tuple ,@(ntimes n bool))
-  :target (lambda (x) (- (count nil x)))
+  :target (lambda (x) (count nil x))
   :start (apply #'vector (generate n (lambda () (if (randbool) true false)))))
 (defbenchmark-seq 3-deceptive (n)
   :cases ((300 :start 60 :step 60) (1200 :start 300 :step 300))
   :cost (* 80 n) :type `(tuple ,@(ntimes n bool))
-  :target (flet ((trap (k) (ecase k (0 0.9) (1 0.45) (2 0) (3 1))))
+  :target (flet ((trap (k) (ecase k (0 0.1) (1 0.55) (2 1) (3 0))))
 	    (lambda (x)
-	      (- n (do ((at x (cdddr at)) (v 0)) ((not at) v)
-		     (incf v (trap (reduce #'+ at :key #'impulse :end 3)))))))
+	      (do ((at x (cdddr at)) (v 0)) ((not at) v)
+		(incf v (trap (reduce #'+ at :key #'impulse :end 3))))))
   :start (apply #'vector (generate n (lambda () (if (randbool) true false)))))
 
-(defmacro defdejong (name target &key (precision 10));??? &rest args
+#| Continuous optimization |#
+(defmacro defdejong (name target &key (precision 10) (cost '(* 100 n))
 		     &aux (max (* 0.01 (ash 1 (1- precision)))) (min (- max)))
-  `(defbenchmark-seq
-       ,(concatenate 'string "dejong-" (write-to-string name)) (n)
-     :cases (11 :start 3) :cost (* 100 n) :type `(tuple ,@(ntimes n num))
-     :target ,target :range (apply #'vector (ntimes n (vector -5.12 5.12)))
-     :precision ,precision ,@args))
+  `(defbenchmark-seq 
+       ,(read-from-string 
+	 (concatenate 'string "dejong-" (write-to-string name))) (n)
+     :cases (11 :start 3) :cost ,cost
+     :type `(tuple ,@(ntimes n `(num :range (,,min ,,max)
+				     :precision ,,precision)))
+     :target ,target))
 
-(defdejong sphere (lambda (xs) (- (reduce #'+ xs :key (bind #'* /1 /1)))))
-(defdejong rosenbrock (lambda (xs &aux (res 0))
-			(map nil (lambda (x1 x2)
-				   (- (* -100 (expt (+ x2 (expt x1 2)) 2)) 
-				      (expt (- x1 1) 2)))
-			     xs (cdr xs)))); fixme-cdr :P
-(defdejong step (lambda (xs) (- (* -6 n) (reduce #'+ xs :key #'floor))))
+(defdejong sphere (lambda (xs) (reduce #'+ xs :key (bind #'* /1 /1))))
+(defdejong rosenbrock
+    (lambda (xs &aux (res 0.0))
+      (map-adjacent nil (lambda (x1 x2)
+			  (incf res (+ (* 100 (expt (+ x2 (expt x1 2)) 2))
+				       (expt (- x1 1) 2))))
+		    xs)))
+(defdejong step (lambda (xs) (+ (* 6 n) (reduce #'+ xs :key #'floor))))
 (defdejong noisy-quartic 
     (lambda (xs &aux (res 0))
       (dotimes (i n res)
-	(decf res (+ (* (1+ i) (expt (elt xs i) 4)) (random-normal)))))  
+	(incf res (+ (* (1+ i) (expt (elt xs i) 4)) (random-normal)))))
   :precision 8)
 (defdejong foxholes
     (let ((a (vector -32.0 -16.0 0.0 16.0 32.0))
@@ -242,8 +256,6 @@ abstaction should be far easier. |#
 	(flet ((f (x) (+ 1 x 
 			 (expt (- (elt xs 0) (svref a (mod x 5))) 6)
 			 (expt (- (elt xs 1) (svref b (/ x 5))) 6))))
-	  (+ -500 (/ 1.0 (+ 0.002 (dotimes (x 25 sum) 
-				    (incf sum (/ 1.0 (f x))))))))))
+	  (- 500 (/ 1.0 (+ 0.002 (dotimes (x 25 sum)
+				   (incf sum (/ 1.0 (f x))))))))))
   :precision 17)
-
-cost...

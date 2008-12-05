@@ -17,6 +17,8 @@ Author: madscience@google.com (Moshe Looks) |#
 
 (defun truth-table (expr &optional (vs (sort (free-variables expr) #'string<))
 		    &aux (context (make-context)))
+  (when (functionp expr) ; a cl function
+    (setf expr (pcons 'apply (list expr (pcons 'list vs)))))
   (collecting
     (labels ((enum-bindings (vs)
 	       (if vs
