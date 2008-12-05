@@ -150,7 +150,7 @@ Mixed discrete-continuous optimization problems
 	(format t "passed ~S with cost ~S\n" (benchmark-name b) cost)
 	(let ((best (max-element #'< scored-solutions :key #'car)))
 	  (format t "failed ~S with cost ~S, best was ~S ~S\n"
-		  (benchmark-name b) (car best) (cdr best))))))
+		  (benchmark-name b) cost (car best) (cdr best))))))
 
 (defun run-benchmarks (fn cost-cutoff) ;runs from easiest to hardest
   (mapc (bind #'run-benchmark /1 fn) (collect-benchmarks cost-cutoff)))
