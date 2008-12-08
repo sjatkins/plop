@@ -115,7 +115,7 @@ Mixed discrete-continuous optimization problems
 (defun collect-benchmarks (cost-cutoff)
   (sort (collecting 
 	  (maphash-values (lambda (b)
-			    (unless (<= (benchmark-cost b) cost-cutoff)
+			    (when (<= (benchmark-cost b) cost-cutoff)
 			      (collect b)))
 			  *benchmarks*))
 	#'< :key #'benchmark-cost))
@@ -135,7 +135,7 @@ Mixed discrete-continuous optimization problems
 				    (concatenate 'string (symbol-name name) "-"
 						 (write-to-string n)))
  			:cost ,cost :type ,type :target ,target 
-			:start ,start)))
+			:start ,(and start `(lambda () ,start)))))
 	       (if (consp (car cases))
 		   (mapcan (bind #'apply #'iota /1) cases)
 		   (apply #'iota cases)))))
@@ -144,16 +144,17 @@ Mixed discrete-continuous optimization problems
 					  (gethash name *benchmarks*))))
   (mvbind (success scored-solutions cost)
       (funcall fn (benchmark-score b) (benchmark-score-args b)
-	       (funcall (benchmark-start b)) *empty-context* 
-	       (benchmark-type b))
+	       (benchmark-terminationp b) (funcall (benchmark-start b))
+	       *empty-context* (benchmark-type b))
     (if success
-	(format t "passed ~S with cost ~S\n" (benchmark-name b) cost)
-	(let ((best (max-element #'< scored-solutions :key #'car)))
-	  (format t "failed ~S with cost ~S, best was ~S ~S\n"
-		  (benchmark-name b) cost (car best) (cdr best))))))
+	(format t "~S passed with cost ~S~%" (benchmark-name b) qcost)
+	(let ((best (max-element scored-solutions #'< :key #'car)))
+	  (format t "~S failed with cost ~S, best was ~S with a score of ~S~%"
+		  (benchmark-name b) cost (p2sexpr (cdr best)) (car best))))))
 
 (defun run-benchmarks (fn cost-cutoff) ;runs from easiest to hardest
-  (mapc (bind #'run-benchmark /1 fn) (collect-benchmarks cost-cutoff)))
+  (mapc (bind #'run-benchmark /1 fn) (collect-benchmarks cost-cutoff))
+  nil)
 
 #| Boolean functions
 
@@ -234,7 +235,9 @@ abstaction should be far easier. |#
      :cases (11 :start 3) :cost ,cost
      :type `(tuple ,@(ntimes n `(num :range (,,min ,,max)
 				     :precision ,,precision)))
-     :target ,target))
+     :target ,target
+     :start (apply #'vector (generate n (lambda () 
+					  (+ (random (- ,max ,min)) ,min))))))
 
 (defdejong sphere (lambda (xs) (reduce #'+ xs :key (bind #'* /1 /1))))
 (defdejong rosenbrock

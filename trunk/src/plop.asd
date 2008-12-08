@@ -45,5 +45,6 @@ Author: madscience@google.com (Moshe Looks) |#
 	       (:file "canonize")
 	       (:file "represent")
 	       (:file "search")
+	       (:file "hillclimb")
 	       (:file "learn")
 	       (:file "benchmark")))
