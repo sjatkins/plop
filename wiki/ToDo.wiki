@@ -21,5 +21,5 @@
 
   * Implement procedural abstraction via datamining & via direct transformation
   * Primitive-recursive operations and associated transformations via either fold or explicit recursion
-  * Run benchmarks on the FullSetOfBenchmarks
+  * Run benchmarks on the [Benchmarks full set of benchmarks]
   * Exploiting uncertain background knowledge, learning coupling rules, metalearning
