@@ -606,7 +606,7 @@ Author: madscience@google.com (Moshe Looks) |#
 			   (setf (caar it) args (cdar it) (apply f args))
 			   (unlink it))
 			 (make-node)))
-	       (unless (eq node q) 
+	       (unless (eq node q)
 		 (unlink node)
 		 (link node)
 		 nil))) ; to always return nil

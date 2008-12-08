@@ -351,12 +351,23 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
   (or (matches fn (< list split lambda tuple if)) (closurep fn) 
       (typedp fn context)))
 
+;;; later this can be expanded to give nice names based on what the types are
+;;; we will also need to wory about nesting args with the same names...
+(defun make-arg-names (types &aux (arity (length types)))
+  (if (< arity 4) 
+      (subseq '(x y z) 0 arity)
+      (iota arity :key (lambda (n) 
+			 (read-from-string 
+			  (concatenate 'string "x" (write-to-string n)))))))
+
 (defun default-expr (type)
   (ecase (icar type)
     (bool false)
     (num 0)
     (tuple (cons 'tuple (mapcar #'default-expr (cdr type))))
-    (list nil)))
+    (list nil)
+    (function (pcons 'lambda (list (mklambda-list (make-arg-names (cadr type)))
+				   (default-expr (caddr type)))))))
 
 (defun genname (type)
   (declare (ignore type))

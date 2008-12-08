@@ -30,13 +30,6 @@ type. It returns three values - a boolean indicating if the
 
 (defdefbytype define-problem-maker make-problem :args (target))
 
-(defun make-arg-names (arity)
-  (if (< arity 4) 
-      (subseq '(x y z) 0 arity)
-      (iota arity :key (lambda (n) 
-			 (read-from-string 
-			  (concatenate 'string "x" (write-to-string n)))))))
-
 (defun epsilon-size (num-type)
   (dbind (&key range precision) (and (consp num-type) (cdr num-type))
     (if (and precision range) 
@@ -44,8 +37,7 @@ type. It returns three values - a boolean indicating if the
 	0.01)))  ; the default
 
 (define-problem-maker function (target type &aux (result-type (caddr type))
-				(arity (length (cadr type)))
-				(args-names (make-arg-names arity)))
+				(args-names (make-arg-names (cadr type))))
   (macrolet ((actual ()
 	       `(with-bound-values *empty-context* args-names args
 		  (peval (fn-body expr) *empty-context* result-type))))
