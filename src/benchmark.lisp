@@ -143,7 +143,7 @@ Mixed discrete-continuous optimization problems
     (if (numberp termination-result)
 	(format t "~S passed with cost ~S~%" 
 		(benchmark-name b) termination-result)
-	(let ((best (max-element scored-solutions #'< :key #'car)))
+	(let ((best (min-element scored-solutions #'< :key #'car)))
 	  (format t "~S failed with cost ~S, best was ~S with a score of ~S~%"
 		  (benchmark-name b) (benchmark-cost b)
 		  (p2sexpr (cdr best)) (car best))))))
@@ -216,7 +216,7 @@ abstaction should be far easier. |#
   :start (apply #'vector (generate n (lambda () (if (randbool) true false)))))
 (defbenchmark-seq 3-deceptive (n)
   :cases ((300 :start 60 :step 60) (1200 :start 300 :step 300))
-  :cost (* 80 n) :type `(tuple ,@(ntimes n bool))
+  :cost (* 8 n n) :type `(tuple ,@(ntimes n bool))
   :target (flet ((trap (k) (ecase k (0 0.1) (1 0.55) (2 1) (3 0))))
 	    (lambda (x &aux (l (length x)))
 	      (do ((idx 0 (incf idx 3)) (v 0)) ((eql idx l) v)

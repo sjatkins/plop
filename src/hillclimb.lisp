@@ -89,7 +89,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	   (setf expr it)
 	   (let* ((knobs (enum-knobs canonical context type))
 		  (nknobs (length knobs)))
-	     (push expr maxima)
+	     (push (pclone expr) maxima)
 	     (print* 'local-maximum (p2sexpr expr) nknobs)
 	     (weak-kick-until 
 	      (lambda () 
