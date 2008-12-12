@@ -73,8 +73,9 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun set-canon-parent (cexpr expr) (rplacd (mark canon cexpr) expr))
 (defsetf canon-parent set-canon-parent)
 
+;;; also ensures that the expr is a deep copy of the original
 (defun canon-clean (cexpr)
-  (cond ((not (canonp cexpr)) (copy-tree cexpr))
+  (cond ((not (canonp cexpr)) (pclone cexpr))
 	((mark mung cexpr) (aprog1 (pcons (fn cexpr) 
 					  (mapcar #'canon-clean (args cexpr))
 					  (when (consp (canon-expr cexpr))

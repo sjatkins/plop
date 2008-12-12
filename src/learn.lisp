@@ -38,13 +38,13 @@ type. It returns three values - a boolean indicating if the
 		(if (and precision range) 
 		    (/ (- (cadr range) (car range)) (ash 1 precision))
 		    0.01)))		; the default
-    (bool 0.00001)))
+    (bool 0.001)))
 
 ;;; wraps scorer and terminationp to keep track of costs, has
 ;;; terminationp return cost if success, t if timeout
 (defun count-cost (score target terminationp cost &aux (counter 0))
   (values (lambda (expr &rest args)
-	    (when (eq args (car target)) (incf counter))
+	    (when (equalp args (car target)) (incf counter)) ;not efficient
 	    (apply score expr args))
 	  target
 	  (lambda (err)

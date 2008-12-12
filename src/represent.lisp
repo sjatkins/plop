@@ -155,20 +155,16 @@ Author: madscience@google.com (Moshe Looks) |#
 ;; 		 settings)))
 
 (defknobs tuple (expr context type)
-  (if (atom expr)
-      (let ((idx 0))
-	(assert (arrayp expr) () "bad tuple ~S" expr)
-	(map 'list 
-	     (lambda (arg type)
-	       (assert (atom arg) () "bad tuple arg ~S arg")
-	       (prog1 
-		   (ecase type
-		     (bool (let ((dual (bool-dual arg)) (idx idx))
-			     (vector (lambda () (setf (elt expr idx) arg))
-				     (lambda () (setf (elt expr idx) dual))))))
-		 (incf idx)))
-	     expr (cdr type)))
-      nil))
+  (when (atom expr)
+    (assert (arrayp expr) () "bad tuple ~S" expr)
+    (map 'list 
+	 (lambda (arg type idx)
+	   (assert (atom arg) () "bad tuple arg ~S arg")
+	   (ecase type
+	     (bool (vector (lambda () (setf (elt expr idx) arg))
+			   (let ((dual (bool-dual arg)))
+			     (lambda () (setf (elt expr idx) dual)))))))
+	 expr (cdr type) (iota (length expr)))))
 
 (defknobs list (expr context type)
   (when (eqfn expr 'if)

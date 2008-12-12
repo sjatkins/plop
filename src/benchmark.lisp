@@ -211,16 +211,18 @@ abstaction should be far easier. |#
 #| Discrete optimization |#
 (defbenchmark-seq onemax (n)
   :cases ((300 :start 60 :step 60) (1200 :start 300 :step 300))
-  :cost (* 10 n) :type `(tuple ,@(ntimes n bool))
+  :cost (+ (* 10 n) 3000) :type `(tuple ,@(ntimes n bool))
   :target (lambda (x) (count false x))
   :start (apply #'vector (generate n (lambda () (if (randbool) true false)))))
 (defbenchmark-seq 3-deceptive (n)
   :cases ((300 :start 60 :step 60) (1200 :start 300 :step 300))
   :cost (* 80 n) :type `(tuple ,@(ntimes n bool))
   :target (flet ((trap (k) (ecase k (0 0.1) (1 0.55) (2 1) (3 0))))
-	    (lambda (x)
-	      (do ((at x (cdddr at)) (v 0)) ((not at) v)
-		(incf v (trap (reduce #'+ at :key #'impulse :end 3))))))
+	    (lambda (x &aux (l (length x)))
+	      (do ((idx 0 (incf idx 3)) (v 0)) ((eql idx l) v)
+		(incf v (trap (reduce #'+ x :key (compose #'impulse 
+							  (bind #'eq /1 true))
+				      :start idx :end (+ idx 3)))))))
   :start (apply #'vector (generate n (lambda () (if (randbool) true false)))))
 
 #| Continuous optimization |#
