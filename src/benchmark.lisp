@@ -192,11 +192,12 @@ abstaction should be far easier. |#
     :target (mapcar (lambda (x) (list (+ 0.1 (* 2 x)) x)) '(-1 .3 .5)))
 (defbenchmark-seq linear-funs (n)
   :cases ((10 :start 1) (100 :start 10 :step 10))
-  :cost (* 100 n) :type `(function ,(ntimes n num) num)
+  :cost (* 1000 n) :type `(function ,(ntimes n num) num)
   :target
   (let ((constants (generate (1+ n) #'random-normal)))
-    (mapcar (lambda (xs) (cons xs (reduce #'+ (mapcar #'* (cdr constants) xs)
-					  :initial-value (car constants))))
+    (mapcar (lambda (xs) (cons (reduce #'+ (mapcar #'* (cdr constants) xs)
+					  :initial-value (car constants))
+			       xs))
 	    (generate (1+ n) (lambda () 
 			       (generate (1+ n) (lambda () 
 						  (1- (random 2.0)))))))))
@@ -204,7 +205,7 @@ abstaction should be far easier. |#
   :cases (9 :start 1) :cost (* 100 (expt n 2)) :type '(function (num) num)
   :target 
   (mapcar (lambda (x &aux (y 0))
-	    (cons (list x) (dotimes (k n y) (incf y (expt x (1+ k))))))
+	    (list (dotimes (k n y) (incf y (expt x (1+ k)))) x))
 	  (generate 20 (lambda () (1- (random 2.0))))))
 
 #| Discrete optimization |#
