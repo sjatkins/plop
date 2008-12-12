@@ -49,7 +49,10 @@ Author: madscience@google.com (Moshe Looks) |#
   (setf scorer (make-lru (lambda (expr)
 			   (+ (reduce #'+ score-args :key 
 				      (bind #'apply score expr /1))
-			      (* 0.001 (log (expr-size expr) 2.0))))
+			      (* 0.001 (log (if (eqfn expr 'lambda)
+						(expr-size (fn-body expr))
+						(expr-size expr))
+					    2.0))))
 			 lru-size)
 	validp (cond ((eq type num) (compose #'not (bind #'eq /1 nan)))
 		     ((and (eq (acar type) function)
