@@ -145,9 +145,30 @@ Author: madscience@google.com (Moshe Looks) |#
 			     (numarg-terms expr var context)))
 		    (keys (symbols-with-type num context)))))))
 
+;;; expr should generally be at's parent
+;; (defun make-tuple-knob expr idx
+
+;; (expr at &rest settings &aux (original (car at)))
+;;   (apply #'vector 
+;; 	 (lambda () (unmung expr) (rplaca at original))
+;; 	 (mapcar (lambda (setting) (lambda () (mung expr) (rplaca at setting)))
+;; 		 settings)))
+
 (defknobs tuple (expr context type)
-  (declare (ignore expr context type))
-  nil)
+  (if (atom expr)
+      (let ((idx 0))
+	(assert (arrayp expr) () "bad tuple ~S" expr)
+	(map 'list 
+	     (lambda (arg type)
+	       (assert (atom arg) () "bad tuple arg ~S arg")
+	       (prog1 
+		   (ecase type
+		     (bool (let ((dual (bool-dual arg)) (idx idx))
+			     (vector (lambda () (setf (elt expr idx) arg))
+				     (lambda () (setf (elt expr idx) dual))))))
+		 (incf idx)))
+	     expr (cdr type)))
+      nil))
 
 (defknobs list (expr context type)
   (when (eqfn expr 'if)
