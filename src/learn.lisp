@@ -28,41 +28,63 @@ type. It returns three values - a boolean indicating if the
 |#
 (in-package :plop)
 
-(defdefbytype define-problem-maker make-problem :args (target))
+;;; this should be big enough to outweigh other sources of error,
+;;; but not big enough to cause overflow when summed
+(define-constant +solution-fail-value+ (/ most-positive-single-float 1000))
 
-(defun epsilon-size (num-type)
-  (dbind (&key range precision) (and (consp num-type) (cdr num-type))
-    (if (and precision range) 
-	(/ (- (cadr range) (car range)) (ash 1 precision))
-	0.01)))  ; the default
+(defun epsilon-size (type)
+  (ecase (icar type)
+    (num (dbind (&key range precision) (and (consp type) (cdr type))
+		(if (and precision range) 
+		    (/ (- (cadr range) (car range)) (ash 1 precision))
+		    0.01)))		; the default
+    (bool 0)))
 
-(define-problem-maker function (target type &aux (result-type (caddr type))
-				(args-names (make-arg-names (cadr type))))
+;;; wraps scorer and terminationp to keep track of costs, has
+;;; terminationp return cost if success, t if timeout
+(defun count-cost (score target terminationp cost &aux (counter 0))
+  (values (lambda (expr result &rest args) 
+	    (when (eq expr (car target)) (incf counter))
+	    (apply score expr result args))
+	  target
+	  (lambda (err)
+	    (aprog1 (or (>= (incf counter) cost) 
+			(when  (funcall terminationp err)
+			  counter))
+	      (when it (setf counter 0))))))
+
+(defdefbytype define-problem-maker make-problem :args (target cost))
+
+(define-problem-maker function (target cost type &aux 
+				(epsilon (* (if (atom target) 1 
+						(length target))
+					    (epsilon-size (caddr type))))
+				(result-type (caddr type))
+				(arg-names (make-arg-names (cadr type))))
   (macrolet ((actual ()
-	       `(with-bound-values *empty-context* args-names args
+	       `(with-bound-values *empty-context* arg-names args
 		  (peval (fn-body expr) *empty-context* result-type))))
-    (ecase (icar result-type)
-      (num  ; target is an list of (result.args) pairs
-       (values (lambda (expr result &rest args) (abs (- (actual) result)))
-	       target
-	       (let ((epsilon (epsilon-size result-type)))
-		 (lambda (score) (<= score epsilon)))))
+    (count-cost
+     (ecase (icar result-type)
+       (num  ; target is an list of (,@args result) lists
+	(lambda (expr result &rest args)
+	  (let ((y (actual)))
+	    (if (eq y nan) +solution-fail-value+ (abs (- y result))))))
       (bool ; target is a truth table or a function for computing one
        (when (functionp target)		; compute the truth table
-	 (setf target (truth-table target args-names)))
-       (values (lambda (expr result &rest args) (impulse (eq (actual) result)))
-	       target
-	       (lambda (err) (= err 0)))))))
+	 (setf target (truth-table target arg-names)))
+       ;; now we need to add the settings for the args to target
+       (setf target (mapcar #'cons target (enum-bindings (length arg-names))))
+       (lambda (expr result &rest args) (impulse (not (eq (actual) result))))))
+     target (lambda (err) (<= err epsilon)) cost)))
 
-(define-problem-maker tuple (target type &aux
+(define-problem-maker tuple (target cost type &aux
 			     (epsilon (max-element (cdr type) #'< :key 
 						   (lambda (x) 
 						     (if (eq (icar x) num)
 							 (epsilon-size x)
 							 0)))))
-  (values (lambda (x) (funcall target x))
-	  '(nil)
-	  (lambda (err) (<= err epsilon))))
+  (count-cost target '(nil) (lambda (err) (<= err epsilon)) cost))
 
 #|
 (bind tar
@@ -79,7 +101,7 @@ instead of two functions, have a lazy compute-fn that gets memoized
 and is summed for score and compared for dominates
 
 break score down into score-case, total score is sum of score-cases
-safe to assume that termination-p requires all cases to determine t, and
+safe to assume that terminationp requires all cases to determine t, and
 is always false when we can break early
 
 reordering of cases? there's some gp literature here

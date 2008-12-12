@@ -99,12 +99,6 @@ Mixed discrete-continuous optimization problems
 |#
 (in-package :plop)
 
-(defun make-cost-terminator (terminationp cost)
-  (let ((counter 0))
-    (lambda (err)
-      (when (or (>= (incf counter) cost) (funcall terminationp err))
-	counter))))
-
 (defstruct benchmark
   (name nil :type symbol) (cost 0 :type integer)
   (type) (score) (score-args) (terminationp) (start))
@@ -121,12 +115,12 @@ Mixed discrete-continuous optimization problems
 	#'< :key #'benchmark-cost))
 
 (defmacro defbenchmark (name &key cost type target start)
-  `(mvbind (score score-args terminationp) (make-problem ,target ,type)
+  `(mvbind (score score-args terminationp) (make-problem ,target ,cost ,type)
      (setf (gethash ',name *benchmarks*)
 	   (make-benchmark :name ',name :cost ,cost :type ,type :score score
-			   :score-args score-args :terminationp
-			   (make-cost-terminator terminationp ,cost) :start
-			   (or ,start (lambda () (default-expr ,type)))))))
+			   :score-args score-args :terminationp terminationp
+			   :start (or ,start 
+				      (lambda () (default-expr ,type)))))))
 (defmacro defbenchmark-seq (name (range) &key cases cost type target start)
   `(progn
      ,@(mapcar (lambda (n)
@@ -142,15 +136,17 @@ Mixed discrete-continuous optimization problems
 
 (defun run-benchmark (name fn &aux (b (if (benchmark-p name) name 
 					  (gethash name *benchmarks*))))
-  (mvbind (success scored-solutions cost)
+  (mvbind (termination-result scored-solutions)
       (funcall fn (benchmark-score b) (benchmark-score-args b)
 	       (benchmark-terminationp b) (funcall (benchmark-start b))
 	       *empty-context* (benchmark-type b))
-    (if success
-	(format t "~S passed with cost ~S~%" (benchmark-name b) qcost)
+    (if (numberp termination-result)
+	(format t "~S passed with cost ~S~%" 
+		(benchmark-name b) termination-result)
 	(let ((best (max-element scored-solutions #'< :key #'car)))
 	  (format t "~S failed with cost ~S, best was ~S with a score of ~S~%"
-		  (benchmark-name b) cost (p2sexpr (cdr best)) (car best))))))
+		  (benchmark-name b) (benchmark-cost b)
+		  (p2sexpr (cdr best)) (car best))))))
 
 (defun run-benchmarks (fn cost-cutoff) ;runs from easiest to hardest
   (mapc (bind #'run-benchmark /1 fn) (collect-benchmarks cost-cutoff))
@@ -177,8 +173,8 @@ Note that the above results for parity are for learning *without* any
 abstraction mechanisms. Learning large parity functions with function
 abstaction should be far easier. |#
 (defbenchmark easy-bool 
-    :cost 200 :type '(function (bool bool bool) bool)
-    :target '(t nil t nil t t nil nil))
+    :cost 500 :type '(function (bool bool bool) bool)
+    :target '(true false true false true true false false))
 (defbenchmark-seq even-parity (n)
   :cases (8 :start 2) :cost (+ 500 (expt n (+ n 4)))
   :type `(function ,(ntimes n 'bool) bool)
@@ -192,8 +188,8 @@ abstaction should be far easier. |#
 
 #| Numerical functions |#
 (defbenchmark easy-num
-    :cost 200 :type '(function (num) num)
-    :target (mapcar (lambda (x) (cons x (+ 0.1 (* 2 x)))) '(-1 .3 .5)))
+    :cost 20000 :type '(function (num) num)
+    :target (mapcar (lambda (x) (list (+ 0.1 (* 2 x)) x)) '(-1 .3 .5)))
 (defbenchmark-seq linear-funs (n)
   :cases ((10 :start 1) (100 :start 10 :step 10))
   :cost (* 100 n) :type `(function ,(ntimes n num) num)
