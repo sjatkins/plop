@@ -94,7 +94,7 @@ Author: madscience@google.com (Moshe Looks) |#
 ;;; remove local variables from the context
 (defun map-knobs (fn expr context type)
   (if (eqfn expr 'lambda)
-      (dbind (arg-names body) (args expr) ;fimxe -probably not right
+      (let ((arg-names (fn-args expr)) (body (fn-body expr)))
 	(dbind (arg-types return-type) (cdr type)
 	  (with-bound-types context arg-names arg-types
 	    (map-knobs fn body context return-type))))

@@ -44,46 +44,51 @@ Author: madscience@google.com (Moshe Looks) |#
 	      (if (< 2 nknobs) (+ 2 (random (- nknobs 2))) nknobs) knobs))))))
 
 (defun hillclimb-benchmarker (score score-args terminationp expr context type
-			      &key (lru-size 1000) (cost 0))
-  (values nil (list (cons -42 expr)) 0)) ;;dummy
-
-
-;;   (let* ((scorer (make-lru (lambda (expr) 
-;; 			     (incf cost)
-;; 			     (reduce #'+ score-args :key 
-;; 				     (bind #'apply score expr /1)))
-;; 			   lru-size)))
-;;   (hillclimb (bind #'reduct /1 context type)
-;; 	     (lambda (x y) (> (funcall scorer x) (funcall scorer y)))
-;; 	     (make-lru terminationp
-
-;; (labels
-;;       ((find-improvement (canonical &aux (best expr))
-;; 	 (map-neighbors
-;; 	  (lambda (nexpr &aux
-;; 		   (simplified (funcall simplifier (canon-clean nexpr))))
-;; 	    (when (funcall acceptsp best simplified)
-;; 	      (setf best simplified)
-;; 	      (print* 'improved-to (p2sexpr simplified)))
-;; 	    (when (funcall terminationp simplified)
-;; 	      (return-from hillclimb (push best maxima))))
-;; 	  canonical context type)
-;; 	 (unless  (eq best expr) best)))
-;;  (do ((canonical (canonize expr context type) (canonize expr context type)))
-;; 	((funcall terminationp expr) expr)
-;;       (aif (find-improvement canonical)
-;; 	   (setf expr it)
-;; 	   (let* ((knobs (enum-knobs canonical context type))
-;; 		  (nknobs (length knobs)))
-;; 	     (push expr maxima)
-;; 	     (print* 'local-maximum (p2sexpr expr) nknobs)
-;; 	     (weak-kick-until 
-;; 	      (lambda () 
-;; 		(not (eq (setf expr (funcall simplifier 
-;; 					     (canon-clean canonical))) nan)))
-;; 	      (if (< 2 nknobs) (+ 2 (random (- nknobs 2))) nknobs) knobs)))))
-
-
+			      &key (lru-size 1000) &aux best best-score
+			      maxima termination-result scorer)
+  (setf scorer (make-lru (lambda (expr)
+			   (+ (reduce #'+ score-args :key 
+				      (bind #'apply score expr /1))
+			      (* 0.001 (log (expr-size (fn-body expr)) 2.0))))
+			 lru-size))
+  (labels
+      ((done () 
+	 (return-from hillclimb-benchmarker
+	   (values termination-result 
+		   (or (mapcar (lambda (x) (cons (funcall scorer x) x))
+			       maxima)
+		       (list (cons best-score best))))))
+       (find-improvement (canonical)
+	 (setf best expr best-score (funcall scorer expr))
+	 (map-neighbors
+	  (lambda (nexpr &aux 
+		   (simplified (reduct (canon-clean nexpr) context type))
+		   (score (funcall scorer simplified)))
+	    (when (< score best-score)
+	      (setf best simplified best-score score)
+	      (print* 'improved-to (p2sexpr simplified) score))
+	    (awhen (funcall terminationp (funcall scorer simplified))
+	      (setf termination-result it)
+	      (done)))
+	  canonical context type)
+	 (print* 'found (p2sexpr best))
+	 (unless  (eq best expr) best)))
+    (do ((canonical (canonize expr context type) (canonize expr context type)))
+	((setf termination-result 
+	       (funcall terminationp (funcall scorer expr)))
+	 (done))
+      (aif (find-improvement canonical)
+	   (setf expr it)
+	   (let* ((knobs (enum-knobs canonical context type))
+		  (nknobs (length knobs)))
+	     (push expr maxima)
+	     (print* 'local-maximum (p2sexpr expr) nknobs)
+	     (weak-kick-until 
+	      (lambda () 
+		(not (eq (fn-body (setf expr (reduct (canon-clean canonical)
+						     context type)))
+			 nan)))
+	      (if (< 2 nknobs) (+ 2 (random (- nknobs 2))) nknobs) knobs))))))
 
 (defun bool-hillclimb-with-target-truth-table 
     (target-tt nsteps vars &aux

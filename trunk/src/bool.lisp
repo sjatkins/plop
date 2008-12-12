@@ -15,6 +15,12 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) |#
 (in-package :plop)
 
+(defun enum-bindings (arity)
+  (if (eql arity 1) '((true) (false))
+      (let ((x (enum-bindings (1- arity))))
+	(collecting (mapc (lambda (b) (collect (cons 'true b))) x)
+		    (mapc (lambda (b) (collect (cons 'false b))) x)))))
+
 (defun truth-table (expr &optional (vs (sort (free-variables expr) #'string<))
 		    &aux (context (make-context)))
   (when (functionp expr) ; a cl function
