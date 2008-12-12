@@ -38,17 +38,17 @@ type. It returns three values - a boolean indicating if the
 		(if (and precision range) 
 		    (/ (- (cadr range) (car range)) (ash 1 precision))
 		    0.01)))		; the default
-    (bool 0)))
+    (bool 0.00001)))
 
 ;;; wraps scorer and terminationp to keep track of costs, has
 ;;; terminationp return cost if success, t if timeout
 (defun count-cost (score target terminationp cost &aux (counter 0))
-  (values (lambda (expr result &rest args) 
-	    (when (eq expr (car target)) (incf counter))
-	    (apply score expr result args))
+  (values (lambda (expr &rest args)
+	    (when (eq args (car target)) (incf counter))
+	    (apply score expr args))
 	  target
 	  (lambda (err)
-	    (aprog1 (or (>= (incf counter) cost) 
+	    (aprog1 (or (>= counter cost)
 			(when  (funcall terminationp err)
 			  counter))
 	      (when it (setf counter 0))))))
@@ -79,11 +79,13 @@ type. It returns three values - a boolean indicating if the
      target (lambda (err) (<= err epsilon)) cost)))
 
 (define-problem-maker tuple (target cost type &aux
-			     (epsilon (max-element (cdr type) #'< :key 
-						   (lambda (x) 
-						     (if (eq (icar x) num)
-							 (epsilon-size x)
-							 0)))))
+			     (epsilon (max-element 
+				       (mapcar (lambda (x) 
+						 (if (eq (icar x) num)
+						     (epsilon-size x)
+						     0))
+					       (cdr type))
+				       #'<)))
   (count-cost target '(nil) (lambda (err) (<= err epsilon)) cost))
 
 #|

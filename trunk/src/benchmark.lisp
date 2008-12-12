@@ -212,7 +212,7 @@ abstaction should be far easier. |#
 (defbenchmark-seq onemax (n)
   :cases ((300 :start 60 :step 60) (1200 :start 300 :step 300))
   :cost (* 10 n) :type `(tuple ,@(ntimes n bool))
-  :target (lambda (x) (count nil x))
+  :target (lambda (x) (count false x))
   :start (apply #'vector (generate n (lambda () (if (randbool) true false)))))
 (defbenchmark-seq 3-deceptive (n)
   :cases ((300 :start 60 :step 60) (1200 :start 300 :step 300))

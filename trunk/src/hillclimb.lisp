@@ -45,12 +45,17 @@ Author: madscience@google.com (Moshe Looks) |#
 
 (defun hillclimb-benchmarker (score score-args terminationp expr context type
 			      &key (lru-size 1000) &aux best best-score
-			      maxima termination-result scorer)
+			      maxima termination-result scorer validp)
   (setf scorer (make-lru (lambda (expr)
 			   (+ (reduce #'+ score-args :key 
 				      (bind #'apply score expr /1))
-			      (* 0.001 (log (expr-size (fn-body expr)) 2.0))))
-			 lru-size))
+			      (* 0.001 (log (expr-size expr) 2.0))))
+			 lru-size)
+	validp (cond ((eq type num) (compose #'not (bind #'eq /1 nan)))
+		     ((and (eq (acar type) function)
+			   (eq (caddr type) num)) 
+		      (compose #'not (bind #'eq /1 nan) #'fn-body))
+		     (t (bind #'identity t))))
   (labels
       ((done () 
 	 (return-from hillclimb-benchmarker
@@ -85,10 +90,10 @@ Author: madscience@google.com (Moshe Looks) |#
 	     (print* 'local-maximum (p2sexpr expr) nknobs)
 	     (weak-kick-until 
 	      (lambda () 
-		(not (eq (fn-body (setf expr (reduct (canon-clean canonical)
-						     context type)))
-			 nan)))
-	      (if (< 2 nknobs) (+ 2 (random (- nknobs 2))) nknobs) knobs))))))
+		(funcall validp (setf expr (reduct (canon-clean canonical)
+						   context type))))
+	      (if (< 2 nknobs) (+ 2 (random (- nknobs 2))) nknobs)
+	      knobs))))))
 
 (defun bool-hillclimb-with-target-truth-table 
     (target-tt nsteps vars &aux
