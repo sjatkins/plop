@@ -155,16 +155,21 @@ Author: madscience@google.com (Moshe Looks) |#
 ;; 		 settings)))
 
 (defknobs tuple (expr context type)
-  (when (atom expr)
-    (assert (arrayp expr) () "bad tuple ~S" expr)
-    (map 'list 
-	 (lambda (arg type idx)
-	   (assert (atom arg) () "bad tuple arg ~S arg")
-	   (ecase type
-	     (bool (vector (lambda () (setf (elt expr idx) arg))
-			   (let ((dual (bool-dual arg)))
-			     (lambda () (setf (elt expr idx) dual)))))))
-	 expr (cdr type) (iota (length expr)))))
+  (declare (ignore context))
+  (assert (arrayp expr) () "bad tuple ~S" expr)
+  (map 'list 
+       (lambda (arg type idx)
+	 (assert (atom arg) () "bad tuple arg ~S arg")
+	 (ecase (icar type)
+	   (bool (vector (lambda () (setf (elt expr idx) arg))
+			 (let ((dual (bool-dual arg)))
+			   (lambda () (setf (elt expr idx) dual)))))
+	   (num (map 'vector (lambda (x) (lambda () (setf (elt expr idx) x)))
+		     (cons (elt expr idx) 
+			   (numarg-settings (pcons '+ (list (elt expr idx)))
+					    *empty-context*)))))) ; bad hack...
+       ;fixme - num should handle min max and precision(?), if available
+       expr (cdr type) (iota (length expr))))
 
 (defknobs list (expr context type)
   (when (eqfn expr 'if)

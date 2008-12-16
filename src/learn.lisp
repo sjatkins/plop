@@ -28,6 +28,12 @@ type. It returns three values - a boolean indicating if the
 |#
 (in-package :plop)
 
+;;todo- update the outdated comments above
+;; terminationp needs to be more general - make a struct that has
+;; info regrading best solutions found, etc..
+
+
+
 ;;; this should be big enough to outweigh other sources of error,
 ;;; but not big enough to cause overflow when summed
 (define-constant +solution-fail-value+ (/ most-positive-single-float 1000))
@@ -72,7 +78,8 @@ type. It returns three values - a boolean indicating if the
 	    (if (eq y nan) +solution-fail-value+ (abs (- y result))))))
       (bool ; target is a truth table or a function for computing one
        (when (functionp target)		; compute the truth table
-	 (setf target (truth-table target arg-names)))
+	 (setf target (mapcar (lambda (x) (if x true false))
+			      (truth-table target arg-names))))
        ;; now we need to add the settings for the args to target
        (setf target (mapcar #'cons target (enum-bindings (length arg-names))))
        (lambda (expr result &rest args) (impulse (not (eq (actual) result))))))

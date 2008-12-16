@@ -93,7 +93,7 @@ args and markup must be proper lists. |#
 	  (qcanonize (pclone (canon-clean expr)))
 	  (pcons (fn expr) (mapcar #'pclone (args expr)) (markup expr)))
       (etypecase expr 
-	(array (map 'array #'pclone expr))
+	(vector (map 'vector #'pclone expr))
 	(lambda-list (make-lambda-list 
 		      :argnames (copy-seq (lambda-list-argnames expr))))
 	(number expr)
