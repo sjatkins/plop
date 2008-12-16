@@ -136,21 +136,22 @@ Mixed discrete-continuous optimization problems
 
 (defun run-benchmark (name fn &aux (b (if (benchmark-p name) name 
 					  (gethash name *benchmarks*))))
+  (format t "bechmark: ~S seed: ~S " (benchmark-name b) *random-state*)
   (mvbind (termination-result scored-solutions)
       (funcall fn (benchmark-score b) (benchmark-score-args b)
 	       (benchmark-terminationp b) (funcall (benchmark-start b))
 	       *empty-context* (benchmark-type b))
-    (if (numberp termination-result)
-	(format t "~S passed with cost ~S~%" 
-		(benchmark-name b) termination-result)
-	(let ((best (min-element scored-solutions #'< :key #'car)))
-	  (format t "~S failed with cost ~S, best was ~S with a score of ~S~%"
-		  (benchmark-name b) (benchmark-cost b)
-		  (p2sexpr (cdr best)) (car best))))))
+    (aprog1 (numberp termination-result)
+      (if it
+	  (format t "passed with cost ~S~%" termination-result)
+	  (let ((best (min-element scored-solutions #'< :key #'car)))
+	    (format t "failed with cost ~S, best was ~S with a score of ~S.~%"
+		    (benchmark-cost b) (p2sexpr (cdr best)) (car best)))))))
 
-(defun run-benchmarks (fn cost-cutoff) ;runs from easiest to hardest
-  (mapc (bind #'run-benchmark /1 fn) (collect-benchmarks cost-cutoff))
-  nil)
+(defun run-benchmarks (fn cost-cutoff &aux ;runs from easiest to hardest
+		       (benchmarks (collect-benchmarks cost-cutoff))
+		       (n (count-if (bind #'run-benchmark /1 fn) benchmarks)))
+  (format t "success rate: ~S / ~S" n (length benchmarks)))
 
 #| Boolean functions
 
@@ -176,15 +177,18 @@ abstaction should be far easier. |#
     :cost 500 :type '(function (bool bool bool) bool)
     :target '(true false true false true true false false))
 (defbenchmark-seq even-parity (n)
-  :cases (8 :start 2) :cost (+ 500 (expt n (+ n 4)))
+  :cases (8 :start 2) :cost (+ 1000 (expt n (+ n 4)))
   :type `(function ,(ntimes n 'bool) bool)
   :target (lambda (&rest args)
 	    (reduce (lambda (x y) (not (eq x y))) args :initial-value t)))
 (defbenchmark-seq multiplexer (n)
   :cases (4 :start 1) :cost (ecase n (1 500) (2 20000) (3 350000) (4 10000000))
   :type `(function ,(ntimes (+ n (expt 2 n))  'bool) bool)
-  :target (lambda (&rest args) 
-	    (reduce (lambda (x y) (not (eq x y))) args :initial-value t)))
+  :target (lambda (&rest args &aux (addr 0) (pow 1))
+	    (dorepeat n
+	      (when (car args) (incf addr pow))
+	      (setf pow (* 2 pow) args (cdr args)))
+	    (nth addr args)))
 
 #| Numerical functions |#
 (defbenchmark easy-num
@@ -226,38 +230,44 @@ abstaction should be far easier. |#
   :start (apply #'vector (generate n (lambda () (if (randbool) true false)))))
 
 #| Continuous optimization |#
-(defmacro defdejong (name target &key (precision 10) (cost '(* 100 n))
-		     &aux (max (* 0.01 (ash 1 (1- precision)))) (min (- max)))
+(defmacro defdejong (name target &key precision max cost cases &aux 
+		     (min (- max)))
   `(defbenchmark-seq 
        ,(read-from-string 
 	 (concatenate 'string "dejong-" (write-to-string name))) (n)
-     :cases (11 :start 3) :cost ,cost
+     :cases ,cases :cost ,cost
      :type `(tuple ,@(ntimes n `(num :range (,,min ,,max)
 				     :precision ,,precision)))
      :target ,target
      :start (apply #'vector (generate n (lambda () 
 					  (+ (random (- ,max ,min)) ,min))))))
 
-(defdejong sphere (lambda (xs) (reduce #'+ xs :key (bind #'* /1 /1))))
+(defdejong sphere (lambda (xs) (reduce #'+ xs :key (bind #'* /1 /1)))
+  :precision 10 :max 5.12 :cost (* 200 n) :cases (11 :start 3))
 (defdejong rosenbrock
     (lambda (xs &aux (res 0.0))
       (map-adjacent nil (lambda (x1 x2)
-			  (incf res (+ (* 100 (expt (+ x2 (expt x1 2)) 2))
+			  (incf res (+ (* 100 (expt (- x2 (expt x1 2)) 2))
 				       (expt (- x1 1) 2))))
-		    xs)))
-(defdejong step (lambda (xs) (+ (* 6 n) (reduce #'+ xs :key #'floor))))
-(defdejong noisy-quartic 
-    (lambda (xs &aux (res 0))
+		    xs)
+      res)
+  :precision 12 :max 5.12 :cost (* 1500 n) :cases (11 :start 2))
+(defdejong step (lambda (xs) (+ (* 6 n) (reduce #'+ xs :key #'floor)))
+  :precision 10 :max 5.12 :cost (* n 1000) :cases (11 :start 5))
+(defdejong noisy-quartic ; note - this is *not* the same as dejong's problem
+			 ; none of them are, but this one especially...
+    (lambda (xs &aux (res (* (length xs) 0.3))) 
+      (print* 'nq xs)
       (dotimes (i n res)
 	(incf res (+ (* (1+ i) (expt (elt xs i) 4)) (random-normal)))))
-  :precision 8)
+  :precision 8 :max 1.28 :cost (* 500 n) :cases (41 :start 30 :step 5))
 (defdejong foxholes
     (let ((a (vector -32.0 -16.0 0.0 16.0 32.0))
 	  (b (vector -32.0 -16.0 0.0 16.0 32.0)))
       (lambda (xs &aux (sum 0))
 	(flet ((f (x) (+ 1 x 
 			 (expt (- (elt xs 0) (svref a (mod x 5))) 6)
-			 (expt (- (elt xs 1) (svref b (/ x 5))) 6))))
-	  (- 500 (/ 1.0 (+ 0.002 (dotimes (x 25 sum)
+			 (expt (- (elt xs 1) (svref b (floor (/ x 5)))) 6))))
+	  (+ 1.0 (/ 1.0 (+ 0.002 (dotimes (x 25 sum)
 				   (incf sum (/ 1.0 (f x))))))))))
-  :precision 17)
+  :precision 12 :max 65.536 :cost 5000 :cases (3 :start 2))

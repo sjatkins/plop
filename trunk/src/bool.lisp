@@ -26,16 +26,16 @@ Author: madscience@google.com (Moshe Looks) |#
   (when (functionp expr) ; a cl function
     (setf expr (pcons 'apply (list expr (pcons 'list vs)))))
   (collecting
-    (labels ((enum-bindings (vs)
+    (labels ((visit-bindings (vs)
 	       (if vs
 		   (dbind (v &rest vs) vs
 		     (setf (getvalue v context) 'true)
-		     (enum-bindings vs)
+		     (visit-bindings vs)
 		     (setf (getvalue v context) 'false)
-		     (enum-bindings vs))
+		     (visit-bindings vs))
 		   (collect (peval-cl expr context)))))
       (mapc (bind #'bind-type /1 context 'bool) vs)
-      (enum-bindings vs))))
+      (visit-bindings vs))))
 (defun truth-table-hamming-distance (tt1 tt2)
   (let ((i 0))
     (map nil (lambda (x y) (unless (eq x y) (incf i)))
