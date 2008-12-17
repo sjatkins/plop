@@ -310,3 +310,17 @@ represent evolved programs. |#
 	  (aif (assoc ',typematch ,',name)
 	       (rplacd it fn)
 	       (push (cons ',typematch fn) ,',name))))))
+
+;;; a deep copy for values and expressions
+;;; note - copies markup too, but assumes it to be all symbols
+(defun pclone (expr)
+  (if (consp expr) 
+      (if (mark canon expr)
+	  (qcanonize (pclone (canon-clean expr)))
+	  (pcons (fn expr) (mapcar #'pclone (args expr)) (markup expr)))
+      (etypecase expr 
+	(vector (map 'vector #'pclone expr))
+	(lambda-list (make-lambda-list 
+		      :argnames (copy-seq (lambda-list-argnames expr))))
+	(number expr)
+	(symbol expr))))

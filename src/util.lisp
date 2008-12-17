@@ -458,6 +458,11 @@ Author: madscience@google.com (Moshe Looks) |#
       (progn (push item (cdr (last list))) list)
       (list item)))
 
+(defmacro prog-until (test &body body &aux (blockname (gensym)))
+  `(block ,blockname 
+     ,@(mappend (lambda (x) `((when ,test (return-from ,blockname)) ,x))
+		body)))
+
 ;;; generic depth-first-search that avoids repeats
 (defun dfs (action expander &key (root nil hasroot) (roots nil hasroots)
 	    &aux (visited (make-hash-table :test 'equal)))

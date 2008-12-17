@@ -134,9 +134,11 @@ Mixed discrete-continuous optimization problems
 		   (mapcan (bind #'apply #'iota /1) cases)
 		   (apply #'iota cases)))))
 
-(defun run-benchmark (name fn &aux (b (if (benchmark-p name) name 
-					  (gethash name *benchmarks*))))
-  (format t "bechmark: ~S seed: ~S " (benchmark-name b) *random-state*)
+(defun run-benchmark (name fn &key verbose &aux
+		      (b (if (benchmark-p name) name 
+			     (gethash name *benchmarks*))))
+  (format t "~S " (benchmark-name b))
+  (when verbose (format t "seed: ~S " *random-state*))
   (mvbind (termination-result scored-solutions)
       (funcall fn (benchmark-score b) (benchmark-score-args b)
 	       (benchmark-terminationp b) (funcall (benchmark-start b))
@@ -145,12 +147,17 @@ Mixed discrete-continuous optimization problems
       (if it
 	  (format t "passed with cost ~S~%" termination-result)
 	  (let ((best (min-element scored-solutions #'< :key #'car)))
-	    (format t "failed with cost ~S, best was ~S with a score of ~S.~%"
-		    (benchmark-cost b) (p2sexpr (cdr best)) (car best)))))))
-
-(defun run-benchmarks (fn cost-cutoff &aux ;runs from easiest to hardest
-		       (benchmarks (collect-benchmarks cost-cutoff))
-		       (n (count-if (bind #'run-benchmark /1 fn) benchmarks)))
+	    (format t "failed with cost ~S, best " (benchmark-cost b))
+	    (if verbose 
+		(format t "was ~S with a score of ~S.~%" 
+			(p2sexpr (cdr best)) (car best))
+		(format t "score was ~S.~%"  (car best))))))))
+		
+;;; runs from easiest to hardest
+(defun run-benchmarks 
+    (fn cost-cutoff &key verbose &aux
+     (benchmarks (collect-benchmarks cost-cutoff))
+     (n (count-if (bind #'run-benchmark /1 fn :verbose verbose) benchmarks)))
   (format t "success rate: ~S / ~S" n (length benchmarks)))
 
 #| Boolean functions

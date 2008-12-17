@@ -85,20 +85,6 @@ args and markup must be proper lists. |#
        (declare (ignore char))
        (list 'quote (sexpr2p (read stream t nil t)))) t)
 
-;;; a deep copy for values and expressions
-;;; note - copies markup too, but assumes it to be all symbols
-(defun pclone (expr)
-  (if (consp expr) 
-      (if (mark canon expr)
-	  (qcanonize (pclone (canon-clean expr)))
-	  (pcons (fn expr) (mapcar #'pclone (args expr)) (markup expr)))
-      (etypecase expr 
-	(vector (map 'vector #'pclone expr))
-	(lambda-list (make-lambda-list 
-		      :argnames (copy-seq (lambda-list-argnames expr))))
-	(number expr)
-	(symbol expr))))
-
 ;; for convenience in constructing canonized expressions
 (defun canonize-from-template (template values)
   (if (or (atom template) (consp (car template)))
