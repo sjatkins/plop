@@ -263,8 +263,7 @@ abstaction should be far easier. |#
   :precision 10 :max 5.12 :cost (* n 1000) :cases (11 :start 5))
 (defdejong noisy-quartic ; note - this is *not* the same as dejong's problem
 			 ; none of them are, but this one especially...
-    (lambda (xs &aux (res (* (length xs) 0.3))) 
-      (print* 'nq xs)
+    (lambda (xs &aux (res 0));(* (length xs) 0.3))) 
       (dotimes (i n res)
 	(incf res (+ (* (1+ i) (expt (elt xs i) 4)) (random-normal)))))
   :precision 8 :max 1.28 :cost (* 500 n) :cases (41 :start 30 :step 5))

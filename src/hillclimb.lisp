@@ -61,11 +61,9 @@ Author: madscience@google.com (Moshe Looks) |#
 		     (t (bind #'identity t))))
   (labels
       ((done () 
-	 (return-from hillclimb-benchmarker
-	   (values termination-result 
-		   (or (mapcar (lambda (x) (cons (funcall scorer x) x))
-			       maxima)
-		       (list (cons best-score best))))))
+	 (values termination-result 
+		 (or (mapcar (lambda (x) (cons (funcall scorer x) x)) maxima)
+		     (list (cons best-score best)))))
        (find-improvement (canonical)
 	 (setf best expr best-score (funcall scorer expr))
 	 (map-neighbors
@@ -77,7 +75,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	      (setf best simplified best-score score))
 	    (awhen (funcall terminationp (funcall scorer simplified))
 	      (setf termination-result it)
-	      (done)))
+	      (return-from hillclimb-benchmarker (done))))
 	  canonical context type)
 ;	 (print* 'found (p2sexpr best))
 	 (unless  (eq best expr) best)))
