@@ -57,6 +57,9 @@ only supports edge insertion, not removal. |#
 	  '((a b) (a d) (a c) (a d) (a e)
 	    (b d) (b e) (c d) (c e) (d e)))))
 
+(defun dag-source-p (node dag) (hash-table-empty-p (dag-ancestors node dag)))
+(defun dag-sink-p (node dag) (hash-table-empty-p (dag-descendants node dag)))
+
 (defun dag-sorted-p (l dag)
   (or (atom l) (atom (cdr l))
       (mapc (lambda (l r)
