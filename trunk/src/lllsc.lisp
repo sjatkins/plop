@@ -18,13 +18,11 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 |#
 (in-package :plop)
 
-;;;fixme - score should be a list of lambdas that take expr and return a num
-
 ;;; pnodes should be ordered by ascending error (i.e. best-to-worst)
 (defun competitive-learn (pnodes optimizer context type 
 			  &key (memory-size 1000) &aux new-pnodes done)
   (while (not done)
-    (setf (values new-pnodes done) 
+    (setf (values new-pnodes done)
 	  (funcall optimizer (neighborhood (pnode-expr (cad pnodes))
 					   context type)))
     ;; 1 makes sure the most promising candidate is front of the list
@@ -37,6 +35,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 
 ;;; adapter for benchmarking
 ;;; mdl?? fixme should the diversity/simplicity/etc args get added here?
+;;; yes, otherwise non-benchmark learning will need to redundantly add them
 
 ;;fixme - lru is really inefficient here - need a shared table 
 (defun lllsc-benchmarker (scorers terminationp expr context type
@@ -66,4 +65,3 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 			   (eq (caddr type) num)) 
 		      (compose #'not (bind #'eq /1 nan) #'fn-body))
 		     (t (bind #'identity t))))
-

@@ -43,12 +43,12 @@ Author: madscience@google.com (Moshe Looks) |#
 					     (canon-clean canonical))) nan)))
 	      (if (< 2 nknobs) (+ 2 (random (- nknobs 2))) nknobs) knobs))))))
 
-(defun hillclimb-benchmarker (score score-args terminationp expr context type
+(defun hillclimb-benchmarker (scorers terminationp expr context type
 			      &key (lru-size 1000) &aux best best-score
 			      maxima termination-result scorer validp)
   (setf scorer (make-lru (lambda (expr)
-			   (+ (reduce #'+ score-args :key 
-				      (bind #'apply score expr /1))
+			   (+ (reduce #'+ scorers :key 
+				      (bind #'funcall /1 expr))
 			      (* 0.001 (log (if (eqfn expr 'lambda)
 						(expr-size (fn-body expr))
 						(expr-size expr))

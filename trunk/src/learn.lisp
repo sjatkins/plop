@@ -48,16 +48,15 @@ type. It returns three values - a boolean indicating if the
 
 ;;; wraps scorer and terminationp to keep track of costs, has
 ;;; terminationp return cost if success, t if timeout
-(defun count-cost (score target terminationp cost &aux (counter 0))
-  (values (lambda (expr &rest args)
-	    (when (equalp args (car target)) (incf counter)) ;not efficient
-	    (apply score expr args))
-	  target
-	  (lambda (err)
-	    (aprog1 (or (>= counter cost)
-			(when  (funcall terminationp err)
-			  counter))
-	      (when it (setf counter 0))))))
+(defun count-cost (scorers terminationp cost &aux (counter 0))
+  (setf (car scorers)
+	(let ((first (car scorers)))
+	  (lambda (expr) (incf counter) (funcall first expr))))
+  (values scorers (lambda (err)
+		    (aprog1 (or (>= counter cost)
+				(when  (funcall terminationp err)
+				  counter))
+		      (when it (setf counter 0))))))
 
 (defdefbytype define-problem-maker make-problem :args (target cost))
 
@@ -72,18 +71,22 @@ type. It returns three values - a boolean indicating if the
 		  (peval (fn-body expr) *empty-context* result-type))))
     (count-cost
      (ecase (icar result-type)
-       (num  ; target is an list of (,@args result) lists
-	(lambda (expr result &rest args)
-	  (let ((y (actual)))
-	    (if (eq y nan) +solution-fail-value+ (abs (- y result))))))
+       (num  ; target is an list of (result ,@args) lists
+	(mapcar (lambda (example) 
+		  (dbind (result &rest args) example
+		    (lambda (expr &aux (y (actual)))
+		      (if (eq y nan)
+			  +solution-fail-value+ 
+			  (abs (- y result))))))
+		target))
       (bool ; target is a truth table or a function for computing one
        (when (functionp target)		; compute the truth table
 	 (setf target (mapcar (lambda (x) (if x true false))
 			      (truth-table target arg-names))))
-       ;; now we need to add the settings for the args to target
-       (setf target (mapcar #'cons target (enum-bindings (length arg-names))))
-       (lambda (expr result &rest args) (impulse (not (eq (actual) result))))))
-     target (lambda (err) (<= err epsilon)) cost)))
+       (mapcar (lambda (result args)
+		 (lambda (expr) (impulse (not (eq (actual) result)))))
+	       target (enum-bindings (length arg-names)))))
+     (lambda (err) (<= err epsilon)) cost)))
 
 (define-problem-maker tuple (target cost type &aux
 			     (epsilon (max-element 
@@ -93,7 +96,7 @@ type. It returns three values - a boolean indicating if the
 						     0))
 					       (cdr type))
 				       #'<)))
-  (count-cost target '(nil) (lambda (err) (<= err epsilon)) cost))
+  (count-cost (list target) (lambda (err) (<= err epsilon)) cost))
 
 #|
 (bind tar
