@@ -101,7 +101,7 @@ Mixed discrete-continuous optimization problems
 
 (defstruct benchmark
   (name nil :type symbol) (cost 0 :type integer)
-  (type) (score) (score-args) (terminationp) (start))
+  (type) (scorers) (terminationp) (start))
 
 (defparameter *benchmarks* (make-hash-table))
 
@@ -115,10 +115,10 @@ Mixed discrete-continuous optimization problems
 	#'< :key #'benchmark-cost))
 
 (defmacro defbenchmark (name &key cost type target start)
-  `(mvbind (score score-args terminationp) (make-problem ,target ,cost ,type)
+  `(mvbind (scorers terminationp) (make-problem ,target ,cost ,type)
      (setf (gethash ',name *benchmarks*)
-	   (make-benchmark :name ',name :cost ,cost :type ,type :score score
-			   :score-args score-args :terminationp terminationp
+	   (make-benchmark :name ',name :cost ,cost :type ,type 
+			   :scorers scorers :terminationp terminationp
 			   :start (or ,start 
 				      (lambda () (default-expr ,type)))))))
 (defmacro defbenchmark-seq (name (range) &key cases cost type target start)
@@ -140,9 +140,9 @@ Mixed discrete-continuous optimization problems
   (format t "~S " (benchmark-name b))
   (when verbose (format t "seed: ~S " *random-state*))
   (mvbind (termination-result scored-solutions)
-      (funcall fn (benchmark-score b) (benchmark-score-args b)
-	       (benchmark-terminationp b) (funcall (benchmark-start b))
-	       *empty-context* (benchmark-type b))
+      (funcall fn (benchmark-scorers b) (benchmark-terminationp b)
+	       (funcall (benchmark-start b)) *empty-context* 
+	       (benchmark-type b))
     (aprog1 (numberp termination-result)
       (if it
 	  (format t "passed with cost ~S~%" termination-result)
