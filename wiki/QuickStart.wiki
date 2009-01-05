@@ -1,7 +1,7 @@
 #summary Installation instructions and basic examples
 #labels Featured
 
-*Required:* An implementation of Common Lisp. Plop has been tested under [http://clisp.cons.org/ CLISP] and [http://www.sbcl.org/ SBCL]. If you find that it does or does not work under some other implementation, please let me know!
+*Required:* An implementation of Common Lisp. Plop has been tested under [http://clisp.cons.org/ CLISP] and [http://www.sbcl.org/ SBCL]. Nil Geisweiller has reported that plop doesn't compile under an older SBCL (1.0.18), so if you encounter trouble here please first try upgrading SBCL. If you find that it does or does not work under some other implementation, please let me know!
 
 *Recommended:* [http://www.cliki.net/asdf ASDF] (included with sbcl) for easy builds, and [http://maxima.sourceforge.net/ Maxima] for numerical simplification.
 
