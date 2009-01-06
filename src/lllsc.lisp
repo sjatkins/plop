@@ -23,7 +23,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 			  &key (memory-size 1000) &aux new-pnodes done)
   (while (not done)
     (setf (values new-pnodes done)
-	  (funcall optimizer (neighborhood (pnode-expr (cad pnodes))
+	  (funcall optimizer (neighborhood (pnode-expr (car pnodes))
 					   context type)))
     ;; 1 makes sure the most promising candidate is front of the list
     (competitive-integrate memory-size 1 candidates new context))
@@ -31,23 +31,24 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 		       pnodes)))
 
 (defun ll-optimize (neighborhood score score-args terminationp)
-
-
+  
 ;;; adapter for benchmarking
 ;;; mdl?? fixme should the diversity/simplicity/etc args get added here?
 ;;; yes, otherwise non-benchmark learning will need to redundantly add them
 
 ;;fixme - lru is really inefficient here - need a shared table 
 (defun lllsc-benchmarker (scorers terminationp expr context type
-			   &key (lru-size 1000)) &aux sum-scorer)
-  (setf scorers (mapcar (bind #'make-lru /1 lru-size) scorers)
-	sum-scorer (make-lru (lambda (expr) 
-			       (reduce #'+ scorers :key (bind /1 expr)
-				       :initial-value 0.0))
-			     lru-size))
-  (competitive-learn (list (make-pnode-from-expr expr sum-scorer))
-		     (make-ll-optimizer score score-args terminationp lru-size)
-		     context type))
+			  &aux sum-scorer)
+  (with-error-fns context scorers
+    (setf scorers (mapcar (bind #'make-lru /1 lru-size) scorers)
+	  sum-scorer (make-lru (lambda (expr) 
+				 (reduce #'+ scorers :key (bind /1 expr)
+					 :initial-value 0.0))
+			       lru-size))
+    (competitive-learn 
+     (list (make-pnode-from-expr expr sum-scorer))
+     (make-ll-optimizer score score-args terminationp lru-size)
+     context type)))
 
 
  &aux best best-score
@@ -65,3 +66,25 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 			   (eq (caddr type) num)) 
 		      (compose #'not (bind #'eq /1 nan) #'fn-body))
 		     (t (bind #'identity t))))
+
+(defun optimize (terminationp deme &aux (stuckness 0)
+		 (stuckness-bound (stuckness-bound deme))
+		 (best-err (pnode-err (exemplar deme))) x)
+  (while (< stuckness stuckness-bound)
+    (setf x (sample-pick deme))
+    (aif (make-pnode-unless-loser x rep)
+	 (progn (update-frequencies (pnode-err it) x rep)
+		(when (< err best-err)
+		  (setf stuckness 0 best-err err deme (update-exemplar deme)))
+		(push it pnodes))
+	 (update-frequencies-loser x rep))
+    (awhen (funcall terminationp best-err)
+      (return-from optimize (values pnodes it))))
+  (values pnodes nil))
+
+
+    (make-lru #'make-pnode (lambda
+
+idea: lru take different equality preds for different args
+
+where should sample-pick go? what info does it require?

@@ -39,7 +39,7 @@ commensurability -
   (expr nil :type list)
   (parent nil :type pnode)
   (children nil :type (list pnode)))
-(defun make-pnode (scores util expr parent)
+(defun make-pnode (scores err expr parent)
   (aprog1 (make-pnode-raw :scores scores :err err :expr expr :parent parent)
     (when parent (push node (pnode-children parent)))))
 
