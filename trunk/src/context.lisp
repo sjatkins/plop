@@ -12,7 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-Author: madscience@google.com (Moshe Looks) |#
+Author: madscience@google.com (Moshe Looks) 
+
+Very roughly speaking, the context data structure is a repository of knowledge
+that is useful on Marr's computational level; facts and functionality related
+to problem-solving that are agnostic as to the underlying algorithms being
+applied. A deme is an example of an algorithm-level data structure, because it
+is only useful in the context of moses-like search.
+
+|#
 (in-package :plop)
 
 ;;; symbol-bindings maps from symbol names to a pair of lists (values . types)
@@ -124,3 +132,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	  (assert-equal nil (syms '(list bool)))
 	  (assert-false (context-empty-p c))))
       (assert-true (context-empty-p c)))))
+
+(defmacro with-error-fns (context fns &body body)
+  `(unwind-protect (progn (push ,fns xx) ,@body)
+     (pop xx)))

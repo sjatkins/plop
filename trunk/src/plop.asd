@@ -43,7 +43,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	       (:file "maxima")
 	       (:file "list")
 	       (:file "canonize")
-	       (:file "represent")
+	       (:file "knobs")
 	       (:file "search")
 	       (:file "hillclimb")
 	       (:file "learn")
