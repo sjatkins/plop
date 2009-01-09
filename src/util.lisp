@@ -18,13 +18,14 @@ Author: madscience@google.com (Moshe Looks) |#
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
 ;(declaim (optimize (speed 3) (safety 0) (debug 0)))
 
-(defun shuffle (sequence)
+(defun nshuffle (sequence)
   (let ((temp (coerce sequence 'vector)))
     (loop for i downfrom (1- (length temp)) to 1 do
       (rotatef (aref temp i) (aref temp (random (1+ i)))))
     (unless (eq temp sequence)
       (replace sequence temp))
     sequence))
+(defun shuffle (sequence) (nshuffle (copy-seq sequence)))
 
 ;;; control structures
 (defmacro blockn (&body body) `(block nil (progn ,@body)))
@@ -32,6 +33,8 @@ Author: madscience@google.com (Moshe Looks) |#
   `(do ()
        ((not ,test))
      ,@body))
+(defmacro awhile (test &body body) ; anaphoric while
+  `(do ((it ,test ,test)) ((not ,test)) ,@body))
 (defmacro dorepeat (n &body body)
   (let ((var (gensym)))
     `(dotimes (,var ,n)

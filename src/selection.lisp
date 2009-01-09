@@ -34,14 +34,83 @@ commensurability -
 (in-package :plop)
 
 (defstruct (pnode (:constructor make-pnode-raw))
-  (scores nil :type (list number))
-  (err -1.0 :type double-float)
   (expr nil :type list)
   (parent nil :type pnode)
+  (scores nil :type (list number))
+  (err -1.0 :type double-float)
   (children nil :type (list pnode)))
-(defun make-pnode (scores err expr parent)
-  (aprog1 (make-pnode-raw :scores scores :err err :expr expr :parent parent)
+(defun make-pnode (expr parent scores err)
+  (aprog1 (make-pnode-raw :expr expr :parent parent :scores scores :err err)
     (when parent (push node (pnode-children parent)))))
+(defun make-pnode-unless-loser (expr parent context) ;fixme - incomplete
+  (make-pnode expr parent 
+	      (current-scores expr context)
+	      (current-err expr context)))
+
+#| Psuedocode
+if |nodes|<=n 
+   return nodes
+partition nodes into dominated and nondominated
+if |nondominated|>=n 
+   return restricted-tournament-replace(n, nondominated)
+return nondominated U restricted-tournament-replace(n - |nondominated|, 
+                                                    dominated)
+this gets sorted by utility before returning
+|#
+(defun competitive-integrate (n nodes context type)
+  (flet (restricted-tourament-replace (bind...
+  (sort (if (<= (length nodes) n)
+	    nodes
+	    (mvbind (dominated nondominated) (partition-by-dominance nodes)
+	      (let ((m (length nondominated)))
+		(cond 
+		  ((= m n) nondominated)
+		  ((> m n) (restricted-tournament-replace n nondominated))
+		  (t (nconc (restricted-tournament-replace (- n m) dominated)
+			    nondominated))))))
+	#'> :key pnode-utility))
+
+;; this is not exactly restricted tournament replacement - we have a pool of
+;; unique nodes and we want to select a sampling n of the best, so we shuffle,
+;; put nonoverlapping windows over the nodes to do tournaments, remove the
+;; winners, and recurse on the non-winners until we have enough
+(defun restricted-tournament-replace (n nodes distance window-size &aux k)
+  (flet ((rtr (elem array)))
+    (assert (< n (length nodes)))
+    (setf nodes (nshuffle (coerce 'vector nodes))
+	  k (min n (floor (/ (length nodes) (+ 1 window-size)))))
+    (dotimes (i k)
+      (setf (elt nodes i) 
+	    (rtr (elt nodes i) (make-array window-size :displaced-to nodes
+					   :displaced-index-offset 
+					   (+ k (* i window-size))))))
+    (restricted-tournament-replace
+     (- n k) (make-array (- (length nodes) k) :displaced-to nodes
+			 :displaced-index-offset k)
+     distance window-size)
+    nodes))
+
+(defun inclusion-grades (x y epsilons &aux (x-only 0) (y-only 0) (both 0))
+  (mapc (lambda (x-err y-err epsilon &aux (d (abs (- x-err ys-err))))
+	  (cond ((<= d epsilon) (incf both))
+		((< x-err y-err) (incf x-only))
+		(t (incf y-only))))
+	x y epsilons)
+  (if (= both 0) 
+      (values 0 0)
+      (values (/ both (+ x-only both)) (/ both (+ y-only both)))))
+
+partition-by-dominance heuristically should start at the worst and compare to
+the best
+
+
+	
+  (bind-collectors (losers doms loser-doms) 
+      (mapc (lambda (node &aux (l (loserp
+  (with-collectors (
+
+the below should be flets of competitive-integrate			      
+
 
 ;;; a loser is defined as a solution with a worse than expected score according
 ;;; our landscape model
@@ -50,7 +119,7 @@ commensurability -
 				   (expected-score (cdr solution) context)))
 	     solutions))
 
-;;; very inefficient - fixme
+
 (defun nondominated (pred nodes)
   (remove-if (lambda (x) 
 	       (some (lambda (y) (and (not eq x y) (funcall pred x y))) nodes))
@@ -61,13 +130,6 @@ commensurability -
 			(< (expr-info-size x) (expr-info-size y))))
 		 solutions :key (compose #'expr-info-scores #'car)))
 
-;;; When there are less than n nodes, returns all solutions that are not
-;;; losers. Otherwise, returns all non
-(defun competitive-integrate (n m nodes context &aux (nnodes (length nodes)))
-  (bind-collectors (losers doms loser-doms) 
-      (mapc (lambda (node &aux (l (loserp
-  (with-collectors (
-			      
   
   
 
