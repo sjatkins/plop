@@ -18,73 +18,73 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 |#
 (in-package :plop)
 
-;;; pnodes should be ordered by ascending error (i.e. best-to-worst)
-(defun competitive-learn (pnodes optimizer context type 
-			  &key (memory-size 1000) &aux new-pnodes done)
+;;fixme - add a scorer for slowness
+(defun lllsc-benchmarker (scorers terminationp expr context type)
+  (with-scorers context (cons (bind #'prior-penalty /1 context type) scorers)
+    (mvbind (done pnodes) 
+	(competitive-learn 
+	 (list (make-pnode expr nil 
+			   (compute-scores expr context)
+			   (compute-err expr context)))
+	 (lambda (rep) (optimize terminationp (stuckness-bound rep context)
+				 rep context))
+	 context type)
+      (values done (mapcar (lambda (x) (cons (pnode-err x) (pnode-expr x)))
+			   pnodes)))))
+
+;;; pnodes should be ordered ascending by error (i.e. best-to-worst)
+(defun competitive-learn (pnodes optimizer context &key (memory-size 1000) 
+			  &aux new-pnodes done)
   (while (not done)
-    (setf (values new-pnodes done)
-	  (funcall optimizer (neighborhood (pnode-expr (car pnodes))
-					   context type)))
-    ;; 1 makes sure the most promising candidate is front of the list
-    (competitive-integrate memory-size 1 candidates new context))
-  (values done (mapcar (lambda (x) (cons (pnode-err x) (pnode-expr x)))
-		       pnodes)))
+    (setf (values done new-pnodes)
+	  (funcall optimizer (make-rep (pnode-expr (car pnodes)) context type))
+	  pnodes (competitive-integrate memory-size pnodes new-pnodes)))
+  (values done pnodes))
 
-(defun ll-optimize (neighborhood score score-args terminationp)
-  
-;;; adapter for benchmarking
-;;; mdl?? fixme should the diversity/simplicity/etc args get added here?
-;;; yes, otherwise non-benchmark learning will need to redundantly add them
-
-;;fixme - lru is really inefficient here - need a shared table 
-(defun lllsc-benchmarker (scorers terminationp expr context type
-			  &aux sum-scorer)
-  (with-error-fns context scorers
-    (setf scorers (mapcar (bind #'make-lru /1 lru-size) scorers)
-	  sum-scorer (make-lru (lambda (expr) 
-				 (reduce #'+ scorers :key (bind /1 expr)
-					 :initial-value 0.0))
-			       lru-size))
-    (competitive-learn 
-     (list (make-pnode-from-expr expr sum-scorer))
-     (make-ll-optimizer score score-args terminationp lru-size)
-     context type)))
-
-
- &aux best best-score
-	      maxima termination-result scorer validp)
-  (setf scorer (make-lru (lambda (expr)
-			   (+ (reduce #'+ score-args :key 
-				      (bind #'apply score expr /1))
-			      (* 0.001 (log (if (eqfn expr 'lambda)
-						(expr-size (fn-body expr))
-						(expr-size expr))
-					    2.0))))
-			 lru-size)
-	validp (cond ((eq type num) (compose #'not (bind #'eq /1 nan)))
-		     ((and (eq (acar type) function)
-			   (eq (caddr type) num)) 
-		      (compose #'not (bind #'eq /1 nan) #'fn-body))
-		     (t (bind #'identity t))))
-
-(defun optimize (terminationp deme &aux (stuckness 0)
-		 (stuckness-bound (stuckness-bound deme))
-		 (best-err (pnode-err (exemplar deme))) x)
-  (while (< stuckness stuckness-bound)
-    (setf x (sample-pick deme))
-    (aif (make-pnode-unless-loser x rep)
-	 (progn (update-frequencies (pnode-err it) x rep)
-		(when (< err best-err)
-		  (setf stuckness 0 best-err err deme (update-exemplar deme)))
-		(push it pnodes))
-	 (update-frequencies-loser x rep))
+(defun optimize (terminationp stuckness-bound rep context &aux (stuckness 0)
+		 (best-err (pnode-err (exemplar rep))) pnodes settings x)
+  (while (and (< stuckness stuckness-bound)
+	      (setf (values settings x) (sample-pick rep context)))
+    (aif (make-pnode-unless-loser x (rep-exemplar rep) context)
+	 (let ((err (pnode-err it)))
+	   (update-frequencies err settings rep context)
+	   (push it pnodes)
+	   (when (< err best-err)
+	     (setf stuckness 0 best-err err 
+		   rep (update-exemplar settings rep))))
+	 (update-frequencies-loser settings rep context))
     (awhen (funcall terminationp best-err)
-      (return-from optimize (values pnodes it))))
-  (values pnodes nil))
+      (return-from optimize (values it pnodes))))
+  ;; if we reach this point we are either stuck or have completely exhausted
+  ;; the neighborhood - the exemplar must be a local minima or near-minima
+  (update-structure settings rep context)
+  (values nil pnodes))
 
+;;; model updates
+(defun update-frequencies (err settings rep context))
+(defun update-frequencies-loser (settings rep context))
+(defun update-structure (settings rep context))
 
-    (make-lru #'make-pnode (lambda
+;;; parameter lookups - fixme
+(defun stuckness-bound (rep context) 
+  (declare (ignore context))
+  (rep-size rep))
+(defun metropolis-prob (rep context)
+  (declare (ignore rep context))
+  0.5)
 
-idea: lru take different equality preds for different args
+;; this function is responsible for ensuring (heuristically) that successive
+;; calls never return the same solution more than once - returns nil if there
+;; are no more solutions available
+;; return values are the settings for the rep, and the corresponding expr
+(defun sample-pick (rep context)
+  (funcall (if (< (random 1.0) (metropolis-prob rep context))
+	       #'metropolis-pick
+	       #'best-pick)
+	   rep context))
 
-where should sample-pick go? what info does it require?
+(defun metropolis-pick (rep context &aux 
+			(n (direct-count rep)) (m (neutral-count rep)))
+  (if (< (random (+ n m)) n) ; direct mutation
+      (random-neighbor rep)
+      

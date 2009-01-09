@@ -14,20 +14,21 @@ limitations under the License.
 
 Author: madscience@google.com (Moshe Looks) 
 
-Very roughly speaking, the context data structure is a repository of knowledge
-that is useful on Marr's computational level; facts and functionality related
-to problem-solving that are agnostic as to the underlying algorithms being
-applied. A deme is an example of an algorithm-level data structure, because it
-is only useful in the context of moses-like search.
-
-|#
+Very roughly speaking, the context data structure processes data on Marr's
+computational level; it is aware of problems to be solved, but is ignorant as
+to the underlying algorithms being applied. It serves as the repository for
+algorithm-level knowledge in the context of particular problems that are
+described at the computational-level (e.g. the frequency of success of a
+particular heuristic on a particular problem class), allowing such knowledge to
+be passed between subprocesses. |#
 (in-package :plop)
 
 ;;; symbol-bindings maps from symbol names to a pair of lists (values . types)
 ;;; type-map maps from type to hashes 
 (defstruct context
   (symbol-bindings (make-hash-table) :type hash-table)
-  (type-map (make-hash-table) :type hash-table))
+  (type-map (make-hash-table) :type hash-table)
+  (score-stack nil :type list))
 
 (defconstant +no-value+ 
   (if (boundp '+no-value+) (symbol-value '+no-value+) (gensym)))
@@ -133,6 +134,51 @@ is only useful in the context of moses-like search.
 	  (assert-false (context-empty-p c))))
       (assert-true (context-empty-p c)))))
 
-(defmacro with-error-fns (context fns &body body)
-  `(unwind-protect (progn (push ,fns xx) ,@body)
-     (pop xx)))
+;; fixme - this should manage caching with an lru take different equality preds
+;; for different args
+(defmacro with-scorers (context scorers &body body)
+  `(unwind-protect 
+	(progn (push (make-score-manager ,scorers)
+		     (context-score-stack ,context))
+	       ,@body)
+     (pop (context-score-stack ,context))))
+
+(defstruct (score-manager (:constructor make-score-manager-raw))
+  scorers scores-cache err-cache)
+(defun make-score-manager (scorers &key (lru-size 1000) &aux
+			   (cache (make-lru (lambda (expr) 
+					      (mapcar (bind /1 expr) scorers))
+					    lru-size)))
+  (make-score-manager-raw 
+   :scorers scorers :scores-cache cache 
+   :err-cache (make-lru (lambda (expr) (reduce #'+ (funcall cache expr)))
+			lru-size)))
+
+(defun compute-scores (expr context)
+  (funcall (score-manager-scores-cache context) expr))
+(defun compute-err (expr context)
+  (funcall (score-manager-err-cache context) expr))
+
+;; note that because of parent, the caching can't be performed of pnodes...
+
+;;fixme - when make-pnode-unless-loser is redone, it will need to validate
+;; for nans, etc
+;; (defun validp (
+;; 	       (cond ((eq type num) (compose #'not (bind #'eq /1 nan)))
+;; 		     ((and (eq (acar type) function)
+;; 			   (eq (caddr type) num)) 
+;; 		      (compose #'not (bind #'eq /1 nan) #'fn-body))
+;; 		     (t (bind #'identity t))))
+
+
+;; this is an unnormalized penalty score (zero is best) based on the contextual
+;; prior probability of expr
+;; fixme to take type/context into account
+(defun prior (expr context type) 
+  (declare (ignore context type))
+  (log (expr-size expr) 2))
+
+;; fixme - maybe adapt this based on the distribution of values observed, with
+;; a type-based default?
+;(defun indiscriminability-levels (context)
+ ; (mapcar 
