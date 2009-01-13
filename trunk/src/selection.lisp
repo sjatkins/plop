@@ -78,7 +78,7 @@ this gets sorted by utility before returning
   (assert (< n (length nodes)))
   (labels
       ((tournament (elem idx nodes)
-	 (let* ((i (max-position nodes #'< :start idx :end (+ idx window-size)
+	 (let* ((i (max-position nodes #'> :start idx :end (+ idx window-size)
 				 :key (bind distance elem /1)))
 		(closest (elt nodes i)))	   
 	   (when (funcall cmp elem closest)
@@ -99,15 +99,25 @@ this gets sorted by utility before returning
     (select n nodes)
     (coerce (make-array n :displaced-to nodes) 'list)))
 (define-test restricted-tournament-select 
-  (assert-equal
-   '((100 (2 3 4)))
-   (group-equals (generate
-		  100 (lambda () (sort (restricted-tournament-select 
-					3 '(1 2 3 4) (lambda (x y)
-						       (declare (ignore x y)) 
-						       1)
-					#'< 3)
-				       #'<))))))
+  (flet ((count (&rest args) 
+	   (group-equals 
+	    (generate
+	     100 (lambda () 
+		   (sort (apply #'restricted-tournament-select args) #'<))))))
+    (assert-equal '((100 (3 16 29))) 
+		  (count 3 '(1 2 3 14 15 16 27 28 29) (lambda (x y)
+							(abs (- x y)))
+			 #'< 7))))
+
+3 '(1 2 3 4) (lambda (x y) (declare (ignore x y)) 1)
+			 #'< 3))))
+
+partition-by-dominance heuristically should start at the worst and compare to
+the best
+(defun partition-by-dominance (nodes)
+
+)
+
 (defun inclusion-grades (x y epsilons &aux (x-only 0) (y-only 0) (both 0))
   (mapc (lambda (x-err y-err epsilon &aux (d (abs (- x-err ys-err))))
 	  (cond ((<= d epsilon) (incf both))
@@ -118,8 +128,7 @@ this gets sorted by utility before returning
       (values 0 0)
       (values (/ both (+ x-only both)) (/ both (+ y-only both)))))
 
-partition-by-dominance heuristically should start at the worst and compare to
-the best
+
 
 
 	
