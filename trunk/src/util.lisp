@@ -528,10 +528,32 @@ Author: madscience@google.com (Moshe Looks) |#
       (setf data (nconc (random-sample (/ count 4) items) data)))
   (dotimes (x count) (assert-true (< (count x data) (* repeat (/ count 3)))))))
 
+(defun make-sampler (n &aux (table (make-hash-table)))
+  (lambda (&aux (i (random n)) (j (gethash i table)))
+    (decf n)
+    (if (= i n)
+	(if j (progn (remhash i table) j) i)
+	(prog1 (or j i)
+	  (let ((last (gethash n table)))
+	    (setf (gethash i table) (or last n))
+	    (when last (remhash n table)))))))
+(define-test make-sampler
+  (dorepeat 10
+    (let* ((x (random 42)) (sampler (make-sampler x)))
+      (assert-equal (iota x) (sort (generate x sampler) #'<)))))
+
 (defun atom-else-fn (fn) (lambda (x) (if (atom x) x (funcall fn x))))
 
 (defmacro atom-else (x else &aux (result (gensym)))
   `(let ((,result ,x)) (if (atom ,result) ,result ,else)))
+
+(defun group-equals (l &aux (table (make-hash-table :test 'equal)))
+  (mapc (lambda (x) (aif (gethash x table) 
+			 (setf (gethash x table) (incf it))
+			 (setf (gethash x table) 1)))
+	l)
+  (sort (collecting (maphash (lambda (k v) (collect (list v k))) table)) 
+	#'> :key #'car))
 
 ;;; for sbcl
 (defmacro define-constant (name value &optional doc)
@@ -557,9 +579,15 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun max-position (seq cmp &key (start 0) end (key #'identity) &aux best)
   (when (emptyp seq) (return-from max-position nil))
   (setf best (elt seq start))
-  (awhile (position-if (bind cmp best /1) seq :start (1+ start) :end end)
+  (awhile (position-if (bind cmp (funcall key best) (funcall key /1)) seq 
+		       :start (1+ start) :end end)
     (setf start it best (elt seq start)))
   start)
+(define-test max-position
+  (assert-equal 0 (max-position (iota 100) #'>))
+  (assert-equal 99 (max-position (iota 100) #'<))
+  (assert-equal nil (max-position nil #'>))
+  (assert-equal 99 (max-position (nconc (iota 100) (nreverse (iota 99))) #'<)))
 
 (defun impulse (x) (if x 1 0))
 
