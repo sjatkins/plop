@@ -554,6 +554,13 @@ Author: madscience@google.com (Moshe Looks) |#
 	(cdr l))
   min-elem)
 
+(defun max-position (seq cmp &key (start 0) end (key #'identity) &aux best)
+  (when (emptyp seq) (return-from max-position nil))
+  (setf best (elt seq start))
+  (awhile (position-if (bind cmp best /1) seq :start (1+ start) :end end)
+    (setf start it best (elt seq start)))
+  start)
+
 (defun impulse (x) (if x 1 0))
 
 (flet ((box-muller ()
