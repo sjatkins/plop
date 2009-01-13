@@ -58,38 +58,56 @@ return nondominated U restricted-tournament-replace(n - |nondominated|,
 this gets sorted by utility before returning
 |#
 (defun competitive-integrate (n nodes context type)
-  (flet (restricted-tourament-replace (bind...
+  (flet (restricted-tourament-select (bind...
   (sort (if (<= (length nodes) n)
 	    nodes
 	    (mvbind (dominated nondominated) (partition-by-dominance nodes)
 	      (let ((m (length nondominated)))
 		(cond 
 		  ((= m n) nondominated)
-		  ((> m n) (restricted-tournament-replace n nondominated))
-		  (t (nconc (restricted-tournament-replace (- n m) dominated)
+		  ((> m n) (restricted-tournament-select n nondominated))
+		  (t (nconc (restricted-tournament-select (- n m) dominated)
 			    nondominated))))))
 	#'> :key pnode-utility))
 
-;; this is not exactly restricted tournament replacement - we have a pool of
+;; this is not exactly restricted tournament selection - we have a pool of
 ;; unique nodes and we want to select a sampling n of the best, so we shuffle,
 ;; put nonoverlapping windows over the nodes to do tournaments, remove the
 ;; winners, and recurse on the non-winners until we have enough
-(defun restricted-tournament-replace (n nodes distance window-size &aux k)
-  (flet ((rtr (elem array)))
-    (assert (< n (length nodes)))
-    (setf nodes (nshuffle (coerce 'vector nodes))
-	  k (min n (floor (/ (length nodes) (+ 1 window-size)))))
-    (dotimes (i k)
-      (setf (elt nodes i) 
-	    (rtr (elt nodes i) (make-array window-size :displaced-to nodes
-					   :displaced-index-offset 
-					   (+ k (* i window-size))))))
-    (restricted-tournament-replace
-     (- n k) (make-array (- (length nodes) k) :displaced-to nodes
-			 :displaced-index-offset k)
-     distance window-size)
-    nodes))
-
+(defun restricted-tournament-select (n nodes distance cmp window-size &aux m)
+  (assert (< n (length nodes)))
+  (labels
+      ((tournament (elem idx nodes)
+	 (let* ((i (max-position nodes #'< :start idx :end (+ idx window-size)
+				 :key (bind distance elem /1)))
+		(closest (elt nodes i)))	   
+	   (when (funcall cmp elem closest)
+	       (progn (setf (elt nodes i) elem) closest))))
+       (select (n nodes &aux (k (min n (floor (/ m (+ 1 window-size))))))
+	 (nshuffle nodes)
+;	 (print* 'select n nodes k window-size)
+	 (dotimes (i k)
+	   (awhen (tournament (elt nodes i) (+ k (* i window-size)) nodes)
+;	     (print* 'picked it)
+	     (setf (elt nodes i) it)))
+	 (unless (= n k)
+	   (decf m k)
+	   (setf window-size (min window-size (1- m)))
+	   (select (- n k) (make-array m :displaced-to nodes 
+				       :displaced-index-offset k)))))
+    (setf nodes (coerce nodes 'vector) m (length nodes))
+    (select n nodes)
+    (coerce (make-array n :displaced-to nodes) 'list)))
+(define-test restricted-tournament-select 
+  (assert-equal
+   '((100 (2 3 4)))
+   (group-equals (generate
+		  100 (lambda () (sort (restricted-tournament-select 
+					3 '(1 2 3 4) (lambda (x y)
+						       (declare (ignore x y)) 
+						       1)
+					#'< 3)
+				       #'<))))))
 (defun inclusion-grades (x y epsilons &aux (x-only 0) (y-only 0) (both 0))
   (mapc (lambda (x-err y-err epsilon &aux (d (abs (- x-err ys-err))))
 	  (cond ((<= d epsilon) (incf both))
