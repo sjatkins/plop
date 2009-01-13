@@ -70,32 +70,71 @@ this gets sorted by utility before returning
 			    nondominated))))))
 	#'> :key pnode-utility))
 
-;; this is not exactly restricted tournament selection - we have a pool of
-;; unique nodes and we want to select a sampling n of the best, so we shuffle,
-;; put nonoverlapping windows over the nodes to do tournaments, remove the
-;; winners, and recurse on the non-winners until we have enough
+
+
+#|
+This is not exactly restricted tournament selection - we have a pool of
+unique nodes and we want to select a sampling n of the best:
+
+rts(n, nodes, window-size)
+let undecided=nodes, winners=nil, losers=nil
+while undecided is nonempty
+  select window-size + 1 nodes uniformly at random from undecided - if there
+  are not enought nodes in undecided, make up the rest from the whole set
+  do a restricted tournament, remove the winner from its set and put it in 
+  winners, remove the loser from its set and place it in losers
+
+if |winners| >= n
+   return rts(n, winners, window-size)
+else
+   return winners U rts(n-|winners|, losers, window-size)
+|#
 (defun restricted-tournament-select (n nodes distance cmp window-size &aux m)
-  (assert (< n (length nodes)))
   (labels
-      ((tournament (elem idx nodes)
-	 (let* ((i (max-position nodes #'> :start idx :end (+ idx window-size)
-				 :key (bind distance elem /1)))
-		(closest (elt nodes i)))	   
-	   (when (funcall cmp elem closest)
-	       (progn (setf (elt nodes i) elem) closest))))
-       (select (n nodes &aux (k (min n (floor (/ m (+ 1 window-size))))))
-	 (nshuffle nodes)
-;	 (print* 'select n nodes k window-size)
-	 (dotimes (i k)
-	   (awhen (tournament (elt nodes i) (+ k (* i window-size)) nodes)
-;	     (print* 'picked it)
-	     (setf (elt nodes i) it)))
-	 (unless (= n k)
-	   (decf m k)
-	   (setf window-size (min window-size (1- m)))
-	   (select (- n k) (make-array m :displaced-to nodes 
-				       :displaced-index-offset k)))))
+      ((reshuffle (i j nodes)
+	 (dotimes (k window-size)
+	   (rotatef (aref nodes (+ i k 1)) 
+		    (aref nodes (+ i 1 (random (- j i 1)))))))
+       (tournament (i j nodes)
+	 (let* ((node (aref nodes i))
+		(idx (max-position nodes #'> :key (bind distance node /1)
+				   :start (1+ i) :end (+ i window-size 1))))
+	   (if (funcall cmp node (aref nodes idx)) ; is node a loser?
+	       (rotatef (aref nodes i) (aref nodes idx) (aref nodes j)) ;loser
+	       (rotatef (aref nodes idx) (aref nodes j)))               ;winner
+	   (reshuffle i j nodes)))
+       (tournament2 (i j nodes) ; returns t if node i is a winner
+	 (let* ((node (aref nodes i))
+		(sampler (make-sampler (1- m))) 
+		(sample (nsubstitute (1- m) i (generate window-size sampler)))
+		(idx (max-element sample #'> :key 
+				  (compose (bind distance node /1)
+					   (bind #'aref nodes /1)))))
+	   (if (funcall cmp node (aref nodes idx)) ; is node a loser?
+	       (rotatef (aref nodes i) (aref nodes (1- j)))
+	       t)))
+       (select (n nodes &aux (k (floor (/ (max (- m window-size) 0) 2))))
+	 ;(print* 'select n nodes k window-size)
+	 (dotimes (i k) (tournament i (- m i 1) nodes))
+	 ;(print* 'select2 nodes)
+	 (let ((i k) (j (- m k)))
+	   (dorepeat (- m (* 2 k))
+	     (if (tournament2 i j nodes)
+		 (incf i)
+		 (decf j)))
+	     ;(print* nodes i j))
+	   ;(print* 'nodes nodes 'i i 'j j)
+	   (assert (= i j) () "logic error - ~S doesn't match ~S" i j)
+	   (cond ((> i n)
+		  (setf m i window-size (min window-size (1- m)))
+		  (select n (make-array m :displaced-to nodes)))
+		 ((< i n)
+		  (decf m i)
+		  (setf window-size (min window-size (1- m)))
+		  (select (- n i) (make-array m :displaced-to nodes
+					      :displaced-index-offset i)))))))
     (setf nodes (coerce nodes 'vector) m (length nodes))
+    (nshuffle nodes)
     (select n nodes)
     (coerce (make-array n :displaced-to nodes) 'list)))
 (define-test restricted-tournament-select 
@@ -104,14 +143,19 @@ this gets sorted by utility before returning
 	    (generate
 	     100 (lambda () 
 		   (sort (apply #'restricted-tournament-select args) #'<))))))
-    (assert-equal '((100 (3 16 29))) 
-		  (count 3 '(1 2 3 14 15 16 27 28 29) (lambda (x y)
+    ;; the following distribution should be ~ 
+    ;; ((50 (3 16 29)) (25 (16 28 29)) (12.5 (15 16 29)) (12.5 (3 28 29)))
+    (let ((groups (count 3 '(1 2 3 14 15 16 27 28 29) (lambda (x y)
 							(abs (- x y)))
-			 #'< 7))))
-
-3 '(1 2 3 4) (lambda (x y) (declare (ignore x y)) 1)
-			 #'< 3))))
-
+			 #'< 7)))
+      (assert-equal 4 (length groups))
+      (assert-equal '(3 16 29) (cadar groups))
+      (assert-equal '(16 28 29) (cadadr groups))
+      (assert-true (or (and (equal '(15 16 29) (cadr (third groups)))
+			    (equal '(3 28 29) (cadr (fourth groups))))
+		       (and (equal '(3 28 29) (cadr (third groups)))
+			    (equal '(15 16 29) (cadr (fourth groups)))))))))
+      
 partition-by-dominance heuristically should start at the worst and compare to
 the best
 (defun partition-by-dominance (nodes)
