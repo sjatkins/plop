@@ -21,7 +21,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 ;;fixme - add a scorer for slowness
 (defun lllsc-benchmarker (scorers terminationp expr context type)
   (with-scorers context (cons (bind #'prior-penalty /1 context type) scorers)
-    (mvbind (done pnodes) 
+    (mvbind (done nodes) 
 	(competitive-learn 
 	 (list (make-pnode expr nil 
 			   (compute-scores expr context)
@@ -30,35 +30,36 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 				 rep context))
 	 context type)
       (values done (mapcar (lambda (x) (cons (pnode-err x) (pnode-expr x)))
-			   pnodes)))))
+			   nodes)))))
 
-;;; pnodes should be ordered ascending by error (i.e. best-to-worst)
-(defun competitive-learn (pnodes optimizer context &key (memory-size 1000) 
-			  &aux new-pnodes done)
+;;; nodes should be ordered ascending by error (i.e. best-to-worst)
+(defun competitive-learn (nodes optimizer context &key (memory-size 1000) 
+			  &aux new-nodes done)
   (while (not done)
-    (setf (values done new-pnodes)
-	  (funcall optimizer (make-rep (pnode-expr (car pnodes)) context type))
-	  pnodes (competitive-integrate memory-size pnodes new-pnodes)))
-  (values done pnodes))
+    (setf (values done new-nodes)
+	  (funcall optimizer (make-rep (pnode-expr (car nodes)) context type))
+	  nodes (competitive-integrate memory-size (nconc nodes new-nodes)
+				       context type)))
+  (values done nodes))
 
 (defun optimize (terminationp stuckness-bound rep context &aux (stuckness 0)
-		 (best-err (pnode-err (exemplar rep))) pnodes settings x)
+		 (best-err (pnode-err (exemplar rep))) nodes settings x)
   (while (and (< stuckness stuckness-bound)
 	      (setf (values settings x) (sample-pick rep context)))
     (aif (make-pnode-unless-loser x (rep-exemplar rep) context)
 	 (let ((err (pnode-err it)))
 	   (update-frequencies err settings rep context)
-	   (push it pnodes)
+	   (push it nodes)
 	   (when (< err best-err)
 	     (setf stuckness 0 best-err err 
 		   rep (update-exemplar settings rep))))
 	 (update-frequencies-loser settings rep context))
     (awhen (funcall terminationp best-err)
-      (return-from optimize (values it pnodes))))
+      (return-from optimize (values it nodes))))
   ;; if we reach this point we are either stuck or have completely exhausted
   ;; the neighborhood - the exemplar must be a local minima or near-minima
   (update-structure settings rep context)
-  (values nil pnodes))
+  (values nil nodes))
 
 ;;; model updates
 (defun update-frequencies (err settings rep context))
@@ -68,7 +69,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 ;;; parameter lookups - fixme
 (defun stuckness-bound (rep context) 
   (declare (ignore context))
-  (rep-size rep))
+  (nbits rep))
 (defun metropolis-prob (rep context)
   (declare (ignore rep context))
   0.5)

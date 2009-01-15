@@ -19,7 +19,7 @@ Author: madscience@google.com (Moshe Looks) |#
   (let* ((x (if (numberp x) x 0))
 	 (y (abs x))
 	 (v 0.01))
-    (if (and (not (equal y 0)) (< y (/ v 2))) (/ y 2) v)))
+    (if (and (not (= y 0)) (< y (/ v 2))) (/ y 2) v)))
 (defun big-epsilon (x)
   (let* ((x (if (numberp x) x 0)))
     (if (eql x 0) 1 (/ (+ 1 (abs x)) 2))))

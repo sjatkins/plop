@@ -28,19 +28,33 @@ which n (n<<N) to keep in memory, and which k (k<<n, often k=1) to focus cpu
 on.
 
 The basic model for deciding which solutions are worth keeping depends of
-commensurability - 
+commensurability - given two score vectors x and y, if x is less than y along
+some axis and does not exceed y along any axis, then x dominates y, and 
+
+ ndominated-by ndominates nindifferent
+  nequal nlessthan ngreaterthan
+  prior-prob 
+
+  diversity (set)
+
+maybe have a weight vector get passed to competitive-integrate, and use it in
+computing inclusion grades and err, rather than have err be a member
 
 |#
 (in-package :plop)
 
 (defstruct (pnode (:constructor make-pnode-raw))
   (expr nil :type list)
-  (parent nil :type pnode)
-  (scores nil :type (list number))
-  (err -1.0 :type double-float)
-  (children nil :type (list pnode)))
+  (parent nil :type (or pnode null))
+  (scores (vector) :type (vector number))
+  (err (coerce -1.0 'double-float) :type double-float)
+  (utility (coerce 0.0 'double-float) :type double-float)
+  (children nil :type list))
 (defun make-pnode (expr parent scores err)
-  (aprog1 (make-pnode-raw :expr expr :parent parent :scores scores :err err)
+  (aprog1 (make-pnode-raw :expr expr 
+			  :parent parent 
+			  :scores (coerce scores 'vector)
+			  :err (coerce err 'double-float))
     (when parent (push node (pnode-children parent)))))
 (defun make-pnode-unless-loser (expr parent context) ;fixme - incomplete
   (make-pnode expr parent 
@@ -52,25 +66,30 @@ if |nodes|<=n
    return nodes
 partition nodes into dominated and nondominated
 if |nondominated|>=n 
-   return restricted-tournament-replace(n, nondominated)
-return nondominated U restricted-tournament-replace(n - |nondominated|, 
-                                                    dominated)
+   return restricted-tournament-select(n, nondominated)
+return nondominated U restricted-tournament-select(n - |nondominated|, 
+                                                   dominated)
 this gets sorted by utility before returning
 |#
 (defun competitive-integrate (n nodes context type)
-  (flet (restricted-tourament-select (bind...
-  (sort (if (<= (length nodes) n)
-	    nodes
-	    (mvbind (dominated nondominated) (partition-by-dominance nodes)
-	      (let ((m (length nondominated)))
-		(cond 
-		  ((= m n) nondominated)
-		  ((> m n) (restricted-tournament-select n nondominated))
-		  (t (nconc (restricted-tournament-select (- n m) dominated)
-			    nondominated))))))
-	#'> :key pnode-utility))
-
-
+  (flet ((rts (n nodes)
+	   (restricted-tournament-select 
+	    n nodes
+	    (lambda (x y) ;fixme - might help to have ptrs to settings?
+			  ;i.e. separate out the existing nodes from the new
+			  ;ones with the same rep
+	      (expr-distance (pnode-expr x) (pnode-expr y) context))
+	    (lambda (x y) (> (pnode-err x) (pnode-err y)))
+	    (ceil (/ (length n) 20)))))
+    (sort (if (<= (length nodes) n)
+	      nodes
+	      (mvbind (dominated nondominated) (partition-by-dominance nodes)
+		(let ((m (length nondominated)))
+		  (cond 
+		    ((= m n) nondominated)
+		    ((> m n) (rts n nondominated))
+		    (t (nconc (rts (- n m) dominated) nondominated))))))
+	  #'> :key pnode-utility)))
 
 #|
 This is not exactly restricted tournament selection - we have a pool of
@@ -99,31 +118,27 @@ else
 	 (let* ((node (aref nodes i))
 		(idx (max-position nodes #'> :key (bind distance node /1)
 				   :start (1+ i) :end (+ i window-size 1))))
-	   (if (funcall cmp node (aref nodes idx)) ; is node a loser?
+	   (if (funcall cmp node (aref nodes idx)) ; does node lose?
 	       (rotatef (aref nodes i) (aref nodes idx) (aref nodes j)) ;loser
 	       (rotatef (aref nodes idx) (aref nodes j)))               ;winner
 	   (reshuffle i j nodes)))
-       (tournament2 (i j nodes) ; returns t if node i is a winner
+       (tournament2 (i j nodes) ; returns t if node i wins the tournament
 	 (let* ((node (aref nodes i))
 		(sampler (make-sampler (1- m))) 
 		(sample (nsubstitute (1- m) i (generate window-size sampler)))
 		(idx (max-element sample #'> :key 
 				  (compose (bind distance node /1)
 					   (bind #'aref nodes /1)))))
-	   (if (funcall cmp node (aref nodes idx)) ; is node a loser?
+	   (if (funcall cmp node (aref nodes idx)) ; does node lose?
 	       (rotatef (aref nodes i) (aref nodes (1- j)))
 	       t)))
        (select (n nodes &aux (k (floor (/ (max (- m window-size) 0) 2))))
-	 ;(print* 'select n nodes k window-size)
 	 (dotimes (i k) (tournament i (- m i 1) nodes))
-	 ;(print* 'select2 nodes)
 	 (let ((i k) (j (- m k)))
 	   (dorepeat (- m (* 2 k))
 	     (if (tournament2 i j nodes)
 		 (incf i)
 		 (decf j)))
-	     ;(print* nodes i j))
-	   ;(print* 'nodes nodes 'i i 'j j)
 	   (assert (= i j) () "logic error - ~S doesn't match ~S" i j)
 	   (cond ((> i n)
 		  (setf m i window-size (min window-size (1- m)))
@@ -135,7 +150,7 @@ else
 					      :displaced-index-offset i)))))))
     (setf nodes (coerce nodes 'vector) m (length nodes))
     (nshuffle nodes)
-    (select n nodes)
+    (when (> m n) (select n nodes))
     (coerce (make-array n :displaced-to nodes) 'list)))
 (define-test restricted-tournament-select 
   (flet ((count (&rest args) 
@@ -156,94 +171,64 @@ else
 		       (and (equal '(3 28 29) (cadr (third groups)))
 			    (equal '(15 16 29) (cadr (fourth groups)))))))))
       
-partition-by-dominance heuristically should start at the worst and compare to
-the best
-(defun partition-by-dominance (nodes)
+;; partition-by-dominance heuristically starts at the worst and compares them
+;; to the best
+(defun partition-by-dominance (nodes &aux (i 0) (j (1- (length nodes))))
+  (setf nodes (sort (make-array (1+ j) :initial-contents nodes)
+		    #'> :key #'pnode-err))
+  (with-collectors (dominated nondominated)
+    (while (<= i j)
+      (when (dorange (k i j t)
+	      (case (dominance (aref nodes k) (aref nodes j))
+		(worse (dominated (aref nodes k))
+		       (setf (aref nodes k) (aref nodes i))
+		       (incf i))
+		(better (dominated (aref nodes j))
+			(return))))
+	(nondominated (aref nodes j)))
+      (decf j))))
+(define-test partition-by-dominance
+  (flet ((check (l d n)
+	   (mvbind (dom nondom)
+	       (partition-by-dominance (mapcar (lambda (x) 
+						 (make-pnode nil nil x 
+							     (reduce #'+ x)))
+					       l))
+	     (assert-true
+	      (set-equal d (mapcar #'pnode-scores dom) :test #'equalp))
+	     (assert-true 
+	      (set-equal n (mapcar #'pnode-scores nondom) :test #'equalp))
+	     (assert-equal (length d) (length dom))
+	     (assert-equal (length n) (length nondom)))))
+    (check '((1 1 1) (0 0 0)) (list (vector 1 1 1)) (list (vector 0 0 0)))
+    (check '((1 1 0) (0 0 1)) nil (list (vector 1 1 0) (vector 0 0 1)))
+    (check '((1 0 1) (0 1 1) (1 1 1) (0 0 1) (1 1 0) (1 1 0) (1 1 1))
+	   (list (vector 1 1 1) (vector 1 1 1) (vector 1 0 1) (vector 0 1 1))
+	   (list (vector 0 0 1) (vector 1 1 0) (vector 1 1 0)))))
 
-)
-
+;;; is x better than y, worse than y, or incomparable (nil)?
+(defun dominance (x y) ;fimxe - this is a hack
+  (setf x (pnode-scores x) y (pnode-scores y))
+  (mvbind (a b) (inclusion-grades x y (ntimes (length x) 0))
+    (cond ((= a 1) (unless (= b 1) 'better))
+	  ((= b 1) 'worse))))
+(define-test dominance
+  (assert-false (dominance (make-pnode nil nil '(1 1 0) 2)
+			   (make-pnode nil nil '(0 0 1) 1))))
+;;; returns (x >= y, y >= x)
 (defun inclusion-grades (x y epsilons &aux (x-only 0) (y-only 0) (both 0))
-  (mapc (lambda (x-err y-err epsilon &aux (d (abs (- x-err ys-err))))
-	  (cond ((<= d epsilon) (incf both))
-		((< x-err y-err) (incf x-only))
-		(t (incf y-only))))
+  (map nil (lambda (x-err y-err epsilon &aux (d (abs (- x-err y-err))))
+	     (cond ((<= d epsilon) (incf both))
+		   ((< x-err y-err) (incf x-only))
+		   (t (incf y-only))))
 	x y epsilons)
-  (if (= both 0) 
-      (values 0 0)
-      (values (/ both (+ x-only both)) (/ both (+ y-only both)))))
+  (if (= both 0)
+      (values (impulse (= y-only 0)) (impulse (= x-only 0)))
+      (values (/ both (+ y-only both)) (/ both (+ x-only both)))))
 
 
+outstanding issues - 
+how to correctly size eta for dominance?
+how to calculate/update utilities?
+how to compute distances between pnodes for rtr?
 
-
-	
-  (bind-collectors (losers doms loser-doms) 
-      (mapc (lambda (node &aux (l (loserp
-  (with-collectors (
-
-the below should be flets of competitive-integrate			      
-
-
-;;; a loser is defined as a solution with a worse than expected score according
-;;; our landscape model
-(defun remove-losers (solutions context)
-  (remove-if (lambda (solution) (< (expr-info-composite-score (car solution))
-				   (expected-score (cdr solution) context)))
-	     solutions))
-
-
-(defun nondominated (pred nodes)
-  (remove-if (lambda (x) 
-	       (some (lambda (y) (and (not eq x y) (funcall pred x y))) nodes))
-	     nodes))
-(defun nondominating-with-size (solutions)
-  (partial-order (lambda (x y)
-		   (and (every #'< (expr-info-scores x) (expr-info-scores y))
-			(< (expr-info-size x) (expr-info-size y))))
-		 solutions :key (compose #'expr-info-scores #'car)))
-
-  
-  
-
-
-  (setf solutions (remove-if (lambda (x) (and (loserp x context)
-					      (not (dominatedp x solutions))
-
-
- &aux chosen rejects)
-  
-
-
-  (cond 
-    ((<= (length solutions) n) (setf chosen (remove-losers solutions)))
-    ((prog-until (>= (length chosen) n)
-       (setf (values chosen rejects)  (nondominating solutions))
-       (setf (values chosen rejects)  (nondominating-with-size ))
-       t)
-     (append (best-n (- n (length chosen)) rejects) chosen))
-    (t (best-n n (compose #'expr-info-composite-score #'car) chosen))
-      
-			      
-  
-
-  ndominated-by ndominates nindifferent
-  nequal nlessthan ngreaterthan
-  prior-prob 
-
-  diversity (set)
-
-  ;remove doms?
-  (setf doms 
-	solutions (remove-if (lambda (sol) (and (dag-source-p sol doms)
-						(not (dag-sink-p sol doms))))
-			     solutions))
-hrmmm is it enough for optimization to just take the top dag? This is like hboa
-with a catastrophe ... what about rtr??
-
-  (lambda (x y) (every #'< x y)(expr-info-scores x) (expr-info-
-			      (mapc 
-
-  (setf solutions 
-	(collecting (mapl (lambda (better)
-						
-	(sort (copy-list solutions) #'< :key #'expr-info-score)
-  (setf 
