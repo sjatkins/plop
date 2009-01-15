@@ -105,14 +105,14 @@ args and markup must be proper lists. |#
 
 ;;; syntactic (tree) distance between expressions, measured in bits
 ;; O(n), where n is # of nodes
-(defun expr-distance (x y)
-  (cond ((atom x) (if (atom y)
-		      (if (equalp x y) 0 1)
-		      (+ (expr-size x) (expr-size y)))
-	((atom y) (+ (prior x *empty-context* type)
-			 (prior y *empty-context* type)))
-	(t (let ((n (if (eql (fn x) (fn y))
-			(progn (assert (not (lambdap x))) 0)
-			1)))
-	   (mapc (lambda 
+;; (defun expr-distance (x y)
+;;   (cond ((atom x) (if (atom y)
+;; 		      (if (equalp x y) 0 1)
+;; 		      (+ (expr-size x) (expr-size y)))
+;; 	((atom y) (+ (prior x *empty-context* type)
+;; 			 (prior y *empty-context* type)))
+;; 	(t (let ((n (if (eql (fn x) (fn y))
+;; 			(progn (assert (not (lambdap x))) 0)
+;; 			1)))
+;; 	   (mapc (lambda 
 		      
