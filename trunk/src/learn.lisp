@@ -134,8 +134,6 @@ for speed have an all-positive marker?
 
 (defun extract-expr (x) foo)
 
-(defun competitive-integrate (new orig) bar)
-
 (defun lsc-eda (scorer dominates neighborhood context type)
   blub)
 
