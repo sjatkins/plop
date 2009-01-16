@@ -40,6 +40,25 @@ some axis and does not exceed y along any axis, then x dominates y, and
 maybe have a weight vector get passed to competitive-integrate, and use it in
 computing inclusion grades and err, rather than have err be a member
 
+
+outstanding issues - 
+how to correctly size eta for dominance?
+how to calculate/update utilities?
+how to compute distances between pnodes for rtr?
+
+fixme - remember that we need to add weights to the dimensions
+these should be stored in the context when the problem is created
+
+idea for macromutation sizing - use a dirichlet distribution with beta set
+according to stuckness (fixme)
+
+--
+
+  in the end I've
+;;; decided to use crisp dominance instead of graded because it has better
+;;; invariance properties (adding constant dimensions doesn't change the
+;;; measure) and no magic number. rtr should do a pretty good job of robustly
+;;; sizing the rest.
 |#
 (in-package :plop)
 
@@ -55,11 +74,32 @@ computing inclusion grades and err, rather than have err be a member
 			  :parent parent 
 			  :scores (coerce scores 'vector)
 			  :err (coerce err 'double-float))
-    (when parent (push node (pnode-children parent)))))
+    (when parent (push it (pnode-children parent)))))
 (defun make-pnode-unless-loser (expr parent context) ;fixme - incomplete
   (make-pnode expr parent 
 	      (current-scores expr context)
 	      (current-err expr context)))
+
+;;; the distance between pnodes x and y is the minimum over all pairwise
+;;; representations of x and y of the hamming distance (with continuous and
+;;; categorical values converted to bits in a somewhat reasonable way) between
+;;; their respective settings, with settings that are absent in one
+;;; representation or the other being considered maximally distant bound is
+;;; given, then bound may be returned if the distance is in fact greater than
+;;; bound (as an efficiency enhancement)
+;;;
+;;; note that this is not a normalized measure
+(defun pnode-distance (x y &key (bound most-positive-single-float))
+  (if (eq x y) 0
+      (let ((xsettings (pnode-settings x)) (ysettings (pnode-settings y)))
+	(mapc (lambda (xset)
+		(mapc (lambda (yset &aux (d (setting-distance xset yset 
+							      :bound bound)))
+			(if (= 0 d)
+			    (return-from pnode-distance 0)
+			    (setf bound (min bound d))))
+		      ysettings))
+	      xsettings))))
 
 #| Psuedocode
 if |nodes|<=n 
@@ -72,15 +112,12 @@ return nondominated U restricted-tournament-select(n - |nondominated|,
 this gets sorted by utility before returning
 |#
 (defun competitive-integrate (n nodes context type)
+  (declare (ignore context type)) ;fixme
   (flet ((rts (n nodes)
-	   (restricted-tournament-select 
-	    n nodes
-	    (lambda (x y) ;fixme - might help to have ptrs to settings?
-			  ;i.e. separate out the existing nodes from the new
-			  ;ones with the same rep
-	      (expr-distance (pnode-expr x) (pnode-expr y) context))
-	    (lambda (x y) (> (pnode-err x) (pnode-err y)))
-	    (ceil (/ (length n) 20)))))
+	   (restricted-tournament-select n nodes #'pnode-distance
+					 (lambda (x y)
+					   (> (pnode-err x) (pnode-err y)))
+					 (ceiling (/ (length n) 20)))))
     (sort (if (<= (length nodes) n)
 	      nodes
 	      (mvbind (dominated nondominated) (partition-by-dominance nodes)
@@ -116,7 +153,12 @@ else
 		    (aref nodes (+ i 1 (random (- j i 1)))))))
        (tournament (i j nodes)
 	 (let* ((node (aref nodes i))
-		(idx (max-position nodes #'> :key (bind distance node /1)
+		(idx (max-position nodes #'> :key 
+				   (let ((bound most-positive-single-float))
+				     (lambda (x)
+				       (aprog1 (funcall distance node x
+							:bound bound)
+					 (setf bound (min bound it)))))
 				   :start (1+ i) :end (+ i window-size 1))))
 	   (if (funcall cmp node (aref nodes idx)) ; does node lose?
 	       (rotatef (aref nodes i) (aref nodes idx) (aref nodes j)) ;loser
@@ -207,9 +249,10 @@ else
 	   (list (vector 0 0 1) (vector 1 1 0) (vector 1 1 0)))))
 
 ;;; is x better than y, worse than y, or incomparable (nil)?
-(defun dominance (x y) ;fimxe - this is a hack
-  (setf x (pnode-scores x) y (pnode-scores y))
-  (mvbind (a b) (inclusion-grades x y (ntimes (length x) 0))
+;;;fimxe - this is a hack - compute epsilons properly
+(defun dominance (x y &aux (xs (pnode-scores x)) (ys (pnode-scores y))
+		  (epsilons (ntimes (length xs) 0)))
+  (mvbind (a b) (inclusion-grades xs ys epsilons)
     (cond ((= a 1) (unless (= b 1) 'better))
 	  ((= b 1) 'worse))))
 (define-test dominance
@@ -225,10 +268,3 @@ else
   (if (= both 0)
       (values (impulse (= y-only 0)) (impulse (= x-only 0)))
       (values (/ both (+ y-only both)) (/ both (+ x-only both)))))
-
-
-outstanding issues - 
-how to correctly size eta for dominance?
-how to calculate/update utilities?
-how to compute distances between pnodes for rtr?
-
