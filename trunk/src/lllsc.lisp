@@ -88,4 +88,6 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 			(n (direct-count rep)) (m (neutral-count rep)))
   (if (< (random (+ n m)) n) ; direct mutation
       (random-neighbor rep)
-      
+
+(defun best-pick (rep context)
+  
