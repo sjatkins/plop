@@ -1,14 +1,23 @@
 #summary Brainstorms and ramblings on interesting (i.e. hard) problems in plop design & implementation
 
+===How do we choose which expressions to use as exemplars for optimization?===
+
+Expressions with corresponding pnodes are ordered by the expected utility using them as exemplars for optimization (utility for short), which is defined as `E*P`. 
+
+`E` is the conditional expectation of `(score - best)/N`, where `score` is the score of the first "significant" improvement we will discover in the course of optimization, `best` is the previous best score of any expression found (or should we instead use the score of the exemplar expression itself?), and `N` is the number of moves (i.e. calls to the fitness function) it takes us to find such an improvement. `E` is conditional on us finding such an improvement.
+
+`P` is the probability of finding such an improvement in the course of optimization.
+
+This may be broken down by considering `score_i`, the score of the expression to be found on the `i`th call to the fitness function, assuming we optimize on the given exemplar (`i >= 1`).
+
+We can now write the utility out as: 
 {{{
 utility = sum_{i=1}^{stuck} P(score_i > best | score_j are <= best, for j<i) *
           [ E(score_i | score_i > best and score_j are <= best, for j<i) - 
             best ] / i
 }}}
 
-The (unconditional) probability P(score_1 > best) can be estimated if
-we can estimate the mean and variance over the neighborhood of the
-point, by averaging over previously sampled points. In a simple model,
+The (unconditional) probability P(score_1 > best) can be estimated based on the expected mean and variance of the score over the neighborhood of the expression, based on previously sampled points. In a simple model,
 the contribution of a point falls off geometrically with distance, and
 is summed over all addresses sampled, discounted by c^edit_distance,
 where c is estimated emperically over the entire domain, and is an
