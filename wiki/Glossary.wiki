@@ -1,12 +1,8 @@
 #summary Lexicon of terms and abbreviations used in the plop code and docs
-= Introduction =
 
-Add your content here.
-
-
-= Details =
-
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+knob 
+settings
+addr
+plop probabilistic learning of programs
+moses meta-optimizing semantic evolutionary search
+pnode
