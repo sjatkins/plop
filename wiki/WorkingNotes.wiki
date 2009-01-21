@@ -8,7 +8,7 @@ Expressions with corresponding pnodes are ordered by the expected utility using 
 
 `P` is the probability of finding such an improvement in the course of optimization.
 
-This may be broken down by considering `score_i`, the score of the expression to be found on the `i`th call to the fitness function, assuming we optimize on the given exemplar (`i >= 1`).
+This may be broken down by considering `score_i`, the score of the expression to be found on the `i`th call to the fitness function, assuming we optimize on the given exemplar (`i >= 1`). Let `stuck` be the number of calls to the fitness function we will consider before giving up (in practice we will use the expected value).
 
 We can now write the utility out as: 
 {{{
@@ -17,8 +17,8 @@ utility = sum_{i=1}^{stuck} P(score_i > best | score_j are <= best, for j<i) *
             best ] / i
 }}}
 
-The (unconditional) probability P(score_1 > best) can be estimated based on the expected mean and variance of the score over the neighborhood of the expression, based on previously sampled points. In a simple model,
-the contribution of a point falls off geometrically with distance, and
-is summed over all addresses sampled, discounted by c^edit_distance,
-where c is estimated emperically over the entire domain, and is an
-indicator of fitness-distance correlation.
+The (unconditional) probability P(score_1 > best) can be estimated based on the expected mean and variance of the score over the neighborhood of the expression, based on previously sampled points. In a simple model, we can consider _all_ of the expressions we have observed, with their relevance to the neighborhood of `expr` falling off geometrically with "distance" from `expr`. So we can use the [http://en.wikipedia.org/wiki/Weighted_mean weighted mean] sum(w_i * score_i) over all points i, where w_i is c^d_i, d_i is the distance from point i to the expr, and c is in (0,1) and is an measure of fitness-distance correlation. We can use the unbiased estimator of the weighted variance, `[1 / (1 - V2)] * sum(w_i * (score_i - mean)^2)`. The wikipedia article linked to above appears to tell us how to compute c (assuming I can pull off a suitable generalization), but I'm too tired to do it now.
+
+What distance metric is appropriate here? In principle one should use a suitable edit distance, but this is much too slow, so we will use minimum distances on addresses instead. Since the contribution of points will fall off very quickly (geometric sequence goes quickly to zero, thank God), we will only look at nearby points, and for these, the difference between address-distance and edit-distance should be too severe.
+
+Now, how to compute the conditional probabilities in the above equation, and the conditional expectations? Too tired...
