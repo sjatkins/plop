@@ -1,0 +1,15 @@
+#summary Brainstorms and ramblings on interesting (i.e. hard) problems in plop design & implementation
+
+{{{
+utility = sum_{i=1}^{stuck} P(score_i > best | score_j are <= best, for j<i) *
+          [ E(score_i | score_i > best and score_j are <= best, for j<i) - 
+            best ] / i
+}}}
+
+The (unconditional) probability P(score_1 > best) can be estimated if
+we can estimate the mean and variance over the neighborhood of the
+point, by averaging over previously sampled points. In a simple model,
+the contribution of a point falls off geometrically with distance, and
+is summed over all addresses sampled, discounted by c^edit_distance,
+where c is estimated emperically over the entire domain, and is an
+indicator of fitness-distance correlation.
