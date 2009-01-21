@@ -1,15 +1,11 @@
 #summary Lexicon of terms and abbreviations used in the plop code and docs
 
-expression A well-typed program tree that is either an atom or a function application. A function application is a proper list (of unshared conses) whose cdr is a list of expressions. An expression may be in `S` format, in which case the cars of function applications must be function atoms (e.g. `(f arg1 ... argN)`),  or in `P` fo
-
-exemplar A specific expression of interest.
-
-knob An independent degree of freedom corresponding to some settings
-
-addr
-
-plop Probabilistic learning of programs.
-
-moses Meta-optimizing semantic evolutionary search.
-
-pnode
+  * *expression* A well-typed program tree that is either an atom or a function application. A function application is a proper list (of unshared conses) whose cdr is a list of expressions. An expression may be in `S` format, in which case the cars of function applications must be a function name symbol (e.g. `(f arg1 ... argN)`), or in `P` format, where the cars of function applications are conses whose cars are function name symbols and whose cdrs are markup lists (e.g. `((f markup) arg1 ... argN)`).
+  * *exemplar* A monomorphically typed expression of interest.
+  * *knob* An independent degree of freedom represented as a vector of mutually exclusive settings that may be applied to a particular exemplar. The first setting in the vector is the default, and the length of the vector must be at least two. The settings in the vector must be semantically distict (i.e. calling on setting followed by another must always modify the exemplar - see below).
+  * *setting* A CL function taking no arguments; calling a setting modifies the corresponding knob's corresponding exemplar in some way as a side-effect, such that it remains an expression and its type remains the same. Settings must be idempotent.
+  * *default-setting* A default setting is a setting that, applied when the exemplar is unmodified, has no effect on it.
+  * *rep* Representation A list of knobs, all acting on the same exemplar.
+  * *addr* Address,
+  * *plop* Probabilistic learning of programs, the name of a software system.
+  * *moses* Meta-optimizing semantic evolutionary search, the name of an algorithm.
