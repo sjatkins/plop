@@ -1,9 +1,15 @@
 #summary Lexicon of terms and abbreviations used in the plop code and docs
 
-expression A program tree that is either an atom or a function application list, with a well-defined type. consisting of a list (with unshared nested conses, with a well-defined type. An expression may be in `S` format, `(f arg1 ... argN)`,  or `P` fo
+expression A well-typed program tree that is either an atom or a function application. A function application is a proper list (of unshared conses) whose cdr is a list of expressions. An expression may be in `S` format, in which case the cars of function applications must be function atoms (e.g. `(f arg1 ... argN)`),  or in `P` fo
+
 exemplar A specific expression of interest.
+
 knob An independent degree of freedom corresponding to some settings
+
 addr
+
 plop Probabilistic learning of programs.
+
 moses Meta-optimizing semantic evolutionary search.
+
 pnode
