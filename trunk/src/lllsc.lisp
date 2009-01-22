@@ -43,28 +43,28 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
   (values done nodes))
 
 (defun optimize (terminationp stuckness-bound rep context &aux (stuckness 0)
-		 (best-err (pnode-err (exemplar rep))) nodes settings x)
+		 (best-err (pnode-err (exemplar rep))) nodes addr x)
   (while (and (< stuckness stuckness-bound)
-	      (setf (values settings x) (sample-pick rep context)))
+	      (setf (values addr x) (sample-pick rep context)))
     (aif (make-pnode-unless-loser x (rep-exemplar rep) context)
 	 (let ((err (pnode-err it)))
-	   (update-frequencies err settings rep context)
+	   (update-frequencies err addr rep context)
 	   (push it nodes)
 	   (when (< err best-err)
 	     (setf stuckness 0 best-err err 
-		   rep (update-exemplar settings rep))))
-	 (update-frequencies-loser settings rep context))
+		   rep (update-exemplar addr rep))))
+	 (update-frequencies-loser addr rep context))
     (awhen (funcall terminationp best-err)
       (return-from optimize (values it nodes))))
   ;; if we reach this point we are either stuck or have completely exhausted
   ;; the neighborhood - the exemplar must be a local minima or near-minima
-  (update-structure settings rep context)
+  (update-structure addr rep context)
   (values nil nodes))
 
 ;;; model updates
-(defun update-frequencies (err settings rep context))
-(defun update-frequencies-loser (settings rep context))
-(defun update-structure (settings rep context))
+(defun update-frequencies (err addr rep context))
+(defun update-frequencies-loser (addr rep context))
+(defun update-structure (addr rep context))
 
 ;;; parameter lookups - fixme
 (defun stuckness-bound (rep context) 
@@ -77,7 +77,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 ;; this function is responsible for ensuring (heuristically) that successive
 ;; calls never return the same solution more than once - returns nil if there
 ;; are no more solutions available
-;; return values are the settings for the rep, and the corresponding expr
+;; return values are the addr and the corresponding expr
 (defun sample-pick (rep context)
   (funcall (if (< (random 1.0) (metropolis-prob rep context))
 	       #'metropolis-pick

@@ -52,6 +52,11 @@ these should be stored in the context when the problem is created
 idea for macromutation sizing - use a dirichlet distribution with beta set
 according to stuckness (fixme)
 
+fixme - if pnode is for an expr, are utilities for exprs or addrs?
+make sure that the utility calculation is invariant up to a
+transformation from one equivalent addr to another -
+i.e. addr-distance must be a real distance metric...
+
 --
 
   in the end I've
@@ -83,23 +88,23 @@ according to stuckness (fixme)
 ;;; the distance between pnodes x and y is the minimum over all pairwise
 ;;; representations of x and y of the hamming distance (with continuous and
 ;;; categorical values converted to bits in a somewhat reasonable way) between
-;;; their respective settings, with settings that are absent in one
-;;; representation or the other being considered maximally distant bound is
+;;; their respective addrs, with indices that are absent in one
+;;; representation or the other being considered maximally distant. If bound is
 ;;; given, then bound may be returned if the distance is in fact greater than
 ;;; bound (as an efficiency enhancement)
 ;;;
 ;;; note that this is not a normalized measure
 (defun pnode-distance (x y &key (bound most-positive-single-float))
   (if (eq x y) 0
-      (let ((xsettings (pnode-settings x)) (ysettings (pnode-settings y)))
-	(mapc (lambda (xset)
-		(mapc (lambda (yset &aux (d (setting-distance xset yset 
-							      :bound bound)))
+      (let ((xaddrs (pnode-addrs x)) (yaddrs (pnode-addrs y)))
+	(mapc (lambda (xaddr)
+		(mapc (lambda (yaddr &aux (d (addr-distance xaddr yaddr 
+							    :bound bound)))
 			(if (= 0 d)
 			    (return-from pnode-distance 0)
 			    (setf bound (min bound d))))
-		      ysettings))
-	      xsettings))))
+		      yaddrs))
+	      xaddrs))))
 
 #| Psuedocode
 if |nodes|<=n 
