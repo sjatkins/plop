@@ -1,26 +1,45 @@
 #summary Brainstorms and ramblings on interesting (i.e. hard) problems in plop design & implementation
 
-===How do we choose which expressions to use as exemplars for optimization?===
+ ===How do we choose which expressions to use as exemplars for optimization?===
 
-Expressions with corresponding pnodes are ordered by the expected utility using them as exemplars for optimization (utility for short), which is defined as `E*P`. 
+ Expressions with corresponding pnodes are ordered by the expected utility using them as exemplars for optimization (utility for short), which is defined as `E*P`.
 
-`E` is the conditional expectation of `(score - best)/N`, where `score` is the score of the first "significant" improvement we will discover in the course of optimization, `best` is the previous best score of any expression found (or should we instead use the score of the exemplar expression itself?), and `N` is the number of moves (i.e. calls to the fitness function) it takes us to find such an improvement. `E` is conditional on us finding such an improvement.
+ `E` is the conditional expectation of `(score - best)/N`, where `score` is the score of the first "significant" improvement we will discover in the course of optimization, `best` is the previous best score of any expression found (or should we instead use the score of the exemplar expression itself?), and `N` is the number of moves (i.e. calls to the fitness function) it takes us to find such an improvement. `E` is conditional on us finding such an improvement.
 
-`P` is the probability of finding such an improvement in the course of optimization.
+ `P` is the probability of finding such an improvement in the course of optimization.
 
-This may be broken down by considering `score_i`, the score of the expression to be found on the `i`th call to the fitness function, assuming we optimize on the given exemplar (`i >= 1`). Let `stuck` be the number of calls to the fitness function we will consider before giving up (in practice we will use the expected value).
+ This may be broken down by considering `score_i`, the score of the expression to be found on the `i`th call to the fitness function, assuming we optimize on the given exemplar (`i >= 1`). Let `stuck` be the number of calls to the fitness function we will consider before giving up (in practice we will use the expected value).
 
-We can now write the utility out as: 
+ We can now write the utility out as:
 {{{
 utility = sum_{i=1}^{stuck} P(score_i > best | score_j are <= best, for j<i) *
-          [ E(score_i | score_i > best and score_j are <= best, for j<i) - 
+          [ E(score_i | score_i > best and score_j are <= best, for j<i) -
             best ] / i
 }}}
 
-The (unconditional) probability P(score_1 > best) can be estimated based on the expected mean and variance of the score over the neighborhood of the expression, based on previously sampled points. In a simple model, we can consider _all_ of the expressions we have observed, with their relevance to the neighborhood of `expr` falling off geometrically with "distance" from `expr`. So we can use the [http://en.wikipedia.org/wiki/Weighted_mean weighted mean] `sum(w_i * score_i)` over all points i, where w_i is c^d_i^, d_i is the distance from point i to the expr, and c is in (0,1) and is an measure of fitness-distance correlation. We can use the unbiased estimator of the weighted variance, `[1 / (1 - V2)] * sum(w_i * (score_i - mean)^2)`. The wikipedia article linked to above appears to tell us how to compute c (assuming I can pull off a suitable generalization), but I'm too tired to do it now.
+ The (unconditional) probability P(score_1 > best) can be estimated based on the expected mean and variance of the score over the neighborhood of the expression, based on previously sampled points. In a simple model, we can consider _all_ of the expressions we have observed, with their relevance to the neighborhood of `expr` falling off geometrically with "distance" from `expr`. So we can use the [http://en.wikipedia.org/wiki/Weighted_mean weighted mean]  `sum(w_i * score_i)` over all points `i`, where `w_i` is `c^d_i`, `d_i` is the distance from point i to the expr, and c is in (0,1) and is an measure of fitness-distance correlation. We can use the unbiased estimator of the weighted variance, `[1 / (1 - V2)] * sum(w_i *(score_i - mean)^2)`.
 
-What distance metric is appropriate here? In principle one should use a suitable edit distance, but this is much too slow, so we will use minimum distances on addresses instead. Since the contribution of points will fall off very quickly (geometric sequence goes quickly to zero, thank God), we will only look at nearby points, and for these, the difference between address-distance and edit-distance should be too severe.
+ For setting c, consider the normalized measure of score divergence between two expressions `i` and `j`, `|s_i - s_j| / max(s_i, s_j)`. Discounting by distance and averaging over all moves from between expressions gives us
 
-Now, how to compute the conditional probabilities in the above equation, and the conditional expectations? Too tired...
 
-todo: make pretty equations with wiki markup subscripts/superscripts, and can we get a sigma anywhere??
+{{{
+delta = (1 / |Moves|) *
+        sum_{(i,j) in Moves} |s_i - s_j| /
+                             (max(s_i, s_j) * distance(i,j))
+}}}
+
+ What distance metric is appropriate here? In principle one should use a suitable edit distance, but this is much too slow, so we will use minimum distances on addresses instead. Since the contribution of points will fall off very quickly (geometric sequence goes quickly to zero), we will only look at nearby points, and for these, the difference between address-distance and edit-distance should not be too severe.
+
+ What about sampling bias in the points that we have scoring information for? This should be aleviated somewhat by the presence of a fixed percentage of metropolis picks and macromutations in our sampling/optimization algorithm. And again, the falloff from distance should be much more significant than the sampling bias.
+
+ We can use our estimated mean and variance for score_1 to compute `P(score_1 > best)`, treating score_1 as following a Gaussian distribution. Now, how to compute the conditional probabilities in the above equation, and the conditional expectations?
+
+ On the one hand, the conditional probabilities may decrease as we discover more bad points in regions we previously considered promising. On the other, future (focused) samples may be better allocated based on this information. Also, in many cases we will be evaluating `k` neighboring points simultaneously (to do parallel processing), and will have no parameter updates inbetween. So for simplicity lets just assume the same distribution. We can then drop the subscripts and get:
+
+
+{{{
+utility = sum_{i=1}^{stuck} P(score > best) *
+                            [ E(score | score > best) - best ] / i
+}}}
+
+ The expectation here can be calculated using the
