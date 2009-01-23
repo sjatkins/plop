@@ -26,6 +26,7 @@ For setting c, consider the normalized measure of score divergence between two e
 delta = (1 / |Moves|) *
         sum_{(i,j) in Moves} |s_i - s_j| /
                              (max(s_i, s_j) * distance(i,j))
+c = 1 - delta
 }}}
 
 What distance metric is appropriate here? In principle one should use a suitable edit distance, but this is much too slow, so we will use minimum distances on addresses instead. Since the contribution of points will fall off very quickly (geometric sequence goes quickly to zero), we will only look at nearby points, and for these, the difference between address-distance and edit-distance should not be too severe.
