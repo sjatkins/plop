@@ -53,7 +53,7 @@ P = P(score > best), E = [ E(score | score > best) -
 utility = (sum_{i=1}^{stuck} binomial(P, stuck, i) * i * [E - best]) / stuck
 }}}
 
-OK, almost done. We still need to estimate stuck. But wait! If we just do a bit more simplification we get:
+OK, almost done. We still need to estimate `stuck`. But wait! If we just do a bit more simplification we get:
 
 {{{
 utility = ([E - best] / stuck) * sum_{i=1}^{stuck} binomial(P, stuck, i) * i
@@ -61,4 +61,4 @@ utility = ([E - best] / stuck) * sum_{i=1}^{stuck} binomial(P, stuck, i) * i
         = [E - best] * P
 }}}
 
-and don't care about stuck. We're done, whew!
+and don't care about `stuck`. And we're done, whew!
