@@ -50,7 +50,7 @@ Now all that is left is to handle the conditional probabilities in our first `ut
 On the one hand, the conditional probabilities may decrease as we discover more bad points in regions we previously considered promising. On the other, future (focused) samples may be better allocated based on this information. Also, in many cases we will be evaluating `k` neighboring points simultaneously (to do parallel processing), and will have no parameter updates inbetween. So for simplicity lets just assume the same distribution, and a fixed number of trials. This raises the possibility of more than one success, so we must use the binomail distribution:
 
 {{{
-P = P(score > best), E = [ E(score | score > best) -
+P = P(score > best), E = E(score | score > best)
 utility = (sum_{i=1}^{stuck} binomial(P, stuck, i) * i * [E - best]) / stuck
 }}}
 
