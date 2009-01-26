@@ -19,6 +19,7 @@ Pnodes are the core structures used for selection, containing:
    independent "error" source (the origin is considered best)
  * err is a composite error measurement used to directly compare solutions
  * expr is the corresponding p-language that is being ranked
+ * 
  * parent is the andecedent of the expr (e.g. the exemplar used to generate it
    in deme-based learning)
  * children are a list of all of the pnodes giving this pnode as their parent
@@ -64,26 +65,38 @@ i.e. addr-distance must be a real distance metric...
 ;;; invariance properties (adding constant dimensions doesn't change the
 ;;; measure) and no magic number. rtr should do a pretty good job of robustly
 ;;; sizing the rest.
+
+make-pnode should be cached to return an extant pnode if one already exists...
+
+
 |#
 (in-package :plop)
 
 (defstruct (pnode (:constructor make-pnode-raw))
   (expr nil :type list)
-  (parent nil :type (or pnode null))
+  (addrs nil :type list)
   (scores (vector) :type (vector number))
   (err (coerce -1.0 'double-float) :type double-float)
-  (utility (coerce 0.0 'double-float) :type double-float)
-  (children nil :type list))
-(defun make-pnode (expr parent scores err)
-  (aprog1 (make-pnode-raw :expr expr 
-			  :parent parent 
-			  :scores (coerce scores 'vector)
-			  :err (coerce err 'double-float))
-    (when parent (push it (pnode-children parent)))))
-(defun make-pnode-unless-loser (expr parent context) ;fixme - incomplete
-  (make-pnode expr parent 
-	      (current-scores expr context)
-	      (current-err expr context)))
+  (utility (coerce 0.0 'double-float) :type double-float))
+(defun make-pnode (expr addr scores err)
+  (make-pnode-raw :expr expr 
+		  :addrs (list addr)
+		  :scores (coerce scores 'vector)
+		  :err (coerce err 'double-float)))
+(let ((scores nil))
+  (defun make-pnode-unless-loser (expr addr context &aux (err 0) (i 0)
+				       (scorers (scorers context))
+				       (n (nscorers context))
+				       (bound (expected-err addr context)))
+    (unless (eql (length scores) n)
+      (setf scores (make-array n)))
+    (mapc (lambda (scorer)
+	    (incf err (setf (elt scores i) (funcall scorer expr)))
+	    (when (>= err bound)
+	      (return-from make-pnode-unless-loser))
+	    (incf i))
+	  scorers)
+    (make-pnode expr addr (copy-seq scores) err)))
 
 ;;; the distance between pnodes x and y is the minimum over all pairwise
 ;;; representations of x and y of the hamming distance (with continuous and
