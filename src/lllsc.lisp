@@ -26,24 +26,24 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 	 (list (make-pnode expr nil 
 			   (compute-scores expr context)
 			   (compute-err expr context)))
-	 (lambda (rep) (optimize terminationp (stuckness-bound rep context)
+	 (lambda (rep) (ll-optimize terminationp (stuckness-bound rep context)
 				 rep context))
 	 context type)
       (values done (mapcar (lambda (x) (cons (pnode-err x) (pnode-expr x)))
 			   nodes)))))
 
-;;; nodes should be ordered ascending by error (i.e. best-to-worst)
-(defun competitive-learn (nodes optimizer context &key (memory-size 1000) 
+(defun competitive-learn (nodes optimizer context type &key (memory-size 1000) 
 			  &aux new-nodes done)
   (while (not done)
     (setf (values done new-nodes)
-	  (funcall optimizer (make-rep (pnode-expr (car nodes)) context type))
+	  (funcall optimizer (make-rep (pnode-expr (max-utility nodes context))
+				       context type))
 	  nodes (competitive-integrate memory-size (nconc nodes new-nodes)
 				       context type)))
   (values done nodes))
 
-(defun optimize (terminationp stuckness-bound rep context &aux (stuckness 0)
-		 (best-err (pnode-err (exemplar rep))) nodes addr x)
+(defun ll-optimize (terminationp stuckness-bound rep context &aux (stuckness 0)
+		 (best-err (pnode-err (rep-exemplar rep))) nodes addr x)
   (while (and (< stuckness stuckness-bound)
 	      (setf (values addr x) (sample-pick rep context)))
     (aif (make-pnode-unless-loser x (rep-exemplar rep) context)
@@ -55,7 +55,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 		   rep (update-exemplar addr rep))))
 	 (update-frequencies-loser addr rep context))
     (awhen (funcall terminationp best-err)
-      (return-from optimize (values it nodes))))
+      (return-from ll-optimize (values it nodes))))
   ;; if we reach this point we are either stuck or have completely exhausted
   ;; the neighborhood - the exemplar must be a local minima or near-minima
   (update-structure addr rep context)
@@ -84,10 +84,9 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 	       #'best-pick)
 	   rep context))
 
-(defun metropolis-pick (rep context &aux 
-			(n (direct-count rep)) (m (neutral-count rep)))
-  (if (< (random (+ n m)) n) ; direct mutation
-      (random-neighbor rep)
+;(defun metropolis-pick (rep context &aux 
+;			(n (direct-count rep)) (m (neutral-count rep)))
+;  (if (< (random (+ n m)) n) ; direct mutation
+;      (random-neighbor rep)
 
-(defun best-pick (rep context)
-  
+;(defun best-pick (rep context)
