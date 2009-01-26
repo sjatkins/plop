@@ -127,7 +127,6 @@ if |nondominated|>=n
    return restricted-tournament-select(n, nondominated)
 return nondominated U restricted-tournament-select(n - |nondominated|, 
                                                    dominated)
-this gets sorted by utility before returning
 |#
 (defun competitive-integrate (n nodes context type)
   (declare (ignore context type)) ;fixme
@@ -136,15 +135,13 @@ this gets sorted by utility before returning
 					 (lambda (x y)
 					   (> (pnode-err x) (pnode-err y)))
 					 (ceiling (/ (length n) 20)))))
-    (sort (if (<= (length nodes) n)
-	      nodes
-	      (mvbind (dominated nondominated) (partition-by-dominance nodes)
-		(let ((m (length nondominated)))
-		  (cond 
-		    ((= m n) nondominated)
-		    ((> m n) (rts n nondominated))
-		    (t (nconc (rts (- n m) dominated) nondominated))))))
-	  #'> :key pnode-utility)))
+    (if (<= (length nodes) n)
+	nodes
+        (mvbind (dominated nondominated) (partition-by-dominance nodes)
+	  (let ((m (length nondominated)))
+	    (cond ((= m n) nondominated)
+		  ((> m n) (rts n nondominated))
+		  (t (nconc (rts (- n m) dominated) nondominated))))))))
 
 #|
 This is not exactly restricted tournament selection - we have a pool of
@@ -220,8 +217,10 @@ else
 		   (sort (apply #'restricted-tournament-select args) #'<))))))
     ;; the following distribution should be ~ 
     ;; ((50 (3 16 29)) (25 (16 28 29)) (12.5 (15 16 29)) (12.5 (3 28 29)))
-    (let ((groups (count 3 '(1 2 3 14 15 16 27 28 29) (lambda (x y)
-							(abs (- x y)))
+    (let ((groups (count 3 '(1 2 3 14 15 16 27 28 29) 
+			 (lambda (x y &key bound) 
+			   (declare (ignore bound))
+			   (abs (- x y)))
 			 #'< 7)))
       (assert-equal 4 (length groups))
       (assert-equal '(3 16 29) (cadar groups))
