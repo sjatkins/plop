@@ -46,7 +46,7 @@ Author: madscience@google.com (Moshe Looks) |#
        ,@body)))
 (defun singlep (lst)
   "Test list for one element."   ; LMH
-  (and (consp lst) (not (cdr lst))))
+  (and (consp lst) (not (cdr lst)))) 
 
 (defun acar (x) (and (consp x) (car x)))
 (defun icar (x) (if (consp x) (car x) x))
@@ -622,35 +622,39 @@ Author: madscience@google.com (Moshe Looks) |#
 ;;; the keys in the hash table are args, the values are nodes in the list
 (defun make-lru (f n &key (test 'equal) (hash-size (ceiling (* 1.35 n))) &aux
 		 q (cache (make-hash-table :test test :size hash-size)))
-  (when (= n 0) (return-from make-lru f))
-  (lambda (&rest args)
-    (labels
-	((make-node () (cons (cons args (apply f args)) (cons nil nil)))
-	 (link (node)
-	   (setf (cadr node) (cadr q) (cddr node) q
-		 (cddadr q) node (cadr q) node q node))
-	 (unlink (node)
-	   (setf (cddadr node) (cddr node) (cadddr node) (cadr node)))	 
-	 (update (node)
-	   (if (eq node cache) ; miss?
-	       (link (if (eql (hash-table-count cache) n) ; replace the lru?
-			 (aprog1 (cadr q)
-			   (remhash (caar it) cache)
-			   (setf (caar it) args (cdar it) (apply f args))
-			   (unlink it))
-			 (make-node)))
-	       (unless (eq node q)
-		 (unlink node)
-		 (link node)
-		 nil))) ; to always return nil
-	 (init-q () (setf q (make-node) (cadr q) q (cddr q) q)))
-      (when (if q (update (gethash args cache cache)) (init-q))
-	(setf (gethash args cache) q))
-      (assert (validate-dll q))
-      (assert (eql (dll-length q) (hash-table-count cache)) ()
-	      "length mismatch; |q|=~S, |cache|=~S" 
-	      (dll-length q) (hash-table-count cache))
-      (cdar q))))
+  (when (= n 0) (return-from make-lru (values f (lambda (&rest args)
+						  (declare (ignore args))))))
+  (values
+   (lambda (&rest args) ; compute if not there & moves args to top of the queue
+     (labels
+	 ((make-node () (cons (cons args (apply f args)) (cons nil nil)))
+	  (link (node)
+	    (setf (cadr node) (cadr q) (cddr node) q
+		  (cddadr q) node (cadr q) node q node))
+	  (unlink (node)
+	    (setf (cddadr node) (cddr node) (cadddr node) (cadr node)))	 
+	  (update (node)
+	    (if (eq node cache)		; miss?
+		(link (if (eql (hash-table-count cache) n) ; replace the lru?
+			  (aprog1 (cadr q)
+			    (remhash (caar it) cache)
+			    (setf (caar it) args (cdar it) (apply f args))
+			    (unlink it))
+			  (make-node)))
+	        (unless (eq node q)
+		  (unlink node)
+		  (link node)
+		  nil)))			; to always return nil
+	  (init-q () (setf q (make-node) (cadr q) q (cddr q) q)))
+       (when (if q (update (gethash args cache cache)) (init-q))
+	 (setf (gethash args cache) q))
+       (assert (validate-dll q))
+       (assert (eql (dll-length q) (hash-table-count cache)) ()
+	       "length mismatch; |q|=~S, |cache|=~S" 
+	       (dll-length q) (hash-table-count cache))
+       (cdar q)))
+   (lambda (&rest args) ; lookup - doesn't compute or move args to top of queue
+     (gethash args cache))))
 (define-test make-lru
   (let* ((ncalls 0) (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3)))
     (assert-equal '(1 2 3 1 2 3) 

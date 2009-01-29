@@ -58,14 +58,14 @@ type. It returns three values - a boolean indicating if the
 				  counter))
 		      (when it (setf counter 0))))))
 
-(defdefbytype define-problem-maker make-problem :args (target cost))
+(defdefbytype define-problem-desc-maker make-problem-desc :args (target cost))
 
-(define-problem-maker function (target cost type &aux 
-				(epsilon (* (if (atom target) 1 
-						(length target))
-					    (epsilon-size (caddr type))))
-				(result-type (caddr type))
-				(arg-names (make-arg-names (cadr type))))
+(define-problem-desc-maker function (target cost type &aux 
+				     (epsilon (* (if (atom target) 1 
+						     (length target))
+						 (epsilon-size (caddr type))))
+				     (result-type (caddr type))
+				     (arg-names (make-arg-names (cadr type))))
   (macrolet ((actual ()
 	       `(with-bound-values *empty-context* arg-names args
 		  (peval (fn-body expr) *empty-context* result-type))))
@@ -88,14 +88,14 @@ type. It returns three values - a boolean indicating if the
 	       target (enum-bindings (length arg-names)))))
      (lambda (err) (<= err epsilon)) cost)))
 
-(define-problem-maker tuple (target cost type &aux
-			     (epsilon (max-element 
-				       (mapcar (lambda (x) 
-						 (if (eq (icar x) num)
-						     (epsilon-size x)
-						     0))
-					       (cdr type))
-				       #'<)))
+(define-problem-desc-maker tuple (target cost type &aux
+				  (epsilon (max-element 
+					    (mapcar (lambda (x) 
+						      (if (eq (icar x) num)
+							  (epsilon-size x)
+							  0))
+						    (cdr type))
+					    #'<)))
   (count-cost (list target) (lambda (err) (<= err epsilon)) cost))
 
 #|

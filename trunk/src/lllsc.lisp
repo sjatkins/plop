@@ -23,11 +23,9 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
   (with-scorers context (cons (bind #'prior-penalty /1 context type) scorers)
     (mvbind (done nodes) 
 	(competitive-learn 
-	 (list (make-pnode expr nil 
-			   (compute-scores expr context)
-			   (compute-err expr context)))
+	 (list (get-pnode expr (make-addr) (current-problem context)))
 	 (lambda (rep) (ll-optimize terminationp (stuckness-bound rep context)
-				 rep context))
+				    rep context))
 	 context type)
       (values done (mapcar (lambda (x) (cons (pnode-err x) (pnode-expr x)))
 			   nodes)))))
@@ -43,10 +41,10 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
   (values done nodes))
 
 (defun ll-optimize (terminationp stuckness-bound rep context &aux (stuckness 0)
-		 (best-err (pnode-err (rep-exemplar rep))) nodes addr x)
+ 		    (best-err (pnode-err (rep-exemplar rep))) nodes addr x)
   (while (and (< stuckness stuckness-bound)
 	      (setf (values addr x) (sample-pick rep context)))
-    (aif (make-pnode-unless-loser x (rep-exemplar rep) context)
+    (aif (get-pnode-unless-loser x addr (current-problem context))
 	 (let ((err (pnode-err it)))
 	   (update-frequencies err addr rep context)
 	   (push it nodes)
@@ -61,7 +59,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
   (update-structure addr rep context)
   (values nil nodes))
 
-;;; model updates
+;;; model updates - fixme
 (defun update-frequencies (err addr rep context))
 (defun update-frequencies-loser (addr rep context))
 (defun update-structure (addr rep context))
@@ -69,7 +67,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 ;;; parameter lookups - fixme
 (defun stuckness-bound (rep context) 
   (declare (ignore context))
-  (nbits rep))
+  (rep-nbits rep))
 (defun metropolis-prob (rep context)
   (declare (ignore rep context))
   0.5)

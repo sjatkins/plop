@@ -14,16 +14,6 @@ limitations under the License.
 
 Author: madscience@google.com (Moshe Looks) 
 
-Pnodes are the core structures used for selection, containing:
- * score vectors used to manage diversity (each dimension represents an
-   independent "error" source (the origin is considered best)
- * err is a composite error measurement used to directly compare solutions
- * expr is the corresponding p-language that is being ranked
- * 
- * parent is the andecedent of the expr (e.g. the exemplar used to generate it
-   in deme-based learning)
- * children are a list of all of the pnodes giving this pnode as their parent
-
 The essential selection problem is, given some large number N of solutions,
 which n (n<<N) to keep in memory, and which k (k<<n, often k=1) to focus cpu 
 on.
@@ -72,53 +62,6 @@ make-pnode should be cached to return an extant pnode if one already exists...
 |#
 (in-package :plop)
 
-(defstruct (pnode (:constructor make-pnode-raw))
-  (expr nil :type list)
-  (addrs nil :type list)
-  (scores (vector) :type (vector number))
-  (err (coerce -1.0 'double-float) :type double-float)
-  (utility (coerce 0.0 'double-float) :type double-float))
-(defun make-pnode (expr addr scores err)
-  (make-pnode-raw :expr expr 
-		  :addrs (list addr)
-		  :scores (coerce scores 'vector)
-		  :err (coerce err 'double-float)))
-(let ((scores nil))
-  (defun make-pnode-unless-loser (expr addr context &aux (err 0) (i 0)
-				       (scorers (scorers context))
-				       (n (nscorers context))
-				       (bound (expected-err addr context)))
-    (unless (eql (length scores) n)
-      (setf scores (make-array n)))
-    (mapc (lambda (scorer)
-	    (incf err (setf (elt scores i) (funcall scorer expr)))
-	    (when (>= err bound)
-	      (return-from make-pnode-unless-loser))
-	    (incf i))
-	  scorers)
-    (make-pnode expr addr (copy-seq scores) err)))
-
-;;; the distance between pnodes x and y is the minimum over all pairwise
-;;; representations of x and y of the hamming distance (with continuous and
-;;; categorical values converted to bits in a somewhat reasonable way) between
-;;; their respective addrs, with indices that are absent in one
-;;; representation or the other being considered maximally distant. If bound is
-;;; given, then bound may be returned if the distance is in fact greater than
-;;; bound (as an efficiency enhancement)
-;;;
-;;; note that this is not a normalized measure
-(defun pnode-distance (x y &key (bound most-positive-single-float))
-  (if (eq x y) 0
-      (let ((xaddrs (pnode-addrs x)) (yaddrs (pnode-addrs y)))
-	(mapc (lambda (xaddr)
-		(mapc (lambda (yaddr &aux (d (addr-distance xaddr yaddr 
-							    :bound bound)))
-			(if (= 0 d)
-			    (return-from pnode-distance 0)
-			    (setf bound (min bound d))))
-		      yaddrs))
-	      xaddrs))))
-
 #| Psuedocode
 if |nodes|<=n 
    return nodes
@@ -134,7 +77,7 @@ return nondominated U restricted-tournament-select(n - |nondominated|,
 	   (restricted-tournament-select n nodes #'pnode-distance
 					 (lambda (x y)
 					   (> (pnode-err x) (pnode-err y)))
-					 (ceiling (/ (length n) 20)))))
+					 (ceiling (/ (length nodes) 20)))))
     (if (<= (length nodes) n)
 	nodes
         (mvbind (dominated nondominated) (partition-by-dominance nodes)
@@ -210,18 +153,18 @@ else
     (when (> m n) (select n nodes))
     (coerce (make-array n :displaced-to nodes) 'list)))
 (define-test restricted-tournament-select 
-  (flet ((count (&rest args) 
+  (flet ((counts (&rest args) 
 	   (group-equals 
 	    (generate
-	     100 (lambda () 
+	     200 (lambda () 
 		   (sort (apply #'restricted-tournament-select args) #'<))))))
     ;; the following distribution should be ~ 
-    ;; ((50 (3 16 29)) (25 (16 28 29)) (12.5 (15 16 29)) (12.5 (3 28 29)))
-    (let ((groups (count 3 '(1 2 3 14 15 16 27 28 29) 
-			 (lambda (x y &key bound) 
-			   (declare (ignore bound))
-			   (abs (- x y)))
-			 #'< 7)))
+    ;; ((100 (3 16 29)) (50 (16 28 29)) (25 (15 16 29)) (25 (3 28 29)))
+    (let ((groups (counts 3 '(1 2 3 14 15 16 27 28 29) 
+			  (lambda (x y &key bound) 
+			    (declare (ignore bound))
+			    (abs (- x y)))
+			  #'< 7)))
       (assert-equal 4 (length groups))
       (assert-equal '(3 16 29) (cadar groups))
       (assert-equal '(16 28 29) (cadadr groups))
@@ -250,7 +193,7 @@ else
   (flet ((check (l d n)
 	   (mvbind (dom nondom)
 	       (partition-by-dominance (mapcar (lambda (x) 
-						 (make-pnode nil nil x 
+						 (make-pnode nil x 
 							     (reduce #'+ x)))
 					       l))
 	     (assert-true
@@ -273,8 +216,8 @@ else
     (cond ((= a 1) (unless (= b 1) 'better))
 	  ((= b 1) 'worse))))
 (define-test dominance
-  (assert-false (dominance (make-pnode nil nil '(1 1 0) 2)
-			   (make-pnode nil nil '(0 0 1) 1))))
+  (assert-false (dominance (make-pnode nil '(1 1 0) 2)
+			   (make-pnode nil '(0 0 1) 1))))
 ;;; returns (x >= y, y >= x)
 (defun inclusion-grades (x y epsilons &aux (x-only 0) (y-only 0) (both 0))
   (map nil (lambda (x-err y-err epsilon &aux (d (abs (- x-err y-err))))
