@@ -115,7 +115,7 @@ Mixed discrete-continuous optimization problems
 	#'< :key #'benchmark-cost))
 
 (defmacro defbenchmark (name &key cost type target start)
-  `(mvbind (scorers terminationp) (make-problem ,target ,cost ,type)
+  `(mvbind (scorers terminationp) (make-problem-desc ,target ,cost ,type)
      (setf (gethash ',name *benchmarks*)
 	   (make-benchmark :name ',name :cost ,cost :type ,type 
 			   :scorers scorers :terminationp terminationp

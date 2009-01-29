@@ -28,7 +28,7 @@ be passed between subprocesses. |#
 (defstruct context
   (symbol-bindings (make-hash-table) :type hash-table)
   (type-map (make-hash-table) :type hash-table)
-  (score-stack nil :type list))
+  (problem-stack nil :type list))
 
 (defconstant +no-value+ 
   (if (boundp '+no-value+) (symbol-value '+no-value+) (gensym)))
@@ -134,32 +134,27 @@ be passed between subprocesses. |#
 	  (assert-false (context-empty-p c))))
       (assert-true (context-empty-p c)))))
 
-;; fixme - this should manage caching with an lru take different equality preds
-;; for different args
+
+(defun current-problem (context) (car (context-problem-stack context)))
+
 (defmacro with-scorers (context scorers &body body)
   `(unwind-protect 
-	(progn (push (make-score-manager ,scorers)
-		     (context-score-stack ,context))
+	(progn (push (make-problem ,scorers)
+		     (context-problem-stack ,context))
 	       ,@body)
-     (pop (context-score-stack ,context))))
+     (pop (context-problem-stack ,context))))
 
-(defstruct (score-manager (:constructor make-score-manager-raw))
-  scorers scores-cache err-cache)
-(defun make-score-manager (scorers &key (lru-size 1000) &aux
-			   (cache (make-lru (lambda (expr) 
-					      (mapcar (bind /1 expr) scorers))
-					    lru-size)))
-  (make-score-manager-raw 
-   :scorers scorers :scores-cache cache 
-   :err-cache (make-lru (lambda (expr) (reduce #'+ (funcall cache expr)))
-			lru-size)))
+;; this is an unnormalized penalty score (zero is best) based on the contextual
+;; prior probability of expr
+;; fixme to take type/context into account
+(defun prior-penalty (expr context type &aux (size (expr-size expr)))
+  (declare (ignore context type))
+  (* 0.5 size (log size 2))) ; times log of size for tree structure
 
-(defun compute-scores (expr context)
-  (funcall (score-manager-scores-cache context) expr))
-(defun compute-err (expr context)
-  (funcall (score-manager-err-cache context) expr))
-
-;; note that because of parent, the caching can't be performed of pnodes...
+;; fixme - maybe adapt this based on the distribution of values observed, with
+;; a type-based default?
+;(defun indiscriminability-levels (context)
+ ; (mapcar 
 
 ;;fixme - when make-pnode-unless-loser is redone, it will need to validate
 ;; for nans, etc
@@ -169,16 +164,3 @@ be passed between subprocesses. |#
 ;; 			   (eq (caddr type) num)) 
 ;; 		      (compose #'not (bind #'eq /1 nan) #'fn-body))
 ;; 		     (t (bind #'identity t))))
-
-
-;; this is an unnormalized penalty score (zero is best) based on the contextual
-;; prior probability of expr
-;; fixme to take type/context into account
-(defun prior (expr context type) 
-  (declare (ignore context type))
-  (log (expr-size expr) 2))
-
-;; fixme - maybe adapt this based on the distribution of values observed, with
-;; a type-based default?
-;(defun indiscriminability-levels (context)
- ; (mapcar 
