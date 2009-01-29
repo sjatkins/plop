@@ -683,9 +683,10 @@ Author: madscience@google.com (Moshe Looks) |#
 ;;; erf = the gaussian error function
 ;;; this is a bit ugly, but I'm not sure what would be a better way
 ;;; to do it...
-(let ((fn (cond ((fboundp 'cl-user::erf) #'cl-user::erf)
+(let ((fn (cond ((fboundp 'cl-user::erf)
+		 (symbol-function (find-symbol "ERF" (find-package 'cl-user))))
 		((fboundp 'maxima-reduce)
-		 (symbol-function (find-symbol "erf" (find-package 'maxima))))
+		 (symbol-function (find-symbol "ERF" (find-package 'maxima))))
 		(t (let ((table (make-array 
 				 300 :initial-contents
  '(0.0d0 0.011283415555849618d0 0.022564574691844943d0

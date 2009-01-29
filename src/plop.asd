@@ -18,22 +18,24 @@ Author: madscience@google.com (Moshe Looks) |#
 (defpackage :plop-asd (:use :cl :cl-utilities :anaphora))
 (setf *print-circle* t) ; markup may contain circular references to parents
 
-(assert (find-package :lisp-unit) nil
-        "Package LISP-UNIT not found. Try (load \"plop-dir/thirdparty/lisp-unit.lisp\")")
+(assert 
+ (find-package :lisp-unit) nil
+ "LISP-UNIT not found. Try (load \"plop-dir/thirdparty/lisp-unit.lisp\")")
 
 (in-package :plop-asd)
 (asdf:defsystem "plop"
+  :description "Plop: Probabilistic Learning Of Programs"
 ;  :depends-on (:cl-utilities :anaphora)
   :serial t
   :components ((:file "packages")
                (:file "util")
 	       (:file "dag")
+	       (:file "syntax")
+	       (:file "markup")
 	       (:file "knobs")
 	       (:file "addr")
 	       (:file "problem")
 	       (:file "context")
-	       (:file "syntax")
- 	       (:file "markup")
 	       (:file "semantics")
 	       (:file "type")
 	       (:file "eval")

@@ -22,4 +22,5 @@ Author: madscience@google.com (Moshe Looks) |#
 	#:anaphora)
   (:export #:reduct #:qreduct 
 	   #:bool-hillclimb-with-target-truth-table
-	   #:num-hillclimb-with-target-values))
+	   #:num-hillclimb-with-target-values
+	   #:run-benchmarks))

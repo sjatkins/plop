@@ -38,12 +38,8 @@ I must have fruit!
 		  :scores (coerce scores 'vector)
 		  :err (coerce err 'double-float)))
 (defun pnode-add-addr (pnode addr) ;inefficient, but maybe ok...
-  (unless (find-if (lambda (addr2) 
-		     (and (eq (addr-parent addr) (addr-parent addr2))
-			  (equal (addr-indices addr) (addr-indices addr2))))
-		   (pnode-addrs pnode))
-    (push addr (pnode-addrs pnode))
-    t))	  
+  (unless (find-if (bind #'addr-equal addr /1) (pnode-addrs pnode))
+    (push addr (pnode-addrs pnode))))
 
 ;;; the distance between pnodes x and y is the minimum over all pairwise
 ;;; representations of x and y of the hamming distance (with continuous and
@@ -70,7 +66,7 @@ I must have fruit!
   (compute-pnode #'identity :type (function (list) pnode))
   (lookup-pnode #'identity :type (function (list) pnode))
   (knobs (vector) :type (vector knob))
-  (scorers nil :type (vector (function (list) number)))
+  (scorers nil :type list)
   (score-buffer nil :type (vector number))
   (err-sum 0.0 :type number) (pnode-count 0 :type (integer 0)))
 
@@ -89,28 +85,34 @@ I must have fruit!
 					  :element-type 'number
 					  :initial-element 0.0))
       (setf (values (problem-compute-pnode it) (problem-lookup-pnode it))
-	  (make-lru (lambda (expr)
-		      (cond (scores (make-pnode expr scores err))
-			    (t (setf err 0.0)      
-			       (make-pnode expr 
-					   (map '(vector number)
-						(lambda (scorer)
-						  (aprog1 (funcall scorer expr)
-						    (incf err it)))
-						scorers)
-					   err)
-			       (incf (problem-err-sum it) err)
-			       (incf (problem-pnode-count it)))))
-		    lru-size :test 'equalp))))
+	    (make-lru (lambda (expr)
+			(prog1 (if scores 
+				   (make-pnode expr scores err)
+				   (progn 
+				     (setf err 0.0)
+				     (make-pnode expr 
+						 (map '(vector number)
+						      (lambda (scorer)
+							(aprog1 (funcall
+								 scorer expr)
+							  (incf err it)))
+						      scorers)
+						 err)))
+			  (incf (problem-err-sum it) err)
+			  (incf (problem-pnode-count it))))
+		      lru-size :test 'equalp))))
   (defun get-pnode (expr addr problem)
     (aprog1 (funcall (problem-compute-pnode problem) expr)
       (pnode-add-addr it addr)))
   (defun get-pnode-unless-loser (expr addr problem &aux (i 0)
 				 (bound (problem-loser-bound problem)))
-    (awhen (funcall (problem-lookup-pnode problem) expr)
-      (pnode-add-addr it addr)
-      (return-from get-pnode-unless-loser (when (< (pnode-err it) bound) it)))
-    (unwind-protect 
+    (mvbind (pnode present) (funcall (problem-lookup-pnode problem) expr)
+      (when present
+	(print 'moo)
+	(pnode-add-addr pnode addr)
+	(return-from get-pnode-unless-loser 
+	  (when (< (pnode-err pnode) bound) pnode))))
+    (unwind-protect
 	(progn (setf scores (problem-score-buffer problem) err 0.0)
 	       (mapc (lambda (scorer)
 		       (incf err (setf (elt scores i) (funcall scorer expr)))
@@ -118,5 +120,35 @@ I must have fruit!
 			 (return-from get-pnode-unless-loser))
 		       (incf i))
 		     (problem-scorers problem))
-	       (get-pnode expr addr err))
+	       (get-pnode expr addr problem))
       (setf scores nil))))
+
+(define-test problem
+  (let ((problem (make-problem (list (lambda (x) (+ (elt x 0) (elt x 1)))
+				     (lambda (x) (* (elt x 0) (elt x 1))))))
+	pnode0 pnode1)
+    (assert-equal 0 (problem-pnode-count problem))
+    
+    (setf pnode0 (get-pnode '(2 2) 'addr0 problem))
+    (assert-equal 1 (problem-pnode-count problem))
+    (assert-equalp 8 (problem-err-sum problem))
+    (assert-equal '(2 2) (pnode-expr pnode0))
+    (assert-equal '(addr0) (pnode-addrs pnode0))
+    (assert-equalp (vector 4 4) (pnode-scores pnode0))
+    (assert-equalp 8 (pnode-err pnode0))
+
+    (setf pnode1 (get-pnode-unless-loser '(3 3) 'addr1 problem))
+    (assert-equal 2 (problem-pnode-count problem))
+    (assert-equalp 23 (problem-err-sum problem))
+    (assert-equal '(3 3) (pnode-expr pnode1))
+    (assert-equal '(addr1) (pnode-addrs pnode1))
+    (assert-equalp (vector 6 9) (pnode-scores pnode1))
+    (assert-equalp 15 (pnode-err pnode1))
+
+    (assert-equal nil (get-pnode-unless-loser '(300 300) 'addrfoo problem))
+    (assert-equal 2 (problem-pnode-count problem))
+    (assert-equalp 23 (problem-err-sum problem))
+
+    (assert-eq pnode0 (get-pnode '(2 2) 'addr2 problem))
+    (assert-equal 2 (problem-pnode-count problem))
+    (assert-equalp 23 (problem-err-sum problem))))

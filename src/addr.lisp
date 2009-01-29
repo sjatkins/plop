@@ -21,6 +21,12 @@ Functions dealing with addresses (encodings of expressions in representations)
 (defstruct addr
   (parent nil :type (or null addr))
   (indices nil :type list))
+(defun addr-equal (x y)
+  (if (addr-p x)
+      (and (addr-p y)
+	   (eq (addr-parent x) (addr-parent y))
+	   (equal (addr-indices x) (addr-indices y)))
+      (equal x y)))
 
 ;outstanding issue: how should indices be represented - knobs or nums?
 ;what is most convenient for representation-building and sampling?
@@ -40,8 +46,8 @@ Functions dealing with addresses (encodings of expressions in representations)
 			 &aux (orig bound))
   (while t
     (cond ((eql (caar x) (caar y))
-	   (decf bound (setting-distance (idx-to-knob context (caar x))
-					 (cdar x) (cdar y)))
+	   (decf bound (knob-setting-distance (idx-to-knob context (caar x))
+					      (cdar x) (cdar y)))
 	   (when (< 0 bound) (return-from indices-distance (- orig bound)))
 	   (setf x (cdr x) y (cdr y)))
 	  ((< (caar x) (caar y)) (setf x (cdr x)))
