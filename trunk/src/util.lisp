@@ -517,6 +517,8 @@ Author: madscience@google.com (Moshe Looks) |#
       (setf data (nconc (random-sample (/ count 4) items) data)))
   (dotimes (x count) (assert-true (< (count x data) (* repeat (/ count 3)))))))
 
+;;; incrementally sampling k items from 0 to n-1 without repeats, in O(k), 
+;;; using O(k) memory
 (defun make-sampler (n &aux (table (make-hash-table)))
   (lambda (&aux (i (random n)) (j (gethash i table)))
     (decf n)

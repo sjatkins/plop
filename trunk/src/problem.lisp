@@ -54,7 +54,7 @@ I must have fruit!
   (if (eq x y) 0
       (let ((xaddrs (pnode-addrs x)) (yaddrs (pnode-addrs y)))
 	(mapc (lambda (xaddr)
-		(mapc (lambda (yaddr &aux (d (addr-distance xaddr yaddr nil;fixme
+		(mapc (lambda (yaddr &aux (d (addr-distance xaddr yaddr
 							    :bound bound)))
 			(if (= 0 d)
 			    (return-from pnode-distance 0)
