@@ -25,7 +25,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 	(competitive-learn 
 	 (list (get-pnode expr (make-addr) (current-problem context)))
 	 (lambda (rep) (ll-optimize terminationp (stuckness-bound rep context)
-				    rep context))
+				    rep context type))
 	 context type)
       (values done (mapcar (lambda (x) (cons (pnode-err x) (pnode-expr x)))
 			   nodes)))))
@@ -40,16 +40,20 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 				       context type)))
   (values done nodes))
 
-(defun ll-optimize (terminationp stuckness-bound rep context &aux (stuckness 0)
- 		    (best-err (pnode-err (rep-exemplar rep))) nodes addr x)
+(defun ll-optimize (terminationp stuckness-bound rep context type &aux 
+		    (stuckness 0) (best-err (pnode-err (rep-exemplar rep)))
+		    nodes addr x)
   (while (and (< stuckness stuckness-bound)
-	      (setf (values addr x) (sample-pick rep context)))
+	      (setf addr (sample-pick rep context))
+	      (prog1 t (setf x (reduct (addr-expr addr (rep-exemplar rep))
+				       context type))))
     (aif (get-pnode-unless-loser x addr (current-problem context))
 	 (let ((err (pnode-err it)))
 	   (update-frequencies err addr rep context)
 	   (push it nodes)
 	   (when (< err best-err)
-	     (setf stuckness 0 best-err err 
+	     (setf stuckness 0 
+		   best-err err 
 		   rep (update-exemplar addr rep))))
 	 (update-frequencies-loser addr rep context))
     (awhen (funcall terminationp best-err)
@@ -68,7 +72,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 (defun stuckness-bound (rep context) 
   (declare (ignore context))
   (rep-nbits rep))
-(defun metropolis-prob (rep context)
+(defun random-pick-prob (rep context)
   (declare (ignore rep context))
   0.5)
 
@@ -77,14 +81,23 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 ;; are no more solutions available
 ;; return values are the addr and the corresponding expr
 (defun sample-pick (rep context)
-  (funcall (if (< (random 1.0) (metropolis-prob rep context))
-	       #'metropolis-pick
-	       #'best-pick)
-	   rep context))
+  (funcall (if (< (random 1.0) (random-pick-prob rep context))
+	       #'random-pick
+	       #'random-pick) ;fimxe - should be best-pick
+	   rep))
 
-;(defun metropolis-pick (rep context &aux 
-;			(n (direct-count rep)) (m (neutral-count rep)))
-;  (if (< (random (+ n m)) n) ; direct mutation
-;      (random-neighbor rep)
+; fixme to keep track of what's been picked - for now we just pick a random
+; distance between 1 and 3 and then a random item
+(defun random-pick (rep &aux (d (1+ (random 3))) 
+		    (s (make-sampler (length (rep-knobs rep)))))
+  (make-addr (rep-addr rep)
+	     (generate d (lambda (&aux (k (elt (rep-knobs rep) (funcall s))))
+			   (cons k (1+ (random (1- (knob-arity k)))))))))
+
+
+;		    (n (direct-count rep)) (m (neutral-count rep)))
+;  (if (rep-
+; (if (< (random (+ n m)) n) ; direct mutation
+;     (random-neighbor rep)
 
 ;(defun best-pick (rep context)

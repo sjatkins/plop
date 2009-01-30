@@ -18,62 +18,67 @@ Functions dealing with addresses (encodings of expressions in representations)
 |#
 (in-package :plop)
 
-(defstruct addr
+(defstruct (addr (:constructor make-addr-raw))
   (parent nil :type (or null addr))
-  (indices nil :type list))
+  (indices (make-hash-table :key 'eq) :type hash-table))
+(defun make-addr (parent indices-seq)
+  (aprog1 (make-addr-raw :parent parent)
+    (map nil (lambda (pair) 
+	       (setf (gethash (car pair) (addr-indices it)) (cdr pair)))
+	 indices-seq)))
 (defun addr-equal (x y)
   (if (addr-p x)
       (and (addr-p y)
 	   (eq (addr-parent x) (addr-parent y))
-	   (equal (addr-indices x) (addr-indices y)))
+	   (equalp (addr-indices x) (addr-indices y)))
       (equal x y)))
 
-;outstanding issue: how should indices be represented - knobs or nums?
-;what is most convenient for representation-building and sampling?
-;do they need to be sorted? should they be vectors?
-;in any case we shouldn't need context here... fixme
-;same thing with setting distance - should be part of the knob?
-;slippage... maybe different subtypes (n-ways, linear, n-dimensional)?
+(defun enter-addr (addr)
+  (maphash (lambda (knob setting) (funcall knob setting)) (addr-indices addr)))
+(defun leave-addr (addr)
+  (maphash-keys (lambda (knob) (funcall knob 0)) (addr-indices addr)))
+(defun addr-expr (addr expr)
+  (unwind-protect (progn (enter-addr addr) (canon-clean expr))
+    (leave-addr addr)))
 
-(defun indices-magnitude (x context &key (bound most-positive-single-float))
+(defun indices-magnitude (x &key (bound most-positive-single-float))
   (reduce (lambda (n idx)
-	    (aprog1 (+ n (knob-nbits (idx-to-knob context (car idx))))
+	    (aprog1 (+ n (knob-nbits (car idx)))
 	      (when (> it bound) 
 		(return-from indices-magnitude it))))
 	  x :initial-value 0))
 
-(defun indices-distance (x y context &key (bound most-positive-single-float)
+(defun indices-distance (x y &key (bound most-positive-single-float)
 			 &aux (orig bound))
   (while t
     (cond ((eql (caar x) (caar y))
-	   (decf bound (knob-setting-distance (idx-to-knob context (caar x))
-					      (cdar x) (cdar y)))
+	   (decf bound (knob-setting-distance (caar x) (cdar x) (cdar y)))
 	   (when (< 0 bound) (return-from indices-distance (- orig bound)))
 	   (setf x (cdr x) y (cdr y)))
 	  ((< (caar x) (caar y)) (setf x (cdr x)))
 	  (t (setf y (cdr y))))
-    (awhen (cond ((not x) (indices-magnitude y context :bound bound))
-		 ((not y) (indices-magnitude x context :bound bound)))
+    (awhen (cond ((not x) (indices-magnitude y :bound bound))
+		 ((not y) (indices-magnitude x :bound bound)))
       (return-from indices-distance (+ it (- orig bound))))))
   
-(defun addr-magnitude (addr context &key (bound most-positive-single-float))
+(defun addr-magnitude (addr &key (bound most-positive-single-float))
   (if (<= bound 0) 
       bound
-      (let ((d (indices-magnitude (addr-indices addr) context :bound bound)))
+      (let ((d (indices-magnitude (addr-indices addr) :bound bound)))
 	(awhen (and (< d bound) (addr-parent addr))
-	  (incf d (addr-magnitude it context :bound (- bound d))))
+	  (incf d (addr-magnitude it :bound (- bound d))))
 	d)))
 
-(defun addr-distance (x y context &key (bound most-positive-single-float) &aux
+(defun addr-distance (x y &key (bound most-positive-single-float) &aux
 		      (px (addr-parent x)) (py (addr-parent y)) (orig bound))
   (while (< 0 bound)
     (awhen (cond ((or (eq px py) (and (not px) (not py)))
-		  (indices-distance (addr-indices x) (addr-indices y) context 
+		  (indices-distance (addr-indices x) (addr-indices y) 
 				    :bound bound))
-		 ((not px) (addr-magnitude y context :bound bound))
-		 ((not py) (addr-magnitude x context :bound bound)))
+		 ((not px) (addr-magnitude y :bound bound))
+		 ((not py) (addr-magnitude x :bound bound)))
       (return-from addr-distance (+ it (- orig bound))))
-    (decf bound (indices-distance (addr-indices x) (addr-indices y) context
+    (decf bound (indices-distance (addr-indices x) (addr-indices y)
 				  :bound bound))
     (setf x px y py px (addr-parent x) py (addr-parent y)))
   (- orig bound))

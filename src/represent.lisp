@@ -16,6 +16,7 @@ Author: madscience@google.com (Moshe Looks) |#
 (in-package :plop)
 
 ;; (defstruct rep
+;;  (addr
 ;;   (offset nil :type (integer 0))
 ;;   (knobs nil :type (vector knob)))
 
@@ -25,8 +26,11 @@ Author: madscience@google.com (Moshe Looks) |#
 ;;   ;; context housekeeping
 ;;   (setf (rep-offset rep) (problem-nknobs problem))
 ;;   (incf (problem-nknobs problem) (length rep-knobs rep)))
-;;
+
 ;; (defun rep-nbits (rep)
+;;   (reduce #'+ (rep-knobs rep) :initial-value 0 :key #'knob-nbits))
+
+;; (defun 
 
 
 
