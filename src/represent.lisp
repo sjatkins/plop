@@ -15,24 +15,22 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) |#
 (in-package :plop)
 
-;; (defstruct rep
-;;  (addr
-;;   (offset nil :type (integer 0))
-;;   (knobs nil :type (vector knob)))
-
-;; (defun make-rep (expr context type &aux 
-;; 		 (reps (problem-reps (car (context-problem-stack context)))))
-;;   ...
-;;   ;; context housekeeping
-;;   (setf (rep-offset rep) (problem-nknobs problem))
-;;   (incf (problem-nknobs problem) (length rep-knobs rep)))
-
-;; (defun rep-nbits (rep)
-;;   (reduce #'+ (rep-knobs rep) :initial-value 0 :key #'knob-nbits))
-
-;; (defun 
-
-
+;;; when creating a rep you need to pass it the exemplar pnode, and the
+;;; underlying cexpr (in canonical form) which is to be munged when knobs
+;;; are twiddled
+(defstruct (rep (:include pnode)
+		(:constructor make-rep
+		 (mpop pnode expr &aux (addrs (pnode-addrs pnode))
+		  (scores (pnode-scores pnode)) (err (pnode-err pnode))
+		  (knobs (compute-knobs mpop expr)))))
+  (knobs nil :type (vector knob)))
+(defun rep-nbits (rep)
+  (reduce #'+ (rep-knobs rep) :initial-value 0 :key #'knob-nbits))
+(defun compute-knobs (mpop expr)
+  (list pop expr)) ;;;fixme! how to mesh expr and cexpr?
+;  (enum-knobs (expr (mpop-context mpop) (mpop-type mpop))))
+;						(pnode-expr exemplar)
+;						cexpr context type)))
 
 (defdefbytype defknobs knobs-at)
 
@@ -91,15 +89,6 @@ Author: madscience@google.com (Moshe Looks) |#
 		      (apply #'make-inserter-knob expr (args expr)
 			     (numarg-terms expr var context)))
 		    (keys (symbols-with-type num context)))))))
-
-;;; expr should generally be at's parent
-;; (defun make-tuple-knob expr idx
-
-;; (expr at &rest settings &aux (original (car at)))
-;;   (apply #'vector 
-;; 	 (lambda () (unmung expr) (rplaca at original))
-;; 	 (mapcar (lambda (setting) (lambda () (mung expr) (rplaca at setting)))
-;; 		 settings)))
 
 (defknobs tuple (expr context type)
   (declare (ignore context))

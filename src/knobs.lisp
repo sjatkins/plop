@@ -29,8 +29,7 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun knob-nbits (knob) (log (length knob) 2))
 
 (defun knob-setting-distance (knob idx1 idx2) ;fixme
-  (declare (ignore idx1 idx2))
-  (knob-nbits knobs))
+  (if (eql idx1 idx2) 0 (knob-nbits knob)))
 
 ;;; remember - generally one wants to call reduct on the settings before
 ;;; using them to create knobs

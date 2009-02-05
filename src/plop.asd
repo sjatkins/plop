@@ -47,6 +47,7 @@ Author: madscience@google.com (Moshe Looks) |#
 ;	       (:file "maxima")
 	       (:file "list")
 	       (:file "canonize")
+	       (:file "mpop")
 	       (:file "represent")
 	       (:file "search")
 	       (:file "hillclimb")

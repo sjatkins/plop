@@ -144,7 +144,6 @@ numerical constants. So the full canonical form for (+ c x y) is:
 	  (* 0 (+ 0 (exp (+ 0))) (+ 1 (log (+ 1))) (+ 1 (sin (+ 0))))
           (* 1 (+ 0 (exp (+ 0))) (+ 1 (log (+ 1))) (+ 1 (sin (+ 0))) x)
           (* 1 (+ 0 (exp (+ 0))) (+ 1 (log (+ 1))) (+ 1 (sin (+ 0))) y)))
-
 |#
 (defcanonizer num (expr context)
   (labels ((nccons (op args at)

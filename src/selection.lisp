@@ -20,20 +20,16 @@ on.
 
 The basic model for deciding which solutions are worth keeping depends of
 commensurability - given two score vectors x and y, if x is less than y along
-some axis and does not exceed y along any axis, then x dominates y, and 
+some axis and does not exceed y along any axis, then x dominates y, and we can
+confidently discard y in favor of x. 
 
- ndominated-by ndominates nindifferent
-  nequal nlessthan ngreaterthan
-  prior-prob 
+To obtain exactly n soluion, we first partition the population into dominated
+and nondominated subsets. In principle the cardinality of nondominated may
+range from 1 (a single solution dominates all the others to N (no solution
+dominates any other). If we get lucky and |dominated| == n, then we are
+done. If not, we follow the psuedocode in the comment below (for the function
+competitive-integrate).
 
-  diversity (set)
-
-maybe have a weight vector get passed to competitive-integrate, and use it in
-computing inclusion grades and err, rather than have err be a member
-
-
-outstanding issues - 
-how to correctly size eta for dominance?
 how to calculate/update utilities?
 how to compute distances between pnodes for rtr?
 
@@ -71,8 +67,7 @@ if |nondominated|>=n
 return nondominated U restricted-tournament-select(n - |nondominated|, 
                                                    dominated)
 |#
-(defun competitive-integrate (n nodes context type)
-  (declare (ignore context type)) ;fixme
+(defun competitive-integrate (n nodes)
   (flet ((rts (n nodes)
 	   (restricted-tournament-select n nodes #'pnode-distance
 					 (lambda (x y)
@@ -193,8 +188,7 @@ else
   (flet ((check (l d n)
 	   (mvbind (dom nondom)
 	       (partition-by-dominance (mapcar (lambda (x) 
-						 (make-pnode nil x 
-							     (reduce #'+ x)))
+						 (make-pnode x (reduce #'+ x)))
 					       l))
 	     (assert-true
 	      (set-equal d (mapcar #'pnode-scores dom) :test #'equalp))
@@ -216,8 +210,8 @@ else
     (cond ((= a 1) (unless (= b 1) 'better))
 	  ((= b 1) 'worse))))
 (define-test dominance
-  (assert-false (dominance (make-pnode nil '(1 1 0) 2)
-			   (make-pnode nil '(0 0 1) 1))))
+  (assert-false (dominance (make-pnode '(1 1 0) 2)
+			   (make-pnode '(0 0 1) 1))))
 ;;; returns (x >= y, y >= x)
 (defun inclusion-grades (x y epsilons &aux (x-only 0) (y-only 0) (both 0))
   (map nil (lambda (x-err y-err epsilon &aux (d (abs (- x-err y-err))))
