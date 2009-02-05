@@ -18,6 +18,8 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-constant +largest-exp-arg+ 80.0)
 (define-constant +smallest-log-arg+ 0.0001)
 
+(defparameter *peval-counter* 0) ;fixme - need to increment this appropriately!
+
 (defun convert-bool-atom (atom) (ecase atom ((t) true) ((nil) false)))
 (labels ((find-mapper (type)
 	   (if (atom type)

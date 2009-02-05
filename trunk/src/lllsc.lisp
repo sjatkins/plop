@@ -18,55 +18,59 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 |#
 (in-package :plop)
 
-;;fixme - add a scorer for slowness
-(defun lllsc-benchmarker (scorers terminationp expr context type)
-  (with-scorers context (cons (bind #'prior-penalty /1 context type) scorers)
-    (mvbind (done nodes) 
-	(competitive-learn 
-	 (list (get-pnode expr (make-addr) (current-problem context)))
-	 (lambda (rep) (ll-optimize terminationp (stuckness-bound rep context)
-				    rep context type))
-	 context type)
-      (values done (mapcar (lambda (x) (cons (pnode-err x) (pnode-expr x)))
-			   nodes)))))
+(defun lllsc-benchmarker (scorers terminationp expr context type &aux
+			  (mpop (make-mpop expr context type)))
+  (with-scorers context (cons (lambda (expr) 
+				(setf *peval-counter* 0)
+				(prior-penalty /1 context type))
+			      (reverse (cons (lambda (expr)
+					       (declare (ignore expr))
+					       (log (+ *peval-counter* 2) 2))
+					     scorers)))
 
-(defun competitive-learn (nodes optimizer context type &key (memory-size 1000) 
-			  &aux new-nodes done)
-  (while (not done)
-    (setf (values done new-nodes)
-	  (funcall optimizer (make-rep (pnode-expr (max-utility nodes context))
-				       context type))
-	  nodes (competitive-integrate memory-size (nconc nodes new-nodes)
-				       context type)))
-  (values done nodes))
+    (push (get-rep mpop (get-pnode expr nil (current-problem context)) expr)
+	  (mpop-pnodes mpop))
+    (values (competitive-learn mpop 
+			       (bind #'ll-optimize mpop /1 terminationp))
+	    (map 'list (lambda (x) (cons (pnode-err x) (pnode-expr x)))
+		 (mpop-pnodes mpop)))))
 
-(defun ll-optimize (terminationp stuckness-bound rep context type &aux 
-		    (stuckness 0) (best-err (pnode-err (rep-exemplar rep)))
-		    nodes addr x)
+(defun competitive-learn (mpop optimizer)
+  (do (done nodes) (done done)
+    (setf (values done nodes)
+	  (funcall optimizer (get-rep mpop (max-utility (mpop-pnodes mpop)
+						       (mpop-context mpop))))
+	  (mpop-pnodes mpop)
+	  (competitive-integrate (mpop-memory-size mpop)
+				 (nconc (mpop-pnodes mpop) nodes)))))
+
+(defun ll-optimize (mpop rep terminationp &aux (stuckness 0)
+		    (context (mpop-context mpop))
+		    (type (mpop-type mpop))
+		    (stuckness-bound (stuckness-bound rep context))
+		    (best-err (pnode-err (rep-exemplar rep)))
+		    twiddles expr nodes)
   (while (and (< stuckness stuckness-bound)
-	      (setf addr (sample-pick rep context))
-	      (prog1 t (setf x (reduct (addr-expr addr (rep-exemplar rep))
-				       context type))))
-    (aif (get-pnode-unless-loser x addr (current-problem context))
+	      (setf twiddles (sample-pick rep context)))
+    (setf expr (reduct (make-expr mpop twiddles) context type))
+    (aif (get-pnode-unless-loser expr twiddles (current-problem context))
 	 (let ((err (pnode-err it)))
-	   (update-frequencies err addr rep context)
+	   (update-frequencies err twiddles rep context)
 	   (push it nodes)
 	   (when (< err best-err)
-	     (setf stuckness 0 
-		   best-err err 
-		   rep (update-exemplar addr rep))))
-	 (update-frequencies-loser addr rep context))
+	     (setf stuckness 0 best-err err rep (get-rep mpop it expr))))
+	 (update-frequencies-loser twiddles rep context))
     (awhen (funcall terminationp best-err)
       (return-from ll-optimize (values it nodes))))
   ;; if we reach this point we are either stuck or have completely exhausted
   ;; the neighborhood - the exemplar must be a local minima or near-minima
-  (update-structure addr rep context)
+  (update-structure twiddles rep context)
   (values nil nodes))
 
 ;;; model updates - fixme
-(defun update-frequencies (err addr rep context))
-(defun update-frequencies-loser (addr rep context))
-(defun update-structure (addr rep context))
+(defun update-frequencies (err twiddles rep context))
+(defun update-frequencies-loser (twiddles rep context))
+(defun update-structure (twiddles rep context))
 
 ;;; parameter lookups - fixme
 (defun stuckness-bound (rep context) 
@@ -79,7 +83,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 ;; this function is responsible for ensuring (heuristically) that successive
 ;; calls never return the same solution more than once - returns nil if there
 ;; are no more solutions available
-;; return values are the addr and the corresponding expr
+;; return value is the twiddles
 (defun sample-pick (rep context)
   (funcall (if (< (random 1.0) (random-pick-prob rep context))
 	       #'random-pick
@@ -90,9 +94,8 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 ; distance between 1 and 3 and then a random item
 (defun random-pick (rep &aux (d (1+ (random 3))) 
 		    (s (make-sampler (length (rep-knobs rep)))))
-  (make-addr (rep-addr rep)
-	     (generate d (lambda (&aux (k (elt (rep-knobs rep) (funcall s))))
-			   (cons k (1+ (random (1- (knob-arity k)))))))))
+  (generate d (lambda (&aux (k (elt (rep-knobs rep) (funcall s))))
+		(cons k (1+ (random (1- (knob-arity k))))))))
 
 
 ;		    (n (direct-count rep)) (m (neutral-count rep)))

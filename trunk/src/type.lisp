@@ -256,20 +256,23 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
 (defun value-type (value) ; error if no type found
   (assert (lookup-value-type value) () "no type found for value ~S" value)
   (lookup-value-type value))
-  
-(let ((type-finders 
-       (init-hash-table
-	`((car ,(lambda (fn args) (cadr (funcall fn (car args)))))
-	  (cdr ,(lambda (fn args) (cadr (funcall fn (car args)))))
-	  (list ,(lambda (fn args) 
-			 `(list ,(reduce #'union-type args :key fn))))
-	  (append ,(lambda (fn args) (reduce #'union-type args :key fn)))
-	  (tuple ,(lambda (fn args) `(tuple ,@(mapcar fn args))))
-	  (lambda ,(lambda (fn args)
-		     (declare (ignore fn))
-		     (lambda-type (car args) (cadr args))))
-	  (if ,(lambda (fn args) (union-type (funcall fn (cadr args))
-					     (funcall fn (caddr args)))))))))
+    
+(let ((type-finders
+       (aprog1 (make-hash-table :test 'eq)
+	 (mapc (bind #'apply #'sethash it /1)
+	       `((car ,(lambda (fn args) (cadr (funcall fn (car args)))))
+		 (cdr ,(lambda (fn args) (cadr (funcall fn (car args)))))
+		 (list ,(lambda (fn args) 
+			  `(list ,(reduce #'union-type args :key fn))))
+		 (append ,(lambda (fn args)
+			    (reduce #'union-type args :key fn)))
+		 (tuple ,(lambda (fn args) `(tuple ,@(mapcar fn args))))
+		 (lambda ,(lambda (fn args)
+			    (declare (ignore fn))
+			    (lambda-type (car args) (cadr args))))
+		 (if ,(lambda (fn args) 
+			(union-type (funcall fn (cadr args))
+				    (funcall fn (caddr args))))))))))
   (labels ((easy-lookup-fn (fn)
 	     (case fn
 	       ((and or not <) bool)

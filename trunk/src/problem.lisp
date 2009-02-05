@@ -21,25 +21,35 @@ I must have fruit!
 ;;; Pnodes are the core structures used for ranking and selecting solutions to
 ;;; problems, containing:
 ;;;
-;;;  * expr is the p-language expression that is being ranked
-;;;  * addrs is the list of addresses that correspond to the expressions 
+;;;  * addrs is the set of addresses that correspond to the expressions 
 ;;;  * score vectors used to manage diversity (each dimension represents an
 ;;;    independent "error" source (the origin is considered best)
 ;;;  * err is a composite error measurement used to directly compare solutions
 ;;;  * are a list of all of the pnodes giving this pnode as their parent
 
+;; note: addr needs to have only one parent! fixme
+;; does addr need to store equivalences to self, or just pnode?
+;; work out the distance algorithm for real this time and see...
+;; also consider computing max-util, as that will need it
+
+;!!!addr-set idea: order these by shortest?
+(defstruct (addr-set (:constructor make-addr-set (addrs)))
+  (addrs nil :type list))
+
+
+
 (defstruct (pnode (:constructor make-pnode-raw))
-  (expr nil :type list)
-  (addrs nil :type list)
+  (addrs nil :type addr-set);fixme - how are addr-sets managed?
   (scores (vector) :type (vector number))
   (err (coerce -1.0 'double-float) :type double-float))
-(defun make-pnode (expr scores err)
-  (make-pnode-raw :expr expr 
+(defun make-pnode (scores err)
+  (make-pnode-raw :addrs (make-addr-set nil)
 		  :scores (coerce scores 'vector)
 		  :err (coerce err 'double-float)))
 (defun pnode-add-addr (pnode addr) ;inefficient, but maybe ok...
-  (unless (find-if (bind #'addr-equal addr /1) (pnode-addrs pnode))
-    (push addr (pnode-addrs pnode))))
+  (unless (find-if (bind #'addr-equal addr /1) (addr-set-addrs
+						(pnode-addrs pnode)))
+    (push addr (addr-set-addrs (pnode-addrs pnode)))))
 
 ;;; the distance between pnodes x and y is the minimum over all pairwise
 ;;; representations of x and y of the hamming distance (with continuous and
@@ -52,7 +62,8 @@ I must have fruit!
 ;;; note that this is not a normalized measure
 (defun pnode-distance (x y &key (bound most-positive-single-float))
   (if (eq x y) 0
-      (let ((xaddrs (pnode-addrs x)) (yaddrs (pnode-addrs y)))
+      (let ((xaddrs (addr-set-addrs (pnode-addrs x)))
+	    (yaddrs (addr-set-addrs (pnode-addrs y))))
 	(mapc (lambda (xaddr)
 		(mapc (lambda (yaddr &aux (d (addr-distance xaddr yaddr
 							    :bound bound)))
@@ -65,7 +76,6 @@ I must have fruit!
 (defstruct (problem (:constructor make-problem-raw))
   (compute-pnode #'identity :type (function (list) pnode))
   (lookup-pnode #'identity :type (function (list) pnode))
-  (knobs (vector) :type (vector knob))
   (scorers nil :type list)
   (score-buffer nil :type (vector number))
   (err-sum 0.0 :type number) (pnode-count 0 :type (integer 0)))
@@ -87,11 +97,10 @@ I must have fruit!
       (setf (values (problem-compute-pnode it) (problem-lookup-pnode it))
 	    (make-lru (lambda (expr)
 			(prog1 (if scores 
-				   (make-pnode expr scores err)
+				   (make-pnode scores err)
 				   (progn 
 				     (setf err 0.0)
-				     (make-pnode expr 
-						 (map '(vector number)
+				     (make-pnode (map '(vector number)
 						      (lambda (scorer)
 							(aprog1 (funcall
 								 scorer expr)
@@ -108,7 +117,6 @@ I must have fruit!
 				 (bound (problem-loser-bound problem)))
     (mvbind (pnode present) (funcall (problem-lookup-pnode problem) expr)
       (when present
-	(print 'moo)
 	(pnode-add-addr pnode addr)
 	(return-from get-pnode-unless-loser 
 	  (when (< (pnode-err pnode) bound) pnode))))
@@ -132,16 +140,14 @@ I must have fruit!
     (setf pnode0 (get-pnode '(2 2) 'addr0 problem))
     (assert-equal 1 (problem-pnode-count problem))
     (assert-equalp 8 (problem-err-sum problem))
-    (assert-equal '(2 2) (pnode-expr pnode0))
-    (assert-equal '(addr0) (pnode-addrs pnode0))
+    (assert-equal '(addr0) (addr-set-addrs (pnode-addrs pnode0)))
     (assert-equalp (vector 4 4) (pnode-scores pnode0))
     (assert-equalp 8 (pnode-err pnode0))
 
     (setf pnode1 (get-pnode-unless-loser '(3 3) 'addr1 problem))
     (assert-equal 2 (problem-pnode-count problem))
     (assert-equalp 23 (problem-err-sum problem))
-    (assert-equal '(3 3) (pnode-expr pnode1))
-    (assert-equal '(addr1) (pnode-addrs pnode1))
+    (assert-equal '(addr1) (addr-set-addrs (pnode-addrs pnode1)))
     (assert-equalp (vector 6 9) (pnode-scores pnode1))
     (assert-equalp 15 (pnode-err pnode1))
 
