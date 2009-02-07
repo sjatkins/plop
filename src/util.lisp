@@ -241,6 +241,11 @@ Author: madscience@google.com (Moshe Looks) |#
     (check '(4) '(4))
     (check '(1 2) '(1 1 2))))
 
+;;; not very efficient...
+(defun uniq (seq &key (test 'eql) &aux (table (make-hash-table :test test)))
+  (map 'nil (lambda (x) (setf (gethash table x) t)) seq)
+  (coerce (collecting (maphash-keys (collector) table)) (type-of seq)))
+
 (defun map-adjacent (result-type fn seq)
   (map result-type fn seq 
        (etypecase seq

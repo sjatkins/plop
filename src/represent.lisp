@@ -15,19 +15,23 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) |#
 (in-package :plop)
 
-;;; when creating a rep you need to pass it the exemplar pnode, and the
-;;; underlying cexpr (in canonical form) which is to be munged when knobs
-;;; are twiddled
 (defstruct (rep (:include pnode)
-		(:constructor make-rep
-		 (mpop pnode expr &aux (addrs (pnode-addrs pnode))
+		(:constructor make-rep 
+		 (pnode context type &key 
+		  (expr (reduct (make-expr pnode) context type))
+		  &aux (addrs (pnode-addrs pnode))
 		  (scores (pnode-scores pnode)) (err (pnode-err pnode))
-		  (knobs (compute-knobs mpop expr)))))
+		  (cexpr (canonize expr context type))
+		  (knobs (compute-knobs pnode cexpr context type)))))
+  (cexpr nil :type list);fixme canonical-expr)
   (knobs nil :type (vector knob)))
+(defun get-rep (pnode context type)
+  (if (rep-p pnode) pnode (make-rep pnode context type)))
 (defun rep-nbits (rep)
   (reduce #'+ (rep-knobs rep) :initial-value 0 :key #'knob-nbits))
-(defun compute-knobs (mpop expr)
-  (list pop expr)) ;;;fixme! how to mesh expr and cexpr?
+(defun compute-knobs (pnode cexpr context type)
+  (list pnode cexpr context type))
+;;;fixme! how to mesh expr and cexpr?
 ;  (enum-knobs (expr (mpop-context mpop) (mpop-type mpop))))
 ;						(pnode-expr exemplar)
 ;						cexpr context type)))
@@ -47,7 +51,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	     (when (consp expr)
 	       (mapc (bind #'map-knobs fn /1 context /2)
 		     (args expr) (arg-types expr context type))))))
-(defun enum-knobs (expr context type)
+(defun enum-knobs (expr context type) ; expr should be canonical
   (collecting (map-knobs (collector) expr context type)))
 
 (defun map-knob-settings (fn knob)
