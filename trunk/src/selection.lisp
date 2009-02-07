@@ -68,6 +68,7 @@ return nondominated U restricted-tournament-select(n - |nondominated|,
                                                    dominated)
 |#
 (defun competitive-integrate (n nodes)
+  (setf nodes (uniq nodes)) ; check for duplicates not very efficient...
   (flet ((rts (n nodes)
 	   (restricted-tournament-select n nodes #'pnode-distance
 					 (lambda (x y)
@@ -188,7 +189,11 @@ else
   (flet ((check (l d n)
 	   (mvbind (dom nondom)
 	       (partition-by-dominance (mapcar (lambda (x) 
-						 (make-pnode x (reduce #'+ x)))
+						 (make-pnode-raw 
+						  :scores (coerce x 'vector)
+						  :err (coerce (reduce #'+ x)
+							       'double-float)))
+						   
 					       l))
 	     (assert-true
 	      (set-equal d (mapcar #'pnode-scores dom) :test #'equalp))
@@ -210,8 +215,10 @@ else
     (cond ((= a 1) (unless (= b 1) 'better))
 	  ((= b 1) 'worse))))
 (define-test dominance
-  (assert-false (dominance (make-pnode '(1 1 0) 2)
-			   (make-pnode '(0 0 1) 1))))
+  (assert-false (dominance (make-pnode-raw :scores (vector 1 1 0)
+					   :err (coerce 2 'double-float))
+			   (make-pnode-raw :scores (vector 0 0 1)
+					   :err (coerce 1 'double-float)))))
 ;;; returns (x >= y, y >= x)
 (defun inclusion-grades (x y epsilons &aux (x-only 0) (y-only 0) (both 0))
   (map nil (lambda (x-err y-err epsilon &aux (d (abs (- x-err y-err))))
