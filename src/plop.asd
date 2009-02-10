@@ -28,30 +28,38 @@ Author: madscience@google.com (Moshe Looks) |#
 ;  :depends-on (:cl-utilities :anaphora)
   :serial t
   :components ((:file "packages")
-               (:file "util")
+               (:file "util")        ; generic stuff
 	       (:file "dag")
-	       (:file "syntax")
+
+	       (:file "syntax")      ; the p language core
 	       (:file "markup")
-	       (:file "knobs")
-	       (:file "addr")
 	       (:file "problem")
-	       (:file "context")
+
+	       (:file "context")     ; p language support and meta
 	       (:file "semantics")
 	       (:file "type")
-	       (:file "eval")
 	       (:file "enum")
-	       (:file "reduct-core")
+
+	       (:file "eval")        ; p language evaluator
+
+	       (:file "reduct-core") ; reduct
 	       (:file "reductions")
 	       (:file "bool")
 	       (:file "num")
 ;	       (:file "maxima")
 	       (:file "list")
+
+	       (:file "knobs")       ; representation-building
 	       (:file "canonize")
-;	       (:file "mpop")
-	       (:file "represent")
-	       (:file "search")
-	       (:file "hillclimb")
-	       (:file "learn")
-	       (:file "selection")
-	       (:file "lllsc")
-	       (:file "benchmark")))
+ 	       (:file "represent")
+
+;; 	       (:file "distance")    ; optimization
+ 	       (:file "mpop")	       
+;; 	       (:file "selection")
+;; 	       (:file "lllsc")
+
+
+ 	       (:file "hillclimb")  ; comparison/benchmarking
+ 	       (:file "harness")
+ 	       (:file "benchmark")
+	       ))

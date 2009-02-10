@@ -12,124 +12,137 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-Author: madscience@google.com (Moshe Looks) |#
+Author: madscience@google.com (Moshe Looks) 
+
+defines the interrelated structs addr and rep and associated algos |#
 (in-package :plop)
 
+;;; an address is an encoding of an expression in a particular representations
+(defstruct (addr (:constructor make-addr-root (expr &aux (rep expr)))
+		 (:constructor make-addr ; we convert the seq of twiddles into
+		  (rep twiddles-seq &aux ; a hashtable for efficiency
+		   (twiddles (aprog1 (make-hash-table :test 'eq)
+			       (map nil (lambda (x)
+					  (setf (gethash (car x) it) (cdr x)))
+				    twiddles-seq))))))
+  (rep nil :type (or rep pexpr))
+  (twiddles nil :type (or null hash-table)))
+(defun addr-root-p (addr) (not (addr-twiddles addr)))
+(defun addr-matches-twiddles-p (addr rep twiddles)
+  (and (eq rep (addr-rep addr))
+       (eql (length twiddles) (hash-table-count (addr-twiddles addr)))
+       (every (lambda (ks) (gethash (car ks) (addr-twiddles addr))) twiddles)))
+(defun addr-equal (x y)
+  (assert (and (addr-p x) (addr-p y)) () "addr-equal with non-addr ~S ~S" x y)
+  (and (eq (addr-rep x) (addr-rep y))
+       (equalp (addr-twiddles x) (addr-twiddles y))))
+
+;;; the following are functions for dealing with pnodes & problems
+;;; that specifically map to addrs
+(defun pnode-root-p (rep)
+  (find-if #'addr-root-p (pnode-pts rep)))
+
+;;; this is a heuristic to not bother computing pnodes expected to be well
+;;; below "average" quality
+;;; could be a clever calculation involving addr or rep or context...
+(defun problem-loser-bound (problem &aux (n (problem-pnode-count problem)))
+  (if (> n 1)
+      (/ (problem-err-sum problem) (1- n))
+      most-positive-single-float))
+
+;;; lookup/compute a pnode from an addr
+(defun get-pnode (expr addr problem)
+  (aprog1 (funcall (problem-compute-pnode problem) expr)
+    (unless (find-if (bind #'addr-equal addr /1) (pnode-pts it))
+      (push addr (pnode-pts it)))))
+(defun get-pnode-unless-loser (expr rep twiddles problem &aux
+			       (bound (problem-loser-bound problem)))
+  (mvbind (pnode present) (funcall (problem-lookup-pnode problem) expr)
+    (when present
+      (unless (find-if (bind #'addr-matches-twiddles-p /1 rep twiddles)
+		       (pnode-pts pnode))
+	(push (make-addr rep twiddles) (pnode-pts pnode)))
+      (return-from get-pnode-unless-loser 
+	(when (< (pnode-err pnode) bound) pnode))))
+  (let ((i 0) (err 0.0))
+    (mapc (lambda (scorer)
+	    (incf err (setf (elt (problem-score-buffer problem) i) 
+			    (funcall scorer expr)))
+	    (when (>= err bound)
+	      (return-from get-pnode-unless-loser))
+	    (incf i))
+	  (problem-scorers problem))
+    (with-cached-scores (problem-score-buffer problem) err
+      (get-pnode expr (make-addr rep twiddles) problem))))
+
+(define-test problem-addr
+  (let ((problem (make-problem (list (lambda (x) (+ (elt x 0) (elt x 1)))
+				     (lambda (x) (* (elt x 0) (elt x 1))))))
+	pnode0 pnode1 (addr0 (make-addr '(addr0) nil)))
+    (assert-equal 0 (problem-pnode-count problem))
+    
+    (setf pnode0 (get-pnode '(2 2) addr0 problem))
+    (assert-equal 1 (problem-pnode-count problem))
+    (assert-equalp 8 (problem-err-sum problem))
+    (assert-equal (list addr0) (pnode-pts pnode0))
+    (assert-equalp (vector 4 4) (pnode-scores pnode0))
+    (assert-equalp 8 (pnode-err pnode0))
+
+    (setf pnode1 (get-pnode-unless-loser '(3 3) '(addr1) nil problem))
+    (assert-equal 2 (problem-pnode-count problem))
+    (assert-equalp 23 (problem-err-sum problem))
+    (assert-eql 1 (length (pnode-pts pnode1)))
+    (assert-equal '(addr1) (addr-rep (car (pnode-pts pnode1))))
+    (assert-equalp (make-hash-table :test 'eq)
+		   (addr-twiddles (car (pnode-pts pnode1))))
+    (assert-equalp (vector 6 9) (pnode-scores pnode1))
+    (assert-equalp 15 (pnode-err pnode1))
+
+    (assert-equal nil (get-pnode-unless-loser
+		       '(300 300) '(addrfoo) nil problem))
+    (assert-equal 2 (problem-pnode-count problem))
+    (assert-equalp 23 (problem-err-sum problem))
+
+    (assert-eq pnode0 (get-pnode '(2 2) (make-addr '(addr2) nil) problem))
+    (assert-equal 2 (problem-pnode-count problem))
+    (assert-equalp 23 (problem-err-sum problem))))
+    
+;;; a representation - the tricky bit...
 (defstruct (rep (:include pnode)
 		(:constructor make-rep 
-		 (pnode context type &key 
-		  (expr (reduct (make-expr pnode) context type))
-		  &aux (addrs (pnode-addrs pnode))
-		  (scores (pnode-scores pnode)) (err (pnode-err pnode))
-		  (cexpr (canonize expr context type))
-		  (knobs (compute-knobs pnode cexpr context type)))))
+		 (kmap pnode context type &key 
+		  (expr (reduct (make-expr-from-pnode pnode) context type))
+		  &aux (pts (pnode-pts pnode)) (scores (pnode-scores pnode)) 
+		  (err (pnode-err pnode)) (cexpr (canonize expr context type))
+		  (knobs (compute-knobs kmap pnode cexpr context type)))))
   (cexpr nil :type list);fixme canonical-expr)
   (knobs nil :type (vector knob)))
-(defun get-rep (pnode context type)
-  (if (rep-p pnode) pnode (make-rep pnode context type)))
 (defun rep-nbits (rep)
   (reduce #'+ (rep-knobs rep) :initial-value 0 :key #'knob-nbits))
-(defun compute-knobs (pnode cexpr context type)
-  (list pnode cexpr context type))
+(defun get-rep (kmap pnode context type)
+  (if (rep-p pnode) pnode (make-rep kmap pnode context type)))
+
+(defun make-expr-from-twiddles (rep twiddles)
+  (prog2 (map nil (lambda (ks) (funcall (car ks) (cdr ks))) twiddles)
+      (canon-clean (rep-cexpr rep))
+    (map nil (lambda (ks) (funcall (car ks) 0)) twiddles)))
+(defun make-expr-from-addr (addr)
+  (if (addr-root-p addr) ; for the root addr, rep is the actual expr
+      (addr-rep addr)    ; that the addr corresponds to
+      (prog2 (maphash (lambda (k s) (funcall k s)) (addr-twiddles addr))
+	  (canon-clean (rep-cexpr (addr-rep addr)))
+	(maphash-keys (lambda (k) (funcall k 0)) (addr-twiddles addr)))))      
+(defun make-expr-from-pnode (pnode)
+  (if (rep-p pnode)
+      (canon-clean (rep-cexpr pnode))
+      (make-expr-from-addr (car (pnode-pts pnode)))))
+
+;;; ok, this is the tricky bit....
+(defun compute-knobs (kmap pnode cexpr context type)
+  (list kmap pnode cexpr context type))
 ;;;fixme! how to mesh expr and cexpr?
 ;  (enum-knobs (expr (mpop-context mpop) (mpop-type mpop))))
 ;						(pnode-expr exemplar)
 ;						cexpr context type)))
 
-(defdefbytype defknobs knobs-at)
-
-;;; call enum-knobs to get a list of all knobs for a particular expression - 
-;;; just calling knobs-at recursively is not enough because we have to add and
-;;; remove local variables from the context
-(defun map-knobs (fn expr context type)
-  (if (eqfn expr 'lambda)
-      (let ((arg-names (fn-args expr)) (body (fn-body expr)))
-	(dbind (arg-types return-type) (cdr type)
-	  (with-bound-types context arg-names arg-types
-	    (map-knobs fn body context return-type))))
-      (progn (mapc fn (knobs-at expr context type))
-	     (when (consp expr)
-	       (mapc (bind #'map-knobs fn /1 context /2)
-		     (args expr) (arg-types expr context type))))))
-(defun enum-knobs (expr context type) ; expr should be canonical
-  (collecting (map-knobs (collector) expr context type)))
-
-(defun map-knob-settings (fn knob)
-  (map nil (lambda (setting) (funcall setting) (funcall fn))
-       (subseq knob 1))
-  (funcall (elt knob 0)))
-
-(defknobs bool (expr context &aux vars)
-  (when (junctorp expr)
-    (collecting 
-      (aif (extract-literal expr)
-	   (push (litvariable it) vars)
-	   (mapc (lambda (x)
-		   (awhen (extract-literal x)
-		     (assert (and (junctorp x) (singlep (args x)))
-			     () "uncanonical expr ~S with arg ~S" expr x)
-		     (push (litvariable it) vars)
-		     (collect 
-		      (make-replacer-knob 
-		       x (args x)
-		       (bool-dual (identity-elem (fn x))) (negate it)))))
-		 (args expr)))
-      (with-nil-bound-values context vars ; to prevent vars from being visited
-	(maphash-keys (lambda (x) 
-			(collect (make-inserter-knob expr expr x (negate x))))
-		      (symbols-with-type bool context))))))
-
-(defknobs num (expr context)
-  (when (ring-op-p expr)
-    (assert (numberp (arg0 expr)) () "expected numeric first arg for ~S" expr)
-    (cons (apply #'make-replacer-knob expr (args expr) 
-		 (numarg-settings expr context))
-	  (with-nil-bound-values context 
-	      (delete-if
-	       #'consp (mapcar (compose (bind #'reduct /1 *empty-context* num)
-					#'canon-clean)
-			       (ternary (split-by-op expr))))
-	    (mapcar (lambda (var) 
-		      (apply #'make-inserter-knob expr (args expr)
-			     (numarg-terms expr var context)))
-		    (keys (symbols-with-type num context)))))))
-
-(defknobs tuple (expr context type)
-  (declare (ignore context))
-  (assert (arrayp expr) () "bad tuple ~S" expr)
-  (map 'list 
-       (lambda (arg type idx)
-	 (assert (atom arg) () "bad tuple arg ~S arg")
-	 (ecase (icar type)
-	   (bool (vector (lambda () (setf (elt expr idx) arg))
-			 (let ((dual (bool-dual arg)))
-			   (lambda () (setf (elt expr idx) dual)))))
-	   (num (map 'vector (lambda (x) (lambda () (setf (elt expr idx) x)))
-		     (cons (elt expr idx) 
-			   (numarg-settings (pcons '+ (list (elt expr idx)))
-					    *empty-context*)))))) ; bad hack...
-       ;fixme - num should handle min max and precision(?), if available
-       expr (cdr type) (iota (length expr))))
-
-(defknobs list (expr context type)
-  (when (eqfn expr 'if)
-    (nconc 
-     (when (matches (arg0 expr) (true false))
-       (list (apply #'make-replacer-knob expr 
-		    (args expr) (bool-dual (arg0 expr))
-		    (mapcan (lambda (var) (list var (pcons 'not (list var))))
-			    (keys (symbols-with-type bool context))))))
-     (when (or (atom (arg1 expr)) (atom (arg2 expr)))
-       (let ((xs (keys (symbols-with-type type context))))
-	 (flet ((mkknob (arglist)
-		  (apply #'make-replacer-knob expr arglist
-			 (aif (car arglist) (remove it xs) xs))))
-	   (collecting (when (atom (arg1 expr))
-			 (collect (mkknob (cdr (args expr)))))
-		       (when (atom (arg2 expr))
-			 (collect (mkknob (cddr (args expr))))))))))))
-
-(defknobs functions (expr context type)
-  (declare (ignore expr context type))
-  nil)
 

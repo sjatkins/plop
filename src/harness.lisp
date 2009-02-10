@@ -28,10 +28,9 @@ type. It returns three values - a boolean indicating if the
 |#
 (in-package :plop)
 
-;;todo- update the outdated comments above
+;;fixme- update the outdated comments above
 ;; terminationp needs to be more general - make a struct that has
 ;; info regrading best solutions found, etc..
-
 
 
 ;;; this should be big enough to outweigh other sources of error,
@@ -97,69 +96,3 @@ type. It returns three values - a boolean indicating if the
 						    (cdr type))
 					    #'<)))
   (count-cost (list target) (lambda (err) (<= err epsilon)) cost))
-
-#|
-(bind tar
-
-  (let ((scorer (lambda (x &aux (y (funcall target x))) (values y (= y 0)))))
-    (values scorer 
-	    %(lambda (x1 x2) (> (pfuncall scorer x1) (pfuncall scorer x2))))))
-(mapcar (bind #'apply fn expr /1) 
-
-  
-	  
-	  
-instead of two functions, have a lazy compute-fn that gets memoized
-and is summed for score and compared for dominates
-
-break score down into score-case, total score is sum of score-cases
-safe to assume that terminationp requires all cases to determine t, and
-is always false when we can break early
-
-reordering of cases? there's some gp literature here
-also coevolving test cases (or weights for timeseries)
-is there a bayesian reading of this??
-
-(let ((score-pred (peval %(lambda (x y) (< (score x) (score y)))))
-
-      (pfuncall score-pred expr1 expr2 *empty-context*)
-
-todo implement scoring cache
-subjective logic for dominates value
-
-make the interpreter smart: when computing sum<x or x<sum and sum values
-are all >0, or <0, break early
-
-for speed have an all-positive marker?
-
-(defun extract-expr (x) foo)
-
-(defun lsc-eda (scorer dominates neighborhood context type)
-  blub)
-
-(defun competitive-learn (candidates optimizer context type)
-  (do ((new) (done)) (done candidates)
-    (setf (values new done)
-	  (funcall optimizer (neighborhood (extract-expr (cdar candidates))
-					   context type)))
-    (competitive-integrate new candidates)))
-
-
-
-
-
-defining a problem should also mean defining a time-space and
-quality-complexity tradeoff
-
-(defun lsc-eda-step 
-    
-(&aux
-			 (candidates
-  
-
-(defun large-step-chain-eda (scorer dominates expr context type &optional
-			     (neighbors (neighbors expr context type)))
-  (mvbind (score done) (funcall scorer expr)
-    (when done (return-from large-step-chain-eda expr))
-    (
-|#

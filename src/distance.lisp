@@ -14,37 +14,8 @@ limitations under the License.
 
 Author: madscience@google.com (Moshe Looks) 
 
-Functions dealing with addresses (encodings of expressions in representations)
-|#
+code for computing distances between addrs |#
 (in-package :plop)
-
-(defstruct (addr (:constructor make-addr-raw))
-  (parent nil :type (or null addr))
-  (twiddles (make-hash-table :test 'eq) :type hash-table))
-(defun make-addr-root () (make-addr-raw))
-(defun make-addr (parent twiddles-seq)
-  (aprog1 (make-addr-raw :parent parent)
-    (map nil (lambda (pair) 
-	       (setf (gethash (car pair) (addr-twiddles it)) (cdr pair)))
-	 twiddles-seq)))
-(defun addr-equal (x y)
-  (assert (and (addr-p x) (addr-p y)) () "addr-equal with non-addr ~S ~S" x y)
-  (and (eq (addr-parent x) (addr-parent y))
-       (equalp (addr-twiddles x) (addr-twiddles y))))
-(defun addr-depth (addr &aux (n 0)) ; root depth = 0 
-  (while addr
-    (setf addr (addr-parent addr))
-    (incf n))
-  n)
-
-;; (defun enter-addr (addr)
-;;   (maphash (lambda (knob setting) (funcall knob setting))
-;; 	   (addr-twiddles addr)))
-;; (defun leave-addr (addr)
-;;   (maphash-keys (lambda (knob) (funcall knob 0)) (addr-twiddles addr)))
-;; (defun addr-expr (addr expr)
-;;   (unwind-protect (progn (enter-addr addr) (canon-clean expr))
-;;     (leave-addr addr)))
 
 (defun lowest-common-ancestor (x y &aux (xs (make-hash-table)) 
 			       (ys (make-hash-table)))
@@ -128,4 +99,4 @@ Functions dealing with addresses (encodings of expressions in representations)
 	    (mapc (lambda (y r)
 		    (assert-equalp r (addr-distance x y)))
 		  nodes rs))
-	  nodes key)))    
+	  nodes key)))

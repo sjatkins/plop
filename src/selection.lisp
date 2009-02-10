@@ -69,7 +69,7 @@ return nondominated U restricted-tournament-select(n - |nondominated|,
 |#
 (defun competitive-integrate (n nodes)
   (setf nodes (uniq nodes)) ; check for duplicates not very efficient...
-  (flet ((rts (n nodes)
+  (flet ((rts (n nodes)fixme-should uniq check involve lookup for duplicate pnode-reps
 	   (restricted-tournament-select n nodes #'pnode-distance
 					 (lambda (x y)
 					   (> (pnode-err x) (pnode-err y)))
