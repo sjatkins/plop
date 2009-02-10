@@ -64,6 +64,8 @@ args and markup must be proper lists. |#
 (defun mklambda (args body &optional markup)
   (list (cons 'lambda (copy-list markup)) (mklambda-list args) body))
 
+(deftype pexpr () 'list) ;fixme?
+
 (defmethod make-load-form ((self lambda-list) &optional environment)
    (declare (ignore environment))
    `(make-lambda-list :argnames ',(lambda-list-argnames self)))

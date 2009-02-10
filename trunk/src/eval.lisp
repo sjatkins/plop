@@ -12,7 +12,29 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-Author: madscience@google.com (Moshe Looks) |#
+Author: madscience@google.com (Moshe Looks) 
+
+fixme - future ideas:
+
+break score down into score-case, total score is sum of score-cases
+safe to assume that terminationp requires all cases to determine t, and
+is always false when we can break early
+
+reordering of cases? there's some gp literature here
+also coevolving test cases (or weights for timeseries)
+is there a bayesian reading of this??
+
+(let ((score-pred (peval %(lambda (x y) (< (score x) (score y)))))
+
+      (pfuncall score-pred expr1 expr2 *empty-context*)
+
+todo implement scoring cache
+subjective logic for dominates value
+
+make the interpreter smart: when computing sum<x or x<sum and sum values
+are all >0, or <0, break early
+
+for speed have an all-positive marker? |#
 (in-package :plop)
 
 (define-constant +largest-exp-arg+ 80.0)
