@@ -45,7 +45,7 @@ code for computing distances between addrs |#
 	    (mapc (lambda (y r)
 		    (assert-equalp r (lowest-common-ancestor x y)))
 		  nodes rs))
-	  nodes key)))    
+	  nodes key)))
 
 ;;; addr-distance is a generalized hamming distance (with continuous and
 ;;; categorical values converted to bits in a somewhat reasonable way, with
@@ -68,7 +68,7 @@ code for computing distances between addrs |#
 	       (aif (gethash knob kmap)
 		    (unless (eq it t)
 		      (incf d (knob-setting-distance knob it setting)))
-		    (incf d (knob-nbits knob)))
+		    (incf d (knob-nbits knob))) fixme - nbits vs. dist 0 x
 	       (when (>= d bound)
 		 (return-from addr-distance d))
 	       (setf (gethash knob kmap) t))

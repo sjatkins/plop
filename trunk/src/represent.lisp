@@ -17,6 +17,14 @@ Author: madscience@google.com (Moshe Looks)
 defines the interrelated structs addr and rep and associated algos |#
 (in-package :plop)
 
+
+(defun twiddles-magnitude (twiddles &key (bound most-positive-single-float))
+  (reduce (lambda (n ks)
+            (aprog1 (+ n (knob-setting-distance (car ks) 0 (cdr ks)))
+              (when (> it bound) 
+                (return-from twiddles-magnitude it))))
+          twiddles :initial-value 0))
+
 ;;; an address is an encoding of an expression in a particular representations
 (defstruct (addr (:constructor make-addr-root (expr &aux (rep expr)))
 		 (:constructor make-addr ; we convert the seq of twiddles into
@@ -36,6 +44,7 @@ defines the interrelated structs addr and rep and associated algos |#
   (assert (and (addr-p x) (addr-p y)) () "addr-equal with non-addr ~S ~S" x y)
   (and (eq (addr-rep x) (addr-rep y))
        (equalp (addr-twiddles x) (addr-twiddles y))))
+
 
 ;;; the following are functions for dealing with pnodes & problems
 ;;; that specifically map to addrs
@@ -137,7 +146,7 @@ defines the interrelated structs addr and rep and associated algos |#
       (canon-clean (rep-cexpr pnode))
       (make-expr-from-addr (car (pnode-pts pnode)))))
 
-;;; ok, this is the tricky bit....
+;;; ok, this is the real tricky bit....
 (defun compute-knobs (kmap pnode cexpr context type)
   (list kmap pnode cexpr context type))
 ;;;fixme! how to mesh expr and cexpr?

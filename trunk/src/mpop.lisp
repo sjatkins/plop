@@ -17,13 +17,19 @@ Author: madscience@google.com (Moshe Looks)
 mpop = metapopulation |#
 (in-package :plop)
 
-(defstruct (mpop (:constructor make-mpop (pnodes &key (size 1000))))
+(defstruct (mpop (:constructor make-mpop (pnodes problem &key (size 1000))))
   (size nil :type (integer 1))
   (pnodes nil :type list)
+  (problem nil :type problem)
   (kmap (make-hash-table :test 'equalp) :type hash-table))
 
 ;;; model updates - fixme
-(defun update-frequencies (err twiddles rep mpop)
+(defun update-frequencies (err twiddles rep mpop &aux 
+			   (d (twiddles-magnitude twiddles)))
+have a generic correlation-counting struct that's configurable?
+  (incf (rep-
+  (incf 
+  
   (declare (ignore err twiddles rep mpop)))
 (defun update-frequencies-loser (twiddles rep mpop)
   (declare (ignore twiddles rep mpop)))
