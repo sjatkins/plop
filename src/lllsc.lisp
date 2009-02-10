@@ -28,21 +28,21 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 					     scorers)))
     (let ((mpop (make-mpop (list (get-pnode expr (make-addr-root expr) 
 					    (current-problem context))))))
-      (values (competitive-learn (bind #'ll-optimize 
-				       mpop /1 context type terminationp))
+      (values (competitive-learn (bind #'ll-optimize mpop /1 
+				       context type terminationp)
 				 mpop context type)
 	      (map 'list (lambda (x) 
 			   (cons (pnode-err x) (make-expr-from-pnode x)))
-		    (mpop-pnodes mpop))))))
+		   (mpop-pnodes mpop))))))
 
-(defun competitive-learn (optimize mpop context type &aux done)
+(defun competitive-learn (optimize mpop context type &aux done new-pnodes
+			  (pnodes (mpop-pnodes mpop)))
   (while (not done)
-    (setf (mpop-pnodes mpop) (promote-max-utility (mpop-pnodes mpop))
+    (setf pnodes (promote-max-utility pnodes)
 	  (car pnodes) (get-rep (mpop-kmap mpop) (car pnodes) context type)
-	  (values done new-pnodes) (funcall optimizer (car pnodes))
-	  (mpop-pnodes mpop) (competitive-integrate (mpop-size mpop) 
-						    (nconc (mpop-pnodes mpop) 
-							   new-pnodes))))
+	  (values done new-pnodes) (funcall optimize (car pnodes))
+	  pnodes (competitive-integrate (mpop-size mpop) 
+					(nconc pnodes new-pnodes))))
   done)
 
 (defun ll-optimize (mpop rep context type terminationp &aux (stuckness 0)
@@ -66,5 +66,4 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
   ;; if we reach this point we are either stuck or have completely exhausted
   ;; the neighborhood - the exemplar must be a local minima or near-minima
   (update-structure twiddles rep context)
-  (values nil nodes))
-
+  (values nil pnodes))
