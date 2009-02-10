@@ -55,8 +55,8 @@ Author: madscience@google.com (Moshe Looks) |#
 
 ;; 	       (:file "distance")    ; optimization
  	       (:file "mpop")	       
-;; 	       (:file "selection")
-;; 	       (:file "lllsc")
+ 	       (:file "selection")
+ 	       (:file "lllsc")
 
 
  	       (:file "hillclimb")  ; comparison/benchmarking

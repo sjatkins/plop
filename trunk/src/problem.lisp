@@ -28,14 +28,19 @@ I must have fruit!
 ;;;  * err is a composite error measurement used to directly compare solutions
 ;;;  * are a list of all of the pnodes giving this pnode as their parent
 (defstruct (pnode (:constructor make-pnode 
-                   (scores raw-err &aux (err (coerce raw-err 'double-float)))))
+                   (raw-scores raw-err &aux 
+		    (scores (coerce raw-scores 'vector))
+		    (err (coerce raw-err 'double-float)))))
   (pts nil :type list)
   (scores (vector) :type (vector number))
   (err (coerce -1.0 'double-float) :type double-float))
 
+(defun pnode-equal (x y pt-equal)
+  (intersection (pnode-pts x) (pnode-pts y) :test pt-equal))
+
 ;;; the distance between pnodes x and y is the pairwise minimum of the
 ;;; distances over all pts (i.e. differnt representations of x and y
-(defun pnode-distance (pt-distance x y &key (bound most-positive-single-float))
+(defun pnode-distance (x y pt-distance &key (bound most-positive-single-float))
   (if (eq x y) 0
       (let ((xpts (pnode-pts x)) (ypts (pnode-pts y)))
 	(mapc (lambda (xpt)
