@@ -27,7 +27,8 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 					       (log (+ *peval-counter* 2) 2))
 					     scorers)))
     (let ((mpop (make-mpop (list (get-pnode expr (make-addr-root expr) 
-					    (current-problem context))))))
+					    (current-problem context)))
+			   problem)))
       (values (competitive-learn (bind #'ll-optimize mpop /1 
 				       context type terminationp)
 				 mpop context type)

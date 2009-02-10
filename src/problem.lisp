@@ -52,12 +52,15 @@ I must have fruit!
 		      ypts))
 	      xpts))))
 
+(defstrct fdc
+
 (defstruct (problem (:constructor make-problem-raw))
   (compute-pnode #'identity :type (function (list) pnode))
   (lookup-pnode #'identity :type (function (list) pnode))
   (scorers nil :type list)
   (score-buffer nil :type (vector number))
   (err-sum 0.0 :type number) (pnode-count 0 :type (integer 0)))
+;fixme - should we try a moving average here?
 
 (defparameter *pnode-cached-scores* nil) ; don't touch directly - use the 
 (defparameter *pnode-cached-err* 0.0)    ; macro with-cached-scores
