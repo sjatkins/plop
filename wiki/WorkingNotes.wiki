@@ -49,7 +49,7 @@ The expectation here is a conditional tail expectation (cf [http://www.stats.uwa
 
 {{{
 E(score | score > best) = 
-mu + sqrt(sigma / pi) * (exp(-(best - mu)^2 / 2 * sigma^2) / 
+mu + sqrt(sigma / pi) * exp(-(best - mu)^2 / 2 * sigma^2) / 
                         (1 - erf((best - mu) / (sigma * sqrt(2))))
 }}}
 
