@@ -148,10 +148,20 @@ defines the interrelated structs addr and rep and associated algos |#
 
 ;;; ok, this is the real tricky bit....
 (defun compute-knobs (kmap pnode cexpr context type)
-  (list kmap pnode cexpr context type))
-;;;fixme! how to mesh expr and cexpr?
-;  (enum-knobs (expr (mpop-context mpop) (mpop-type mpop))))
-;						(pnode-expr exemplar)
-;						cexpr context type)))
+  ;; first, go through and construct a partial mapping between subtrees
+  ;; in cexpr and each of its parent cexprs (the pnode's pts)
+  (mapcar (compose (bind #'align-canonical-exprs cexpr /1 context type)
+		   #'addr-rep)
+	  (pnode-pts pnode))
+
+
+ &aux
+		      (knobs (enum-knobs (cexpr context type))))
+  (mapc (knob-key knob)
+	knobs
+
+ (mpop-type mpop))))
+						(pnode-expr exemplar)
+						cexpr context type)))
 
 

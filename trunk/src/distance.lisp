@@ -68,7 +68,7 @@ code for computing distances between addrs |#
 	       (aif (gethash knob kmap)
 		    (unless (eq it t)
 		      (incf d (knob-setting-distance knob it setting)))
-		    (incf d (knob-nbits knob))) fixme - nbits vs. dist 0 x
+		    (incf d (knob-nbits knob))) ;fixme - nbits vs. dist 0 x
 	       (when (>= d bound)
 		 (return-from addr-distance d))
 	       (setf (gethash knob kmap) t))

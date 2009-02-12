@@ -52,7 +52,7 @@ I must have fruit!
 		      ypts))
 	      xpts))))
 
-(defstrct fdc
+;(defstrct fdc
 
 (defstruct (problem (:constructor make-problem-raw))
   (compute-pnode #'identity :type (function (list) pnode))

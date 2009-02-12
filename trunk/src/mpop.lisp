@@ -26,12 +26,19 @@ mpop = metapopulation |#
 ;;; model updates - fixme
 (defun update-frequencies (err twiddles rep mpop &aux 
 			   (d (twiddles-magnitude twiddles)))
-have a generic correlation-counting struct that's configurable?
-  (incf (rep-
-  (incf 
   
-  (declare (ignore err twiddles rep mpop)))
+  (declare (ignore err rep mpop d)))
+;have a generic correlation-counting struct that's configurable?
+;  (incf (rep-
+;  (incf 
+
+;;; does update-frequences based on the expected score of a loser
 (defun update-frequencies-loser (twiddles rep mpop)
+  (mvbind (m v) (problem-err-moments (mpop-problem mpop))
+    (update-frequencies (- (* 2 m) (conditional-tail-expectation 
+				    m v (- (* 2 m) (problem-loser-bound 
+						    (mpop-problem mpop)))))
+			twiddles rep mpop)))
   (declare (ignore twiddles rep mpop)))
 (defun update-structure (twiddles rep mpop)
   (declare (ignore twiddles rep mpop)))
@@ -67,4 +74,19 @@ have a generic correlation-counting struct that's configurable?
 ; (if (< (random (+ n m)) n) ; direct mutation
 ;     (random-neighbor rep)
 
-;(defun best-pick (rep mpop)
+(defun best-pick (rep mpop)
+  (mapc (lambda (knob)
+	  (ca
+
+
+can we reduce this to a set of schemata which we pick from??
+
+make-array 42 :element-type bit :initial-element
+
+
+desired operations:
+update-frequences O(#schemata)
+update-structure O(#schemata * #schemata * #samples)
+sample-pick O(#schemata) random access to schemata,
+best-pick O(#schemata * log(#schemata))
+
