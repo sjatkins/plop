@@ -24,7 +24,10 @@ Author: madscience@google.com (Moshe Looks) |#
     (unmark mung expr)
     (awhen (canon-parent expr) (unmung it))))
 
-(deftype knob () '(vector (function () t)))
+
+(defstruct knob
+  (key ...
+  (setters nil :type (vector (function () t)))
 
 (defun knob-nbits (knob) (log (length knob) 2))
 

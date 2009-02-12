@@ -28,7 +28,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 					     scorers)))
     (let ((mpop (make-mpop (list (get-pnode expr (make-addr-root expr) 
 					    (current-problem context)))
-			   problem)))
+			   (current-problem context))))
       (values (competitive-learn (bind #'ll-optimize mpop /1 
 				       context type terminationp)
 				 mpop context type)
@@ -52,7 +52,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
   (while (and (< stuckness stuckness-bound)
 	      (setf twiddles (sample-pick rep context)))
     (setf expr (reduct (make-expr-from-twiddles rep twiddles) context type))
-    (aif (get-pnode-unless-loser expr rep twiddles (current-problem context))
+    (aif (get-pnode-unless-loser expr rep twiddles (mpop-problem mpop))
 	 (let ((err (pnode-err it)))
 	   (update-frequencies err twiddles rep context)
 	   (push (if (< err best-err)

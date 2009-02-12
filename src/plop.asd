@@ -29,6 +29,7 @@ Author: madscience@google.com (Moshe Looks) |#
   :serial t
   :components ((:file "packages")
                (:file "util")        ; generic stuff
+	       (:file "numerical")
 	       (:file "dag")
 
 	       (:file "syntax")      ; the p language core
@@ -53,10 +54,11 @@ Author: madscience@google.com (Moshe Looks) |#
 	       (:file "canonize")
  	       (:file "represent")
 
- 	       (:file "distance")    ; optimization
- 	       (:file "mpop")	       
- 	       (:file "selection")
- 	       (:file "lllsc")
+  	       (:file "distance")    ; optimization
+  	       (:file "mpop")	       
+	       (:file "utility")
+  	       (:file "selection")
+  	       (:file "lllsc")
 
 
  	       (:file "hillclimb")  ; comparison/benchmarking

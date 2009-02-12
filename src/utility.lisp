@@ -17,5 +17,8 @@ Author: madscience@google.com (Moshe Looks)
 expected utility calculations |#
 (in-package :plop)
 
-(defun promote-max-utility (pnodes)
-  
+(defun promote-max-utility (pnodes) ;fixme
+  (rotatef (car pnodes) 
+	   (nth (max-position pnodes #'< :key #'pnode-err) pnodes))
+  pnodes)
+
