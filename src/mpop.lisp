@@ -23,11 +23,16 @@ mpop = metapopulation |#
   (problem nil :type problem)
   (kmap (make-hash-table :test 'equalp) :type hash-table))
 
-;;; model updates - fixme
+important - don't call cte directly, have a method that takes data with 
+optional mean/variance/? and returns expectation ...
+important - remember to compute p(fit>best) too!
+
+;;; model update functions
 (defun update-frequencies (err twiddles rep mpop &aux 
 			   (d (twiddles-magnitude twiddles)))
-  
-  (declare (ignore err rep mpop d)))
+  ;; for each of the twiddles' knobs, propagate signal back to parents
+  ;; and 
+
 ;have a generic correlation-counting struct that's configurable?
 ;  (incf (rep-
 ;  (incf 
@@ -40,7 +45,13 @@ mpop = metapopulation |#
 						    (mpop-problem mpop)))))
 			twiddles rep mpop)))
   (declare (ignore twiddles rep mpop)))
-(defun update-structure (twiddles rep mpop)
+(defun update-structure (twiddles rep mpop &aux (p (merge-penalty mpop)))
+  (mapl (lambda (schemata &aux (x (car schemata)) (xs (cdr schemata)))
+	  (mapc (lambda (y &aux (cases (hash-intersection x y)))
+		  (when (and (> cases 3) ; can we plug in some math here? fixme
+			     (>
+   (mpop-schemata mpop)
+
   (declare (ignore twiddles rep mpop)))
 
 ;;; parameter lookups - fixme
