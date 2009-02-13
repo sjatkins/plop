@@ -17,8 +17,6 @@ Author: madscience@google.com (Moshe Looks)
 numerical functions |#
 (in-package :plop)
 
-(define-constant +sqrt2+ (sqrt 2))
-
 ;;; gaussian sampling
 (flet ((box-muller ()
 	 "Based on code at http://www.taygeta.com/random/gaussian.html"
@@ -157,5 +155,22 @@ numerical functions |#
   (defun erf (x) (funcall fn x)))
 
 ;;; E(X|X>x) for gaussian var X with mean m and variance v
-(defun conditional-tail-expection (m v x &aux (d (- x m)))
-  (+ m (sqrt
+(let ((sqrt2 (sqrt 2.0L0))
+      (sqrt2-over-pi (sqrt (/ 2.0L0 pi))))
+  (defun conditional-tail-expection (m v x &aux d sd erf)
+    (setf m (coerce m 'long-float)
+	  v (coerce v 'long-float)
+	  x (coerce x 'long-float)
+	  d (- x m)
+	  sd (sqrt v)
+	  erf (coerce (erf (/ d (* sd sqrt2))) 'long-float))
+    (assert (<= erf 0.9999999999974403808L0) ()
+	    "can't compute cte due to numerical instability (erf = ~S)" erf)
+    (+ m (/ (* sd sqrt2-over-pi (exp (/ (* d d) (* -2.0L0 v))))
+	    (- 1.0L0 erf)))))
+(define-test conditional-tail-expection
+  ;; ensure that we are at least somewhat stable
+  (let ((l (mapcar (lambda (x) 
+		     (- (conditional-tail-expection 0.0L0 1.0L0 x) x))
+		   (iota 7 :start 6 :step 0.01))))
+    (mapcar (lambda (x y) (assert-true (> x y))) l (cdr l))))
