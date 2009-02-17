@@ -125,7 +125,10 @@ defines the interrelated structs addr and rep and associated algos |#
 		  (err (pnode-err pnode)) (cexpr (canonize expr context type))
 		  (knobs (compute-knobs kmap pnode cexpr context type)))))
   (cexpr nil :type list);fixme canonical-expr)
-  (knobs nil :type (vector knob)))
+  (knobs nil :type (vector knob))
+  subexprs-to-knobs
+
+)
 (defun rep-nbits (rep)
   (reduce #'+ (rep-knobs rep) :initial-value 0 :key #'knob-nbits))
 (defun get-rep (kmap pnode context type)
@@ -147,12 +150,18 @@ defines the interrelated structs addr and rep and associated algos |#
       (make-expr-from-addr (car (pnode-pts pnode)))))
 
 ;;; ok, this is the real tricky bit....
-(defun compute-knobs (kmap pnode cexpr context type)
+(defun compute-knobs (kmap pnode cexpr context type &aux 
+		      (subexpr-map (make-hash-table :test 'eq)))
   ;; first, go through and construct a partial mapping between subtrees
   ;; in cexpr and each of its parent cexprs (the pnode's pts)
-  (mapcar (compose (bind #'align-canonical-exprs cexpr /1 context type)
-		   #'addr-rep)
+  (mapcar (lambda (parent)
+	    (mapc (lambda (sp)
+		    (setf (gethash (car sp)) 
+			  (nconc (cdr sp) (gethash (car sp)))))
+		  (align-canonical-exprs cexpr (addr-rep parent) 
+					 context type)))
 	  (pnode-pts pnode))
+  (maphash (lambda (subexpr parent)
 
 
  &aux

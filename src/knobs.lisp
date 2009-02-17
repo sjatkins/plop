@@ -24,15 +24,28 @@ Author: madscience@google.com (Moshe Looks) |#
     (unmark mung expr)
     (awhen (canon-parent expr) (unmung it))))
 
+(defstruct (knob (:constructor make-knob  :includes defclass
+		  (setting-distance setters &optional parents &aux 
+		   (sinks (reduce #'union (knob-sinks parents)
+				  :initial-value nil)))))
+  (setting-distance nil :type (function ((integer 0) (integer 0)) real))
+  (parents nil :type list) is it even worth it to aggregate statistics across 
+representations? if we want to we need to map settings to settings
+what kind of data structures do we need to look for linkages? wait, we can
+only really link knobs in a single representation, also a pnode may get points added to it after it becomes a rep: fuckfuckfuck . and reps wont get stored in the cache of exprs to pnodes, just pnodes
+what if pnodes just stored the addr for first time they encountered something?
 
-(defstruct knob
-  (key ...
-  (setters nil :type (vector (function () t)))
+alternatively just store nodes in a vector or whatever, or make reps by
+encapsulation instead of inheritance, so that reps are updated: or have a ptr
+in pnode going to its corresponding rep or nul if there isnt one: unfortunately this seems the best solution...
 
-(defun knob-nbits (knob) (log (length knob) 2))
+  (sinks nil :type list)   maybe we should just compute # or rep transformas
+  (setters nil :type (vector (function () t))))
 
-(defun knob-setting-distance (knob idx1 idx2) ;fixme
-  (if (eql idx1 idx2) 0 (knob-nbits knob)))
+(defun knob-nbits (knob) (log (length (knob-setters knob)) 2))
+
+(defun knob-setting-distance (knob idx1 idx2)
+  (if (eql idx1 idx2) 0 (funcall (knob-setting-distance knob) idx1 idx2)))
 
 ;;; remember - generally one wants to call reduct on the settings before
 ;;; using them to create knobs

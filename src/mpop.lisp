@@ -21,17 +21,19 @@ mpop = metapopulation |#
   (size nil :type (integer 1))
   (pnodes nil :type list)
   (problem nil :type problem)
+
   (kmap (make-hash-table :test 'equalp) :type hash-table))
 
-important - don't call cte directly, have a method that takes data with 
-optional mean/variance/? and returns expectation ...
-important - remember to compute p(fit>best) too!
+;important - don't call cte directly, have a method that takes data with 
+;optional mean/variance/? and returns expectation ...
+;important - remember to compute p(fit>best) too!
 
 ;;; model update functions
 (defun update-frequencies (err twiddles rep mpop &aux 
 			   (d (twiddles-magnitude twiddles)))
   ;; for each of the twiddles' knobs, propagate signal back to parents
-  ;; and 
+  ;; and their parents, until the sinks
+
 
 ;have a generic correlation-counting struct that's configurable?
 ;  (incf (rep-
@@ -87,7 +89,8 @@ important - remember to compute p(fit>best) too!
 
 (defun best-pick (rep mpop)
   (mapc (lambda (knob)
-	  (ca
+
+	  (mpop-
 
 
 can we reduce this to a set of schemata which we pick from??
