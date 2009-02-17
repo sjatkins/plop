@@ -21,4 +21,3 @@ expected utility calculations |#
   (rotatef (car pnodes) 
 	   (nth (max-position pnodes #'< :key #'pnode-err) pnodes))
   pnodes)
-
