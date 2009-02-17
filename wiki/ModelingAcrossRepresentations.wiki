@@ -1,0 +1,15 @@
+#summary How can probabilistic models be effectively shared across representations?
+
+In the initial incarnation of MOSES, when a new representation (program subspace) gets selected for optimization over, an entirely new probabilistic model is constructed over it. This model begins with no dependencies between variables, and assigns no especial importance to any particular variable. This is not very efficient, because of course we have often done optimization over "similar" program subspaces, and have accumulated evidence as to which variables are most useful to vary, and which variables have nonlinear interactions with each other (i.e. dependencies). Accordingly, we would like to start optimization with a nonuniform prior that exploits this knowledge. Similarly, if we later go back and perform additional optimization in a previously explored similar subspace, we would like to exploit the knowledge we have acquired in the meantime.
+
+= Introduction =
+
+Add your content here.
+
+
+= Details =
+
+Add your content here.  Format your content with:
+  * Text in *bold* or _italic_
+  * Headings, paragraphs, and lists
+  * Automatic links to other wiki pages
