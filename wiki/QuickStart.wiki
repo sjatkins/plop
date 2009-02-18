@@ -7,7 +7,7 @@
 
 *Setup:* Check out the [http://code.google.com/p/plop/source/checkout source code] to path `foo` (e.g. `/home/madscience/plop/`). Create a symbolic link to `foo/plop/trunk/src/plop.asd` from your asdf central registry (e.g. `ln -s foo/trunk/src/plop.asd /central-regisitry-path/plop.asd`). If you don't happen to already have the [http://common-lisp.net/project/anaphora/ anaphora] and [http://common-lisp.net/project/cl-utilities/ cl-utilities] packages installed, create symbolic links to `foo/trunk/thirdparty/anaphora/anaphora.asd` and `foo/trunk/thirdparty/cl-utilities/cl-utilities.asd` as well.
 
-*Customization:* If you don't want to use Maxima, comment out `(:file "maxima")` from `trunk/plop.asd`.
+*Customization:* If you want to enable (disable) the use Maxima, comment (uncomment) `(:file "maxima")` from `trunk/plop.asd`.
 
 *Loading:* In your Common Lisp (or in Maxima, after doing `to_lisp()`) do:
    * `(load "foo/trunk/thirdparty/lisp-unit.lisp")` (where `foo` is where you put the code, as above)
