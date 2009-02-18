@@ -27,7 +27,9 @@ mpop = metapopulation |#
 ;important - remember to compute p(fit>best) too!
 
 ;;; model update functions
-(defun update-frequencies (err twiddles rep mpop &aux 
+(defun update-frequencies (err twiddles rep mpop); &aux 
+  (declare (ignore err twiddles rep mpop))); &aux 
+  
 ;
   ;; for each of the twiddles' knobs, propagate signal back to parents
   ;; and their parents, until the sinks
@@ -44,13 +46,12 @@ mpop = metapopulation |#
 				    m v (- (* 2 m) (problem-loser-bound 
 						    (mpop-problem mpop)))))
 			twiddles rep mpop)))
-  (declare (ignore twiddles rep mpop)))
-(defun update-structure (twiddles rep mpop &aux (p (merge-penalty mpop)))
-  (mapl (lambda (schemata &aux (x (car schemata)) (xs (cdr schemata)))
-	  (mapc (lambda (y &aux (cases (hash-intersection x y)))
-		  (when (and (> cases 3) ; can we plug in some math here? fixme
-			     (>
-   (mpop-schemata mpop)
+(defun update-structure (twiddles rep mpop); &aux (p (merge-penalty mpop)))
+ ;;  (mapl (lambda (schemata &aux (x (car schemata)) (xs (cdr schemata)))
+;; 	  (mapc (lambda (y &aux (cases (hash-intersection x y)))
+;; 		 (when (and (> cases 3) ; can we plug in some math here? fixme
+;; 			     (>
+;;    (mpop-schemata mpop)
 
   (declare (ignore twiddles rep mpop)))
 
@@ -76,6 +77,7 @@ mpop = metapopulation |#
 ; distance between 1 and 3 and then a random item
 (defun random-pick (rep &aux (d (1+ (random 3))) 
 		    (s (make-sampler (length (rep-knobs rep)))))
+
   (generate d (lambda (&aux (k (elt (rep-knobs rep) (funcall s))))
 		(cons k (1+ (random (1- (knob-arity k))))))))
 

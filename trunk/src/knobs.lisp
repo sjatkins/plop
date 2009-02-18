@@ -24,66 +24,51 @@ Author: madscience@google.com (Moshe Looks) |#
     (unmark mung expr)
     (awhen (canon-parent expr) (unmung it))))
 
-(defstruct (knob (:constructor make-knob  :includes defclass
-		  (setting-distance setters &optional parents &aux 
-		   (sinks (reduce #'union (knob-sinks parents)
-				  :initial-value nil)))))
-  (setting-distance nil :type (function ((integer 0) (integer 0)) real))
-  (parents nil :type list) is it even worth it to aggregate statistics across
-representations? if we want to we need to map settings to settings what kind of
-data structures do we need to look for linkages? wait, we can only really link
-knobs in a single representation, also a pnode may get points added to it after
-it becomes a rep: fuckfuckfuck . and reps wont get stored in the cache of exprs
-to pnodes, just pnodes what if pnodes just stored the addr for first time they
-encountered something?
-
-alternatively just store nodes in a vector or whatever, or make reps by
-encapsulation instead of inheritance, so that reps are updated: or have a ptr
-in pnode going to its corresponding rep or nul if there isnt one: unfortunately
-this seems the best solution...
-
-  (sinks nil :type list)   maybe we should just compute # or rep transformas
+(defstruct (knob (:constructor make-knob 
+		  (setting-distance-fn setters-raw &aux
+		   (setters (coerce setters-raw 'vector)))))
+  (setting-distance-fn nil :type (function ((integer 0) (integer 0)) real))
   (setters nil :type (vector (function () t))))
-
-(defun knob-nbits (knob) (log (length (knob-setters knob)) 2))
-
+(defun knob-arity (knob) (length (knob-setters knob)))
+(defun knob-nbits (knob) (log (knob-arity knob) 2))
 (defun knob-setting-distance (knob idx1 idx2)
-  (if (eql idx1 idx2) 0 (funcall (knob-setting-distance knob) idx1 idx2)))
+  (if (eql idx1 idx2) 0 (funcall (knob-setting-distance-fn knob) idx1 idx2)))
 
 ;;; remember - generally one wants to call reduct on the settings before
 ;;; using them to create knobs
 
 ;;; expr should generally be at's parent
 (defun make-replacer-knob (expr at &rest settings &aux (original (car at)))
-  (apply #'vector 
-	 (lambda () (unmung expr) (rplaca at original))
-	 (mapcar (lambda (setting) (lambda () (mung expr) (rplaca at setting)))
-		 settings)))
+  (make-knob (lambda (x y) (declare (ignore x y)) 1) ;fixme
+	     (cons (lambda () (unmung expr) (rplaca at original))
+		   (mapcar (lambda (setting)
+			     (lambda () (mung expr) (rplaca at setting)))
+			   settings))))
 ;;; expr should generally be equal to at or at's parent 
 (defun make-inserter-knob (expr at &rest settings &aux set-to)
-  (apply  #'vector
-	  (lambda () (when set-to
-		       (unmung expr)
-		       (aif (cdr set-to)
-			    (rplacd (rplaca set-to (car it)) (cdr it))
-			    (progn (assert (eq (cdr at) set-to))
-				   (rplacd at nil)))
-		       (setf set-to nil)))
-	  (mapcar (lambda (setting)
-		    (lambda () 
-		      (mung expr)
-		      (if set-to
-			  (rplaca set-to setting)
-			  (rplacd at (setf set-to (cons setting (cdr at)))))))
-		  settings)))
-(defun knob-arity (knob) (array-total-size knob))
-
+  (make-knob (lambda (x y) (declare (ignore x y)) 1) ;fixme
+	     (cons (lambda () (when set-to
+				(unmung expr)
+				(aif (cdr set-to)
+				     (rplacd (rplaca set-to (car it)) (cdr it))
+				     (progn (assert (eq (cdr at) set-to))
+					    (rplacd at nil)))
+				(setf set-to nil)))
+		   (mapcar (lambda (setting)
+			     (lambda () 
+			       (mung expr)
+			       (if set-to
+				   (rplaca set-to setting)
+				   (rplacd at 
+					   (setf set-to 
+						 (cons setting (cdr at)))))))
+			   settings))))
 (define-test make-knobs
   (macrolet ((test-knob (list knob results)
 	       `(progn (dorepeat 100 (let ((n (random (knob-arity knob))))
-				       (funcall (elt ,knob n))
+				       (funcall (elt (knob-setters ,knob) n))
 				       (assert-equal (elt ,results n) ,list)))
-		       (funcall (elt ,knob 0)))))
+		       (funcall (elt (knob-setters ,knob) 0)))))
     (macrolet ((test-knobs (list knobs res)
 		 `(let* ((list ,list) (dummy '((foo)))
 			 (knobs ,knobs) (res ,res))
@@ -133,8 +118,8 @@ this seems the best solution...
 
 (defun map-knob-settings (fn knob)
   (map nil (lambda (setting) (funcall setting) (funcall fn))
-       (subseq knob 1))
-  (funcall (elt knob 0)))
+       (subseq (knob-setters knob) 1))
+  (funcall (elt (knob-setters knob) 0)))
 
 (defknobs bool (expr context &aux vars)
   (when (junctorp expr)
