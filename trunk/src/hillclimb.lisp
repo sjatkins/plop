@@ -75,7 +75,8 @@ Author: madscience@google.com (Moshe Looks) |#
 ;;; to new settings
 (defun weak-kick (n knobs)
   (mapc (lambda (knob)
-	  (funcall (elt knob (1+ (random (1- (knob-arity knob)))))))
+	  (funcall (elt (knob-setters knob) 
+			(1+ (random (1- (knob-arity knob)))))))
 	(random-sample n knobs)))
     
 (defun weak-kick-until (pred n knobs)

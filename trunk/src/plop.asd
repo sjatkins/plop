@@ -47,7 +47,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	       (:file "reductions")
 	       (:file "bool")
 	       (:file "num")
-	       (:file "maxima")
+;	       (:file "maxima")
 	       (:file "list")
 
 	       (:file "knobs")       ; representation-building
