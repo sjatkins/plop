@@ -54,7 +54,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	       (:file "canonize")
  	       (:file "represent")
 
-;  	       (:file "distance")    ; optimization
+  	       (:file "distance")    ; optimization
   	       (:file "mpop")	       
 	       (:file "utility")
   	       (:file "selection")

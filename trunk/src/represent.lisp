@@ -19,7 +19,8 @@ defines the interrelated structs addr and rep and associated algos |#
 
 
 (defun twiddles-magnitude (twiddles &aux (d 0))
-  (maphash (lambda (k s) (incf d (knob-setting-distance k 0 s))) twiddles))
+  (maphash (lambda (k s) (incf d (knob-setting-distance k 0 s))) twiddles)
+  d)
 (defun twiddles-distance (x y &aux (d 0))
   (maphash (lambda (xk xs)
 	     (incf d (aif (gethash xk y) 
@@ -31,6 +32,7 @@ defines the interrelated structs addr and rep and associated algos |#
 		    (incf d (knob-nbits yk))))
 		y)
   d)
+;(define-test
 
 ;;; an address is an encoding of an expression in a particular representations
 (defstruct (addr (:constructor make-addr-root (expr &aux (rep expr)))
