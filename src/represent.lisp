@@ -19,7 +19,7 @@ defines the interrelated structs addr and rep and associated algos |#
 
 
 (defun twiddles-magnitude (twiddles &aux (d 0))
-  (maphash (lambda (k s) (incf d (knob-setting-distance k 0 s) twiddles))))
+  (maphash (lambda (k s) (incf d (knob-setting-distance k 0 s))) twiddles))
 (defun twiddles-distance (x y &aux (d 0))
   (maphash (lambda (xk xs)
 	     (incf d (aif (gethash xk y) 
@@ -159,25 +159,26 @@ defines the interrelated structs addr and rep and associated algos |#
 
 ;;; ok, this is the real tricky bit....
 (defun compute-knobs (pnode cexpr context type)
+  (declare (ignore pnode cexpr context type)))
   ;; first, go through and construct a partial mapping between subtrees
   ;; in cexpr and each of its parent cexprs (the pnode's pts)
-  (mapcar (lambda (parent)
-	    (mapc (lambda (sp)
-		    (setf (gethash (car sp)) 
-			  (nconc (cdr sp) (gethash (car sp)))))
-		  (align-canonical-exprs cexpr (addr-rep parent) 
-					 context type)))
-	  (pnode-pts pnode))
-  (maphash (lambda (subexpr parent)
+;;   (mapcar (lambda (parent)
+;; 	    (mapc (lambda (sp)
+;; 		    (setf (gethash (car sp)) 
+;; 			  (nconc (cdr sp) (gethash (car sp)))))
+;; 		  (align-canonical-exprs cexpr (addr-rep parent) 
+;; 					 context type)))
+;; 	  (pnode-pts pnode))
+;;   (maphash (lambda (subexpr parent)
 
 
- &aux
-		      (knobs (enum-knobs (cexpr context type))))
-  (mapc (knob-key knob)
-	knobs
+;;  &aux
+;; 		      (knobs (enum-knobs (cexpr context type))))
+;;   (mapc (knob-key knob)
+;; 	knobs
 
- (mpop-type mpop))))
-						(pnode-expr exemplar)
-						cexpr context type)))
+;;  (mpop-type mpop))))
+;; 						(pnode-expr exemplar)
+;; 						cexpr context type)))
 
 

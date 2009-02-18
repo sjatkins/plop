@@ -46,7 +46,7 @@ numerical functions |#
 ;;; to do it...
 (let ((fn (cond ((fboundp 'cl-user::erf)
 		 (symbol-function (find-symbol "ERF" (find-package 'cl-user))))
-		((fboundp 'maxima-reduce)
+		((find-package 'maxima)
 		 (symbol-function (find-symbol "ERF" (find-package 'maxima))))
 		(t (let ((table (make-array 
 				 300 :initial-contents
@@ -157,7 +157,7 @@ numerical functions |#
 ;;; E(X|X>x) for gaussian var X with mean m and variance v
 (let ((sqrt2 (sqrt 2.0L0))
       (sqrt2-over-pi (sqrt (/ 2.0L0 pi))))
-  (defun conditional-tail-expection (m v x &aux d sd erf)
+  (defun conditional-tail-expectation (m v x &aux d sd erf)
     (setf m (coerce m 'long-float)
 	  v (coerce v 'long-float)
 	  x (coerce x 'long-float)
@@ -165,12 +165,18 @@ numerical functions |#
 	  sd (sqrt v)
 	  erf (coerce (erf (/ d (* sd sqrt2))) 'long-float))
     (assert (<= erf 0.9999999999974403808L0) ()
-	    "can't compute cte due to numerical instability (erf = ~S)" erf)
+	    "can't compute cte due to numerical instability; (erf ~S) = ~S"
+	    (/ d (* sd sqrt2)) erf)
     (+ m (/ (* sd sqrt2-over-pi (exp (/ (* d d) (* -2.0L0 v))))
 	    (- 1.0L0 erf)))))
-(define-test conditional-tail-expection
+(define-test conditional-tail-expectation
   ;; ensure that we are at least somewhat stable
-  (let ((l (mapcar (lambda (x) 
-		     (- (conditional-tail-expection 0.0L0 1.0L0 x) x))
-		   (iota 7 :start 6 :step 0.01))))
-    (mapcar (lambda (x y) (assert-true (> x y))) l (cdr l))))
+  (let* ((values (iota 6.97 :start 6 :step 0.01))
+	 (l (mapcar (lambda (x) 
+		     (- (conditional-tail-expectation 0.0L0 1.0L0 x) x))
+		    values)))
+    (mapcar (lambda (x y) 
+	      (assert-true (> x y) x y 
+			   (nth (position x l) values)
+			   (nth (position y l) values)))
+	    l (cdr l))))
