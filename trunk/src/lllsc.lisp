@@ -40,7 +40,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 			  (pnodes (mpop-pnodes mpop)))
   (while (not done)
     (setf pnodes (promote-max-utility pnodes)
-	  (car pnodes) (get-rep (mpop-kmap mpop) (car pnodes) context type)
+	  (car pnodes) (get-rep (car pnodes) context type)
 	  (values done new-pnodes) (funcall optimize (car pnodes))
 	  pnodes (competitive-integrate (mpop-size mpop) 
 					(nconc pnodes new-pnodes))))
@@ -57,8 +57,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 	   (update-frequencies err twiddles rep context)
 	   (push (if (< err best-err)
 		     (setf stuckness 0 best-err err 
-			   rep (make-rep (mpop-kmap mpop) it context type
-					 :expr expr))
+			   rep (make-rep it context type :expr expr))
 		     it)
 		 pnodes))
 	 (update-frequencies-loser twiddles rep context))

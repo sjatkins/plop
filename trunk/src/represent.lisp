@@ -18,12 +18,19 @@ defines the interrelated structs addr and rep and associated algos |#
 (in-package :plop)
 
 
-(defun twiddles-magnitude (twiddles &key (bound most-positive-single-float))
-  (reduce (lambda (n ks)
-            (aprog1 (+ n (knob-setting-distance (car ks) 0 (cdr ks)))
-              (when (> it bound) 
-                (return-from twiddles-magnitude it))))
-          twiddles :initial-value 0))
+(defun twiddles-magnitude (twiddles &aux (d 0))
+  (maphash (lambda (k s) (incf d (knob-setting-distance k 0 s) twiddles))))
+(defun twiddles-distance (x y &aux (d 0))
+  (maphash (lambda (xk xs)
+	     (incf d (aif (gethash xk y) 
+			  (knob-setting-distance xk xs it)
+			  (knob-nbits xk))))
+	   x)
+  (maphash-keys (lambda (yk)
+		  (unless (gethash yk x)
+		    (incf d (knob-nbits yk))))
+		y)
+  d)
 
 ;;; an address is an encoding of an expression in a particular representations
 (defstruct (addr (:constructor make-addr-root (expr &aux (rep expr)))
@@ -118,21 +125,22 @@ defines the interrelated structs addr and rep and associated algos |#
     
 ;;; a representation - the tricky bit...
 (defstruct (rep (:include pnode)
+		(:constructor make-rep-raw 
+		 (&aux (scores (vector)) (knobs (vector))))
 		(:constructor make-rep 
-		 (kmap pnode context type &key 
+		 (pnode context type &key 
 		  (expr (reduct (make-expr-from-pnode pnode) context type))
 		  &aux (pts (pnode-pts pnode)) (scores (pnode-scores pnode)) 
 		  (err (pnode-err pnode)) (cexpr (canonize expr context type))
-		  (knobs (compute-knobs kmap pnode cexpr context type)))))
+		  (knobs (compute-knobs pnode cexpr context type)))))
   (cexpr nil :type list);fixme canonical-expr)
-  (knobs nil :type (vector knob))
-  subexprs-to-knobs
+  (knobs nil :type (vector knob)))
+;  subexprs-to-knobs
 
-)
 (defun rep-nbits (rep)
   (reduce #'+ (rep-knobs rep) :initial-value 0 :key #'knob-nbits))
-(defun get-rep (kmap pnode context type)
-  (if (rep-p pnode) pnode (make-rep kmap pnode context type)))
+(defun get-rep (pnode context type)
+  (if (rep-p pnode) pnode (make-rep pnode context type)))
 
 (defun make-expr-from-twiddles (rep twiddles)
   (prog2 (map nil (lambda (ks) (funcall (car ks) (cdr ks))) twiddles)
@@ -150,8 +158,7 @@ defines the interrelated structs addr and rep and associated algos |#
       (make-expr-from-addr (car (pnode-pts pnode)))))
 
 ;;; ok, this is the real tricky bit....
-(defun compute-knobs (kmap pnode cexpr context type &aux 
-		      (subexpr-map (make-hash-table :test 'eq)))
+(defun compute-knobs (pnode cexpr context type)
   ;; first, go through and construct a partial mapping between subtrees
   ;; in cexpr and each of its parent cexprs (the pnode's pts)
   (mapcar (lambda (parent)
