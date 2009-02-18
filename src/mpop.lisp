@@ -20,9 +20,7 @@ mpop = metapopulation |#
 (defstruct (mpop (:constructor make-mpop (pnodes problem &key (size 1000))))
   (size nil :type (integer 1))
   (pnodes nil :type list)
-  (problem nil :type problem)
-
-  (kmap (make-hash-table :test 'equalp) :type hash-table))
+  (problem nil :type problem))
 
 ;important - don't call cte directly, have a method that takes data with 
 ;optional mean/variance/? and returns expectation ...
@@ -30,7 +28,7 @@ mpop = metapopulation |#
 
 ;;; model update functions
 (defun update-frequencies (err twiddles rep mpop &aux 
-			   (d (twiddles-magnitude twiddles)))
+;
   ;; for each of the twiddles' knobs, propagate signal back to parents
   ;; and their parents, until the sinks
 
@@ -87,20 +85,20 @@ mpop = metapopulation |#
 ; (if (< (random (+ n m)) n) ; direct mutation
 ;     (random-neighbor rep)
 
-(defun best-pick (rep mpop)
-  (mapc (lambda (knob)
+;; (defun best-pick (rep mpop)
+;;   (mapc (lambda (knob)
 
-	  (mpop-
+;; 	  (mpop-
+;;fixme
+
+;; can we reduce this to a set of schemata which we pick from??
+
+;; make-array 42 :element-type bit :initial-element
 
 
-can we reduce this to a set of schemata which we pick from??
-
-make-array 42 :element-type bit :initial-element
-
-
-desired operations:
-update-frequences O(#schemata)
-update-structure O(#schemata * #schemata * #samples)
-sample-pick O(#schemata) random access to schemata,
-best-pick O(#schemata * log(#schemata))
+;; desired operations:
+;; update-frequences O(#schemata)
+;; update-structure O(#schemata * #schemata * #samples)
+;; sample-pick O(#schemata) random access to schemata,
+;; best-pick O(#schemata * log(#schemata))
 

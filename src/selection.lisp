@@ -180,7 +180,7 @@ else
 	      (case (or (dominance (aref nodes k) (aref nodes j))
 			(when (pnode-equal (aref nodes k) (aref nodes j) 
 					   #'addr-equal)
-			  'worse))
+			  (if (rep-p (aref nodes k)) 'better 'worse)))
 		(worse (dominated (aref nodes k))
 		       (setf (aref nodes k) (aref nodes i))
 		       (incf i))
@@ -207,7 +207,8 @@ else
 	   (list (vector 0 0 1) (vector 1 1 0) (vector 1 1 0)))))
 
 ;;; is x better than y, worse than y, or incomparable (nil)?
-;;;fimxe - this is a hack - compute epsilons properly
+;;;fimxe - this is a hack - compute epsilons properly also fixme to not compute
+;;; inclusion grades but to short-circuit when possible
 (defun dominance (x y &aux (xs (pnode-scores x)) (ys (pnode-scores y))
 		  (epsilons (ntimes (length xs) 0)))
   (mvbind (a b) (inclusion-grades xs ys epsilons)

@@ -38,20 +38,6 @@ I must have fruit!
 (defun pnode-equal (x y pt-equal)
   (intersection (pnode-pts x) (pnode-pts y) :test pt-equal))
 
-;;; the distance between pnodes x and y is the pairwise minimum of the
-;;; distances over all pts (i.e. differnt representations of x and y
-(defun pnode-distance (x y pt-distance &key (bound most-positive-single-float))
-  (if (eq x y) 0
-      (let ((xpts (pnode-pts x)) (ypts (pnode-pts y)))
-	(mapc (lambda (xpt)
-		(mapc (lambda (ypt &aux (d (funcall pt-distance xpt ypt
-						    :bound bound)))
-			(if (= 0 d)
-			    (return-from pnode-distance 0)
-			    (setf bound (min bound d))))
-		      ypts))
-	      xpts))))
-
 ;fixme (defstrct fdc
 
 (defstruct (problem (:constructor make-problem-raw))

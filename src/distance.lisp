@@ -55,9 +55,10 @@ code for computing distances between addrs |#
 ;;;
 ;;; note that this is not a normalized measure
 (defun addr-distance (x y &key (bound most-positive-single-float) &aux (d 0)
-		      (lca (lowest-common-ancestor x y)) 
-		      (kmap (make-hash-table :test 'eq)))
+		      (lca (lowest-common-ancestor x y)))
   (while (not (eq x lca))
+    (incf d (twiddles-magnitude x)
+
     (maphash (lambda (knob setting)
 	       (unless (gethash knob kmap) ; newer settings override old ones
 		 (setf (gethash knob kmap) setting)))
@@ -100,3 +101,106 @@ code for computing distances between addrs |#
 		    (assert-equalp r (addr-distance x y)))
 		  nodes rs))
 	  nodes key)))
+
+;;; the distance between pnodes x and y is the pairwise minimum of the
+;;; distances over all pts (i.e. differnt representations of x and y)
+;;; the pts are assumed to be addrs
+(defun pnode-distance (x y &optional (dist (make-hash-table :test 'eq))
+		       (tmag (make-hash-table :test 'eq)))
+  (labels 
+      ((tmag (addr)
+	 (or (gethash addr tmag)
+	     (setf (gethash addr tmag) 
+		   (twiddles-magnitude (addr-twiddles addr)))))
+       (dist (x y &aux (cache (gethash x dist)))
+	 (if cache
+	     (awhen (gethash y cache) (return-from dist it))
+	     (setf cache (setf (gethash x dist) (make-hash-table :test 'eq))))
+	 (setf (gethash y cache) most-positive-single-float ; to handle cycles
+	       (gethash y cache) (if (pnode-equal x y) 0
+				     (compute x y))))
+       (compute (x y &aux (ypts (pnode-pts y)))
+	 (reduce 
+	  #'min (pnode-pts x) :initial-value most-positive-single-float :key
+	  (lambda (xp &aux (xr (addr-rep xp)) (xt (addr-twiddles xp)))
+	    (reduce 
+	     #'min ypts :initial-value most-positive-single-float :key
+	     (lambda (yp &aux (yr (addr-rep yp)) (yt (addr-twiddles yp)))
+	       (cond ((eq xrep yrep) (twiddles-distance xt yt))
+		     ((addr-root-p xp) (+ (tmag yt) (dist x yr)))
+		     ((addr-root-p yp) (+ (tmag xt) (dist xr y)))
+		     (t (let ((xm (tmag xt)) (ym (tmag yt)))
+			  (min (+ xm (dist xr y)) 
+			       (+ ym (dist x yr))
+			       (+ xm ym (dist xr yr))))))))))))
+    (dist x y)))
+(define-test pnode-distance
+    (let* ((a (make-rep-raw)) (b (make-rep-raw)) (c (make-rep-raw))
+	   (d (make-rep-raw)) (e (make-rep-raw)) (f (make-rep-raw))
+	   (ks-dist (lambda (x y) (abs (- x y))))
+	   (ka1 (make-knob ks-dist nil)) (ka2 (make-knob ks-dist nil))
+	   (kc1 (make-knob ks-dist nil)) (kc2 (make-knob ks-dist nil))
+	   (kd1 (make-knob ks-dist nil)) (kd2 (make-knob ks-dist nil))
+	   (ke1 (make-knob ks-dist nil)) (ke2 (make-knob ks-dist nil))
+	   (d '((0 3 1 3 3 4))))
+
+      (push (make-addr-root nil) (rep-pts a))		
+
+      (push (make-addr a `((,ka1 . 3))) (rep-pts b))
+      (push (make-addr c `((,kc1 . 1))) (rep-pts b))
+
+      (push (make-addr a `((,ka2 . 1))) (rep-pts c))
+
+      (push (make-addr c `((,kc1 . 2))) (rep-pts d))
+
+      (push (make-addr c `((,kc1 . 1) (,kc2 . 1))) (rep-pts e))
+      (push (make-addr c `((,kc1 . 2) (,kc2 . 2))) (rep-pts e))
+	  
+      (push (make-addr d `((,kd1 . 1) (,kd2 . 1))) (rep-pts f))
+      (push (make-addr e `((,ke2 . 20))) (rep-pts f))
+
+      (
+	  
+
+;fixme handle cycles      
+      
+
+'((0 1
+					
+		       
+
+
+;; 		 (aif (gethash xrep cache)
+;; 		      (setf b (min b (
+			
+
+
+;; d 0))
+
+;; 	     (let ((xpts (pnode-pts x)) (ypts (pnode-pts y)))
+;; 	       (mapc 
+;; 		(lambda (xpt &aux (xrep (addr-rep xpt))
+;; 			 (cache2 (or (gethash xrep cache)
+;; 				     (setf (gethash xrep cache)
+;; 					   (make-hash-table :test 'eq)))))
+;; 		  (mapc 
+;; 		   (lambda (ypt &aux (yrep (addr-rep ypt)))
+;; 		     (or (gethash yrep cache2)
+;; 			 (let ((d (+ (twiddles-magnitude (addr-twiddles xpt))
+;; 				     (twiddles-magnitude (addr-twiddles ypt)))
+;; 				 (setf (gethash yrep cache2)
+		 
+;; 						(compute xrep yrep b))))
+;; 			       (setf b (min 
+
+;;  &aux (d (funcall pt-distance xpt ypt
+;; 						    :bound bound)))
+;; 			(if (= 0 d)
+;; 			    (return-from pnode-distance 0)
+;; 			    (setf bound (min bound d))))
+;; 		      ypts))
+;; 	      xpts))))
+
+		 
+
+;;       (compute x y bound)
