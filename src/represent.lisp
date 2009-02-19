@@ -42,8 +42,8 @@ defines the interrelated structs addr and rep and associated algos |#
     (setf (gethash k2 y) 10)
     (setf (gethash k3 x) 100)
 
-    (assert-equal 9 (twiddles-distance x y))
-    (assert-equal 9 (twiddles-distance y x))))
+    (assert-equalp 9 (twiddles-distance x y))
+    (assert-equalp 9 (twiddles-distance y x))))
 
 ;;; an address is an encoding of an expression in a particular representations
 (defstruct (addr (:constructor make-addr-root (expr &aux (rep expr)))

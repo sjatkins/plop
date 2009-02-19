@@ -635,7 +635,7 @@ miscelaneous non-numerical utilities |#
    (lambda (&rest args) ; lookup - doesn't compute or move args to top of queue
      (mvbind (a b) (gethash args cache)
        (print* 'xx a b)
-       (when b) (cdar a)))))
+       (if b (cdar a) nil)))))
 (define-test make-lru
   (let* ((ncalls 0) (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3)))
     (assert-equal '(1 2 3 1 2 3) 
