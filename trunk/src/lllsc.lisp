@@ -54,16 +54,16 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
     (setf expr (reduct (make-expr-from-twiddles rep twiddles) context type))
     (aif (get-pnode-unless-loser expr rep twiddles (mpop-problem mpop))
 	 (let ((err (pnode-err it)))
-	   (update-frequencies err twiddles rep context)
+	   (update-frequencies err twiddles rep mpop)
 	   (push (if (< err best-err)
 		     (setf stuckness 0 best-err err 
 			   rep (make-rep it context type :expr expr))
 		     it)
 		 pnodes))
-	 (update-frequencies-loser twiddles rep context))
+	 (update-frequencies-loser twiddles rep mpop))
     (awhen (funcall terminationp best-err)
       (return-from ll-optimize (values it pnodes))))
   ;; if we reach this point we are either stuck or have completely exhausted
   ;; the neighborhood - the exemplar must be a local minima or near-minima
-  (update-structure twiddles rep context)
+  (update-structure twiddles rep mpop)
   (values nil pnodes))

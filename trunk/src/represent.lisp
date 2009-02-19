@@ -17,7 +17,6 @@ Author: madscience@google.com (Moshe Looks)
 defines the interrelated structs addr and rep and associated algos |#
 (in-package :plop)
 
-
 (defun twiddles-magnitude (twiddles &aux (d 0))
   (maphash (lambda (k s) (incf d (knob-setting-distance k 0 s))) twiddles)
   d)
@@ -32,7 +31,19 @@ defines the interrelated structs addr and rep and associated algos |#
 		    (incf d (knob-nbits yk))))
 		y)
   d)
-;(define-test
+(define-test twiddles-distance
+  (let* ((x (make-hash-table)) (y (make-hash-table))
+	 (ks-dist (lambda (x y) (abs (- x y))))
+	 (k1 (make-knob ks-dist nil)) (k2 (make-knob ks-dist nil))
+	 (k3 (make-knob ks-dist '(1 2 3 4))))
+    (setf (gethash k1 x) 1)
+    (setf (gethash k1 y) 1)
+    (setf (gethash k2 x) 3)
+    (setf (gethash k2 y) 10)
+    (setf (gethash k3 x) 100)
+
+    (assert-equal 9 (twiddles-distance x y))
+    (assert-equal 9 (twiddles-distance y x))))
 
 ;;; an address is an encoding of an expression in a particular representations
 (defstruct (addr (:constructor make-addr-root (expr &aux (rep expr)))
@@ -75,13 +86,15 @@ defines the interrelated structs addr and rep and associated algos |#
       (push addr (pnode-pts it)))))
 (defun get-pnode-unless-loser (expr rep twiddles problem &aux
 			       (bound (problem-loser-bound problem)))
-  (mvbind (pnode present) (funcall (problem-lookup-pnode problem) expr)
-    (when present
-      (unless (find-if (bind #'addr-matches-twiddles-p /1 rep twiddles)
-		       (pnode-pts pnode))
-	(push (make-addr rep twiddles) (pnode-pts pnode)))
-      (return-from get-pnode-unless-loser 
-	(when (< (pnode-err pnode) bound) pnode))))
+  (awhen (funcall (problem-lookup-pnode problem) expr)
+    (print* 'yy it (eq it nil) (eql it nil) (equal it nil) (equalp it nil)
+	    (type-of it))
+    (unless (find-if (bind #'addr-matches-twiddles-p /1 rep twiddles)
+		     (pnode-pts it))
+      (push (make-addr rep twiddles) (pnode-pts it)))
+    (return-from get-pnode-unless-loser 
+      (when (< (pnode-err it) bound) it)))
+  (print* 'ok)
   (let ((i 0) (err 0.0))
     (mapc (lambda (scorer)
 	    (incf err (setf (elt (problem-score-buffer problem) i) 
@@ -145,9 +158,13 @@ defines the interrelated structs addr and rep and associated algos |#
   (if (rep-p pnode) pnode (make-rep pnode context type)))
 
 (defun make-expr-from-twiddles (rep twiddles)
-  (prog2 (map nil (lambda (ks) (funcall (car ks) (cdr ks))) twiddles)
+  (prog2 (map nil (lambda (ks) 
+		    (funcall (elt (knob-setters (car ks)) (cdr ks)))) 
+	      twiddles)
       (canon-clean (rep-cexpr rep))
-    (map nil (lambda (ks) (funcall (car ks) 0)) twiddles)))
+    (map nil (lambda (ks) 
+	       (funcall (elt (knob-setters (car ks)) 0)))
+	 twiddles)))
 (defun make-expr-from-addr (addr)
   (if (addr-root-p addr) ; for the root addr, rep is the actual expr
       (addr-rep addr)    ; that the addr corresponds to
@@ -161,9 +178,12 @@ defines the interrelated structs addr and rep and associated algos |#
 
 ;;; ok, this is the real tricky bit....
 (defun compute-knobs (pnode cexpr context type)
-  (declare (ignore pnode cexpr context type)))
-  ;; first, go through and construct a partial mapping between subtrees
-  ;; in cexpr and each of its parent cexprs (the pnode's pts)
+  (declare (ignore pnode))
+  (coerce (enum-knobs cexpr context type) 'vector))
+
+
+;  (declare (ignore pnode cexpr context type)))
+
 ;;   (mapcar (lambda (parent)
 ;; 	    (mapc (lambda (sp)
 ;; 		    (setf (gethash (car sp)) 

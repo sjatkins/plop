@@ -37,8 +37,8 @@ are all >0, or <0, break early
 for speed have an all-positive marker? |#
 (in-package :plop)
 
-(define-constant +largest-exp-arg+ 80.0)
-(define-constant +smallest-log-arg+ 0.0001)
+(define-constant +largest-exp-arg+ 80.0L0)
+(define-constant +smallest-log-arg+ 0.0001L0)
 
 (defparameter *peval-counter* 0) ;fixme - need to increment this appropriately!
 
