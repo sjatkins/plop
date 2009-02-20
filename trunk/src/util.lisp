@@ -245,7 +245,7 @@ miscelaneous non-numerical utilities |#
 
 ;;; not very efficient...
 (defun uniq (seq &key (test 'eql) &aux (table (make-hash-table :test test)))
-  (map 'nil (lambda (x) (setf (gethash table x) t)) seq)
+  (map 'nil (lambda (x) (setf (gethash x table) t)) seq)
   (coerce (collecting (maphash-keys (collector) table)) (type-of seq)))
 
 (defun map-adjacent (result-type fn seq)
@@ -634,7 +634,7 @@ miscelaneous non-numerical utilities |#
        (cdar q)))
    (lambda (&rest args) ; lookup - doesn't compute or move args to top of queue
      (mvbind (a b) (gethash args cache)
-       (print* 'xx a b)
+       ;(print* 'xx a b)
        (if b (cdar a) nil)))))
 (define-test make-lru
   (let* ((ncalls 0) (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3)))

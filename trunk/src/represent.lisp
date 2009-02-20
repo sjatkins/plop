@@ -56,7 +56,7 @@ defines the interrelated structs addr and rep and associated algos |#
   (rep nil :type (or rep pexpr))
   (twiddles nil :type (or null hash-table)))
 (defun addr-root-p (addr) (not (addr-twiddles addr)))
-(defun addr-matches-twiddles-p (addr rep twiddles)
+(defun addr-equal-twiddles (addr rep twiddles)
   (and (eq rep (addr-rep addr))
        (eql (length twiddles) (hash-table-count (addr-twiddles addr)))
        (every (lambda (ks) (gethash (car ks) (addr-twiddles addr))) twiddles)))
@@ -79,6 +79,17 @@ defines the interrelated structs addr and rep and associated algos |#
       (/ (problem-err-sum problem) (1- n))
       most-positive-single-float))
 
+(defun problem-err-moments (problem &aux (n (problem-pnode-count problem))
+			    (e (problem-err-sum problem)) (m (/ e n))
+			    (s (problem-err-squares-sum problem)))
+  (values m (/ (+ (* n m m) s (* -2 m e)) (1- n))))
+(define-test problem-err-moments
+  (let ((p (make-problem-raw :err-sum 10 :err-squares-sum 20 :pnode-count 10
+			     :score-buffer (vector))))
+    (mvbind (m v) (problem-err-moments p)
+      (assert-equalp 1 m)
+      (assert-equalp (/ 10 9) v))))
+
 ;;; lookup/compute a pnode from an addr
 (defun get-pnode (expr addr problem)
   (aprog1 (funcall (problem-compute-pnode problem) expr)
@@ -87,14 +98,11 @@ defines the interrelated structs addr and rep and associated algos |#
 (defun get-pnode-unless-loser (expr rep twiddles problem &aux
 			       (bound (problem-loser-bound problem)))
   (awhen (funcall (problem-lookup-pnode problem) expr)
-    (print* 'yy it (eq it nil) (eql it nil) (equal it nil) (equalp it nil)
-	    (type-of it))
-    (unless (find-if (bind #'addr-matches-twiddles-p /1 rep twiddles)
+    (unless (find-if (bind #'addr-equal-twiddles /1 rep twiddles)
 		     (pnode-pts it))
       (push (make-addr rep twiddles) (pnode-pts it)))
     (return-from get-pnode-unless-loser 
       (when (< (pnode-err it) bound) it)))
-  (print* 'ok)
   (let ((i 0) (err 0.0))
     (mapc (lambda (scorer)
 	    (incf err (setf (elt (problem-score-buffer problem) i) 
@@ -168,9 +176,11 @@ defines the interrelated structs addr and rep and associated algos |#
 (defun make-expr-from-addr (addr)
   (if (addr-root-p addr) ; for the root addr, rep is the actual expr
       (addr-rep addr)    ; that the addr corresponds to
-      (prog2 (maphash (lambda (k s) (funcall k s)) (addr-twiddles addr))
+      (prog2 (maphash (lambda (k s) (funcall (elt (knob-setters k) s)))
+		      (addr-twiddles addr))
 	  (canon-clean (rep-cexpr (addr-rep addr)))
-	(maphash-keys (lambda (k) (funcall k 0)) (addr-twiddles addr)))))      
+	(maphash-keys (lambda (k) (funcall (elt (knob-setters k) 0)))
+		      (addr-twiddles addr)))))
 (defun make-expr-from-pnode (pnode)
   (if (rep-p pnode)
       (canon-clean (rep-cexpr pnode))
