@@ -35,7 +35,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 	      (map 'list (lambda (x) 
 			   (cons (pnode-err x) (make-expr-from-pnode x)))
 		   (mpop-pnodes mpop))))))
-
+;fixme keep track of howmany evals? do we need a panic factor like moses?
 (defun competitive-learn (optimize mpop context type &aux done new-pnodes
 			  (pnodes (mpop-pnodes mpop)))
   (while (not done)
@@ -48,20 +48,25 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 
 (defun ll-optimize (mpop rep context type terminationp &aux (stuckness 0)
 		    (stuckness-bound (stuckness-bound rep context))
-		    (best-err (pnode-err rep)) twiddles expr pnodes)
+		    (best-err (pnode-err rep)) (best-size-penalty 0)
+		    twiddles expr pnodes)
   (while (and (< stuckness stuckness-bound)
 	      (setf twiddles (sample-pick rep context)))
     (setf expr (reduct (make-expr-from-twiddles rep twiddles) context type))
     (aif (get-pnode-unless-loser expr rep twiddles (mpop-problem mpop))
 	 (let ((err (pnode-err it)))
+	   (print* 'nonloser (p2sexpr expr) err (pnode-scores it))
 	   (update-frequencies err twiddles rep mpop)
 	   (push (if (< err best-err)
 		     (setf stuckness 0 best-err err 
+			   best-size-penalty (elt (pnode-scores it) 0)
 			   rep (make-rep it context type :expr expr))
 		     it)
 		 pnodes))
-	 (update-frequencies-loser twiddles rep mpop))
-    (awhen (funcall terminationp best-err)
+	 (progn; (print* 'loser (p2sexpr expr)
+		;	(problem-loser-bound (current-problem context)))
+	 (update-frequencies-loser twiddles rep mpop)))
+    (awhen (funcall terminationp (- best-err best-size-penalty))
       (return-from ll-optimize (values it pnodes))))
   ;; if we reach this point we are either stuck or have completely exhausted
   ;; the neighborhood - the exemplar must be a local minima or near-minima

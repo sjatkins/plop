@@ -40,8 +40,13 @@ mpop = metapopulation |#
 ;  (incf 
 
 ;;; does update-frequences based on the expected score of a loser
-(defun update-frequencies-loser (twiddles rep mpop)
-  (mvbind (m v) (values -100 1);fixme(problem-err-moments (mpop-problem mpop))
+(defun update-frequencies-loser (twiddles rep mpop &aux 
+				 (p (mpop-problem mpop)))
+  (mvbind (m v) (case (problem-pnode-count p) 
+		  (0 (return-from update-frequencies-loser))
+		  (1 (values (problem-err-sum p) (/ (problem-err-sum p) 2)))
+		  (t (problem-err-moments (mpop-problem mpop))))
+    (when (= v 0) (return-from update-frequencies-loser))
     (update-frequencies (- (* 2 m) (conditional-tail-expectation 
 				    m v (- (* 2 m) (problem-loser-bound 
 						    (mpop-problem mpop)))))

@@ -42,10 +42,11 @@ I must have fruit!
 
 (defstruct (problem (:constructor make-problem-raw))
   (compute-pnode #'identity :type (function (list) pnode))
-  (lookup-pnode #'identity :type (function (list) pnode))
+  (lookup-pnode #'identity :type (function (list) (or pnode null)))
   (scorers nil :type list)
   (score-buffer nil :type (vector number))
-  (err-sum 0.0 :type number) (pnode-count 0 :type (integer 0)))
+  (err-sum 0.0 :type number) (err-squares-sum 0.0 :type number)
+  (pnode-count 0 :type (integer 0)))
 ;fixme - should we try a moving average here?
 
 (defparameter *pnode-cached-scores* nil) ; don't touch directly - use the 
@@ -74,6 +75,7 @@ I must have fruit!
 					 scorers)))
 			      *pnode-cached-err*)
 			(incf (problem-err-sum it) *pnode-cached-err*)
+			(incf (problem-err-squares-sum it)
+			      (* *pnode-cached-err* *pnode-cached-err*))
 			(incf (problem-pnode-count it))))
 		    lru-size :test 'equalp))))
-
