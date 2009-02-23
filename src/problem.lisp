@@ -57,7 +57,7 @@ I must have fruit!
 	   ,@body)
     (setf *pnode-cached-scores* nil)))
 
-(defun make-problem (scorers &key (lru-size 1000))
+(defun make-problem (scorers &key (lru-size 3))
   (aprog1 (make-problem-raw :scorers scorers :score-buffer 
 			    (make-array (length scorers) 
 					:element-type 'number
@@ -65,14 +65,15 @@ I must have fruit!
     (setf (values (problem-compute-pnode it) (problem-lookup-pnode it))
 	  (make-lru (lambda (expr)
 		      (prog1 (make-pnode 
-			      (or *pnode-cached-scores*
-				  (progn 
-				    (setf *pnode-cached-err* 0.0)
-				    (map '(vector number)
-					 (lambda (scorer)
-					   (aprog1 (funcall scorer expr)
-					     (incf *pnode-cached-err* it)))
-					 scorers)))
+			      (aif *pnode-cached-scores*
+				   (copy-array it)
+				   (progn 
+				     (setf *pnode-cached-err* 0.0)
+				     (map '(vector number)
+					  (lambda (scorer)
+					    (aprog1 (funcall scorer expr)
+					      (incf *pnode-cached-err* it)))
+					  scorers)))
 			      *pnode-cached-err*)
 			(incf (problem-err-sum it) *pnode-cached-err*)
 			(incf (problem-err-squares-sum it)

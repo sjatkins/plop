@@ -118,7 +118,12 @@ Mixed discrete-continuous optimization problems
   `(mvbind (scorers terminationp) (make-problem-desc ,target ,cost ,type)
      (setf (gethash ',name *benchmarks*)
 	   (make-benchmark :name ',name :cost ,cost :type ,type 
-			   :scorers scorers :terminationp terminationp
+			   :scorers scorers :terminationp 
+			   (lambda (err &optional scores)
+			     (when scores
+			       (dorange (i (length scorers) (length scores))
+				 (decf err (elt scores i))))
+			     (funcall terminationp err))
 			   :start (or ,start 
 				      (lambda () (default-expr ,type)))))))
 (defmacro defbenchmark-seq (name (range) &key cases cost type target start)
