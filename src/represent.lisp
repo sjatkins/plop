@@ -115,19 +115,19 @@ defines the interrelated structs addr and rep and associated algos |#
       (get-pnode expr (make-addr rep twiddles) problem))))
 
 (define-test problem-addr
-  (let ((problem (make-problem (list (lambda (x) (+ (elt x 0) (elt x 1)))
-				     (lambda (x) (* (elt x 0) (elt x 1))))))
+  (let ((problem (make-problem `(,(lambda (x) (+ (car (elt x 0)) (elt x 1)))
+				 ,(lambda (x) (* (car (elt x 0)) (elt x 1))))))
 	pnode0 pnode1 (addr0 (make-addr '(addr0) nil)))
     (assert-equal 0 (problem-pnode-count problem))
     
-    (setf pnode0 (get-pnode '(2 2) addr0 problem))
+    (setf pnode0 (get-pnode %(2 2) addr0 problem))
     (assert-equal 1 (problem-pnode-count problem))
     (assert-equalp 8 (problem-err-sum problem))
     (assert-equal (list addr0) (pnode-pts pnode0))
     (assert-equalp (vector 4 4) (pnode-scores pnode0))
     (assert-equalp 8 (pnode-err pnode0))
 
-    (setf pnode1 (get-pnode-unless-loser '(3 3) '(addr1) nil problem))
+    (setf pnode1 (get-pnode-unless-loser %(3 3) '(addr1) nil problem))
     (assert-equal 2 (problem-pnode-count problem))
     (assert-equalp 23 (problem-err-sum problem))
     (assert-eql 1 (length (pnode-pts pnode1)))
@@ -138,11 +138,11 @@ defines the interrelated structs addr and rep and associated algos |#
     (assert-equalp 15 (pnode-err pnode1))
 
     (assert-equal nil (get-pnode-unless-loser
-		       '(300 300) '(addrfoo) nil problem))
+		       %(300 300) '(addrfoo) nil problem))
     (assert-equal 2 (problem-pnode-count problem))
     (assert-equalp 23 (problem-err-sum problem))
 
-    (assert-eq pnode0 (get-pnode '(2 2) (make-addr '(addr2) nil) problem))
+    (assert-eq pnode0 (get-pnode %(2 2) (make-addr '(addr2) nil) problem))
     (assert-equal 2 (problem-pnode-count problem))
     (assert-equalp 23 (problem-err-sum problem))))
     
