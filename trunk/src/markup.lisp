@@ -38,7 +38,8 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun strip-markup (expr) 
   (unless (atom expr)
     (rplacd (car expr) nil)
-    (mapc #'strip-markup (args expr))))
+    (mapc #'strip-markup (args expr)))
+  expr)
 
 (defun clear-simp (expr &optional exceptions) ; exceptions must be sorted 
   (setf (mark simp expr)

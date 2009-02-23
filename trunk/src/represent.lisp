@@ -46,7 +46,7 @@ defines the interrelated structs addr and rep and associated algos |#
     (assert-equalp 9 (twiddles-distance y x))))
 
 ;;; an address is an encoding of an expression in a particular representations
-(defstruct (addr (:constructor make-addr-root (expr &aux (rep expr)))
+(defstruct (addr (:constructor make-addr-root (expr &aux (rep (pclone expr))))
 		 (:constructor make-addr ; we convert the seq of twiddles into
 		  (rep twiddles-seq &aux ; a hashtable for efficiency
 		   (twiddles (aprog1 (make-hash-table :test 'eq)
@@ -92,12 +92,12 @@ defines the interrelated structs addr and rep and associated algos |#
 
 ;;; lookup/compute a pnode from an addr
 (defun get-pnode (expr addr problem)
-  (aprog1 (funcall (problem-compute-pnode problem) expr)
+  (aprog1 (funcall (problem-compute-pnode problem) (strip-markup expr))
     (unless (find-if (bind #'addr-equal addr /1) (pnode-pts it))
       (push addr (pnode-pts it)))))
 (defun get-pnode-unless-loser (expr rep twiddles problem &aux
 			       (bound (problem-loser-bound problem)))
-  (awhen (funcall (problem-lookup-pnode problem) expr)
+  (awhen (funcall (problem-lookup-pnode problem) (strip-markup expr))
     (unless (find-if (bind #'addr-equal-twiddles /1 rep twiddles)
 		     (pnode-pts it))
       (push (make-addr rep twiddles) (pnode-pts it)))
@@ -154,7 +154,8 @@ defines the interrelated structs addr and rep and associated algos |#
 		 (pnode context type &key 
 		  (expr (reduct (make-expr-from-pnode pnode) context type))
 		  &aux (pts (pnode-pts pnode)) (scores (pnode-scores pnode)) 
-		  (err (pnode-err pnode)) (cexpr (canonize expr context type))
+		  (err (pnode-err pnode)) 
+		  (cexpr (canonize (pclone expr) context type))
 		  (knobs (compute-knobs pnode cexpr context type)))))
   (cexpr nil :type list);fixme canonical-expr)
   (knobs nil :type (vector knob)))

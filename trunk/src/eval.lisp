@@ -94,6 +94,7 @@ for speed have an all-positive marker? |#
 		(return-from ,name (convert-bools ,result ,type-fn)))
 	    #+clisp(system::simple-floating-point-overflow ())
 	    #+clisp(system::simple-arithmetic-error ())
+	    (simple-type-error ())
 	    (division-by-zero ()))
 	  nan)))
   ;;; peval-cl behaves like peval, only bools evaluate to t/nil instead

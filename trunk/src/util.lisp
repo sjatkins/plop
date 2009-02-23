@@ -630,7 +630,7 @@ miscelaneous non-numerical utilities |#
        (assert (validate-dll q))
        (assert (eql (dll-length q) (hash-table-count cache)) ()
 	       "length mismatch; |q|=~S, |cache|=~S" 
-	       (dll-length q) (hash-table-count cache))
+	       (dll-length q) (hash-table-count cache) q cache)
        (cdar q)))
    (lambda (&rest args) ; lookup - doesn't compute or move args to top of queue
      (mvbind (a b) (gethash args cache)

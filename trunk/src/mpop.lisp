@@ -46,7 +46,7 @@ mpop = metapopulation |#
 		  (0 (return-from update-frequencies-loser))
 		  (1 (values (problem-err-sum p) (/ (problem-err-sum p) 2)))
 		  (t (problem-err-moments (mpop-problem mpop))))
-    (when (= v 0) (return-from update-frequencies-loser))
+    (when (<= v 0) (return-from update-frequencies-loser))
     (update-frequencies (- (* 2 m) (conditional-tail-expectation 
 				    m v (- (* 2 m) (problem-loser-bound 
 						    (mpop-problem mpop)))))
