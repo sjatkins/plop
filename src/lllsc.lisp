@@ -52,7 +52,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 
 (defun ll-optimize (mpop rep context type terminationp &aux (stuckness 0)
 		    (stuckness-bound (stuckness-bound rep context))
-		    (best-err (pnode-err rep)) (best-size-penalty 0)
+		    (best-err (pnode-err rep)) (best-scores nil)
 		    twiddles expr pnodes)
   (print* 'sb stuckness-bound)
   (while (and (< stuckness stuckness-bound)
@@ -67,15 +67,15 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 		   nil "err!=sum(scores) for ~S" it)
 	   (update-frequencies err twiddles rep mpop)
 	   (push (if (< err best-err)
-		     (setf stuckness 0 best-err err 
-			   best-size-penalty (elt (pnode-scores it) 0)
+		     (setf stuckness 0 
+			   best-err err best-scores (pnode-scores it)
 			   rep (make-rep it context type :expr expr))
 		     it)
 		 pnodes))
 	 (progn; (print* 'loser (p2sexpr expr)
 		;	(problem-loser-bound (current-problem context)))
 	 (update-frequencies-loser twiddles rep mpop)))
-    (awhen (funcall terminationp best-err)
+    (awhen (funcall terminationp best-err best-scores)
       (return-from ll-optimize (values it pnodes))))
   ;; if we reach this point we are either stuck or have completely exhausted
   ;; the neighborhood - the exemplar must be a local minima or near-minima
