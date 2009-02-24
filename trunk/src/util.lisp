@@ -616,7 +616,10 @@ miscelaneous non-numerical utilities |#
 	    (if (eq node cache)		; miss?
 		(link (if (eql (hash-table-count cache) n) ; replace the lru?
 			  (aprog1 (cadr q)
-			    (remhash (caar it) cache)
+			    (let ((remresult (remhash (caar it) cache)))
+			      (assert remresult () 
+				      "you junked the hash keys ~S ~S"
+				      (caar it) cache))	    
 			    (setf (caar it) args (cdar it) (apply f args))
 			    (unlink it))
 			  (make-node)))
@@ -634,7 +637,6 @@ miscelaneous non-numerical utilities |#
        (cdar q)))
    (lambda (&rest args) ; lookup - doesn't compute or move args to top of queue
      (mvbind (a b) (gethash args cache)
-       ;(print* 'xx a b)
        (if b (cdar a) nil)))))
 (define-test make-lru
   (let* ((ncalls 0) (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3)))

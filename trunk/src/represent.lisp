@@ -46,7 +46,7 @@ defines the interrelated structs addr and rep and associated algos |#
     (assert-equalp 9 (twiddles-distance y x))))
 
 ;;; an address is an encoding of an expression in a particular representations
-(defstruct (addr (:constructor make-addr-root (expr &aux (rep (pclone expr))))
+(defstruct (addr (:constructor make-addr-root (expr &aux (rep expr)))
 		 (:constructor make-addr ; we convert the seq of twiddles into
 		  (rep twiddles-seq &aux ; a hashtable for efficiency
 		   (twiddles (aprog1 (make-hash-table :test 'eq)
@@ -91,28 +91,39 @@ defines the interrelated structs addr and rep and associated algos |#
       (assert-equalp (/ 10 9) v))))
 
 ;;; lookup/compute a pnode from an addr
-(defun get-pnode (expr addr problem)
-  (aprog1 (funcall (problem-compute-pnode problem) (strip-markup expr))
-    (unless (find-if (bind #'addr-equal addr /1) (pnode-pts it))
-      (push addr (pnode-pts it)))))
-(defun get-pnode-unless-loser (expr rep twiddles problem &aux
-			       (bound (problem-loser-bound problem)))
-  (awhen (funcall (problem-lookup-pnode problem) (strip-markup expr))
-    (unless (find-if (bind #'addr-equal-twiddles /1 rep twiddles)
-		     (pnode-pts it))
-      (push (make-addr rep twiddles) (pnode-pts it)))
-    (return-from get-pnode-unless-loser 
-      (when (< (pnode-err it) bound) it)))
-  (let ((i 0) (err 0.0))
-    (mapc (lambda (scorer)
-	    (incf err (setf (elt (problem-score-buffer problem) i) 
-			    (funcall scorer expr)))
-	    (when (>= err bound)
-	      (return-from get-pnode-unless-loser))
-	    (incf i))
-	  (problem-scorers problem))
-    (with-cached-scores (problem-score-buffer problem) err
-      (get-pnode expr (make-addr rep twiddles) problem))))
+(labels ((convert (expr)
+	   (if (lambdap expr) 
+	       (pcons 'lambda (list (arg0 expr) (convert2 (arg1 expr))))
+	       (convert2 expr)))
+	 (convert2 (expr)
+	   (if (consp expr)
+	       (pcons (fn expr) (mapcar #'convert2 (args expr)))
+	       expr)))
+  (defun get-pnode (expr addr problem &optional converted)
+    (unless converted
+      (setf expr (convert expr)))
+    (aprog1 (funcall (problem-compute-pnode problem) expr)
+      (unless (find-if (bind #'addr-equal addr /1) (pnode-pts it))
+	(push addr (pnode-pts it)))))
+  (defun get-pnode-unless-loser (expr rep twiddles problem &aux
+				 (bound (problem-loser-bound problem)))
+    (setf expr (convert expr))
+    (awhen (funcall (problem-lookup-pnode problem) expr)
+      (unless (find-if (bind #'addr-equal-twiddles /1 rep twiddles)
+		       (pnode-pts it))
+	(push (make-addr rep twiddles) (pnode-pts it)))
+      (return-from get-pnode-unless-loser 
+	(when (< (pnode-err it) bound) it)))
+    (let ((i 0) (err 0.0))
+      (mapc (lambda (scorer)
+	      (incf err (setf (elt (problem-score-buffer problem) i) 
+			      (funcall scorer expr)))
+	      (when (>= err bound)
+		(return-from get-pnode-unless-loser))
+	      (incf i))
+	    (problem-scorers problem))
+      (with-cached-scores (problem-score-buffer problem) err
+	(get-pnode expr (make-addr rep twiddles) problem t)))))
 
 (define-test problem-addr
   (let ((problem (make-problem `(,(lambda (x) (+ (car (elt x 0)) (elt x 1)))
@@ -151,11 +162,12 @@ defines the interrelated structs addr and rep and associated algos |#
 		(:constructor make-rep-raw 
 		 (&aux (scores (vector)) (knobs (vector))))
 		(:constructor make-rep 
-		 (pnode context type &key 
-		  (expr (reduct (make-expr-from-pnode pnode) context type))
-		  &aux (pts (pnode-pts pnode)) (scores (pnode-scores pnode)) 
-		  (err (pnode-err pnode)) 
-		  (cexpr (canonize (pclone expr) context type))
+		 (pnode context type &key expr &aux (pts (pnode-pts pnode))
+		  (scores (pnode-scores pnode)) (err (pnode-err pnode))
+		  (cexpr (canonize 
+			  (or expr (reduct (make-expr-from-pnode pnode) 
+					   context type))
+			  context type))
 		  (knobs (compute-knobs pnode cexpr context type)))))
   (cexpr nil :type list);fixme canonical-expr)
   (knobs nil :type (vector knob)))
@@ -166,22 +178,25 @@ defines the interrelated structs addr and rep and associated algos |#
 (defun get-rep (pnode context type)
   (if (rep-p pnode) pnode (make-rep pnode context type)))
 
+;; we need to call the twiddles in reverse order to restore correctly
 (defun make-expr-from-twiddles (rep twiddles)
   (prog2 (map nil (lambda (ks) 
-		    (funcall (elt (knob-setters (car ks)) (cdr ks)))) 
+		    (funcall (elt (knob-setters (car ks)) (cdr ks))))
 	      twiddles)
       (canon-clean (rep-cexpr rep))
     (map nil (lambda (ks) 
 	       (funcall (elt (knob-setters (car ks)) 0)))
-	 twiddles)))
+	 (reverse twiddles))))
 (defun make-expr-from-addr (addr)
   (if (addr-root-p addr) ; for the root addr, rep is the actual expr
       (addr-rep addr)    ; that the addr corresponds to
-      (prog2 (maphash (lambda (k s) (funcall (elt (knob-setters k) s)))
-		      (addr-twiddles addr))
-	  (canon-clean (rep-cexpr (addr-rep addr)))
-	(maphash-keys (lambda (k) (funcall (elt (knob-setters k) 0)))
-		      (addr-twiddles addr)))))
+      (let ((reverse nil))
+	(maphash (lambda (k s)
+		   (funcall (elt (knob-setters k) s))
+		   (push (elt (knob-setters k) 0) reverse))
+		 (addr-twiddles addr))
+	(prog1 (canon-clean (rep-cexpr (addr-rep addr)))
+	  (mapc #'funcall reverse)))))
 (defun make-expr-from-pnode (pnode)
   (if (rep-p pnode)
       (canon-clean (rep-cexpr pnode))

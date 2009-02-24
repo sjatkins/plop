@@ -149,7 +149,9 @@ be passed between subprocesses. |#
 ;; fixme to take type/context into account
 (defun prior-penalty (expr context type &aux (size (expr-size expr)))
   (declare (ignore context type))
-  (* 0.5 size (log size 2))) ; times log of size for tree structure
+  (* 0.25 size))
+
+ ; times log of size for tree structure
 
 ;; fixme - maybe adapt this based on the distribution of values observed, with
 ;; a type-based default?
