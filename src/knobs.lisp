@@ -49,10 +49,12 @@ Author: madscience@google.com (Moshe Looks) |#
   (make-knob (lambda (x y) (declare (ignore x y)) 1) ;fixme
 	     (cons (lambda () (when set-to
 				(unmung expr)
-				(aif (cdr set-to)
-				     (rplacd (rplaca set-to (car it)) (cdr it))
-				     (progn (assert (eq (cdr at) set-to))
-					    (rplacd at nil)))
+				(assert (eq (cdr at) set-to) ()
+					"mismated munging ~S ~S | ~S"     
+					at set-to (cdr set-to))
+				(setf (cdr at) (cdr set-to))
+				(when (cdr set-to)
+				  (setf (cdr set-to) nil))
 				(setf set-to nil)))
 		   (mapcar (lambda (setting)
 			     (lambda () 
