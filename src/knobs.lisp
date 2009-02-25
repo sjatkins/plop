@@ -163,15 +163,20 @@ Author: madscience@google.com (Moshe Looks) |#
   (assert (arrayp expr) () "bad tuple ~S" expr)
   (map 'list 
        (lambda (arg type idx)
-	 (assert (atom arg) () "bad tuple arg ~S arg")
+	 (assert (atom arg) () "bad tuple arg ~S" arg)
 	 (ecase (icar type)
-	   (bool (vector (lambda () (setf (elt expr idx) arg))
-			 (let ((dual (bool-dual arg)))
-			   (lambda () (setf (elt expr idx) dual)))))
-	   (num (map 'vector (lambda (x) (lambda () (setf (elt expr idx) x)))
-		     (cons (elt expr idx) 
-			   (numarg-settings (pcons '+ (list (elt expr idx)))
-					    *empty-context*)))))) ; bad hack...
+	   (bool (make-knob 
+		  (lambda (x y) (declare (ignore x y)) 1)
+		  (vector (lambda () (setf (elt expr idx) arg))
+			  (let ((dual (bool-dual arg)))
+			    (lambda () (setf (elt expr idx) dual))))))
+	   (num (make-knob
+		 (let ((e (epsilon-size type)))
+		   (lambda (x y) (log (+ 1 (/ (abs (- x y)) e)) 2)))
+		 (map 'vector (lambda (x) (lambda () (setf (elt expr idx) x)))
+		      (cons (elt expr idx) 
+			    (numarg-settings (pcons '+ (list (elt expr idx)))
+					     *empty-context*))))))) ; fixme hax
        ;fixme - num should handle min max and precision(?), if available
        expr (cdr type) (iota (length expr))))
 

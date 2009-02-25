@@ -150,7 +150,13 @@ Mixed discrete-continuous optimization problems
 	       (benchmark-type b))
     (aprog1 (numberp termination-result)
       (if it
-	  (format t "passed with cost ~S~%" termination-result)
+	  (progn 
+	    (format t "passed with cost ~S" termination-result)
+	    (if verbose
+		(let ((best (min-element scored-solutions #'< :key #'car)))
+		  (format t ", best was ~S with a score of ~S.~%" 
+			  (p2sexpr (cdr best)) (car best)))
+		(format t "~%")))
 	  (let ((best (min-element scored-solutions #'< :key #'car)))
 	    (format t "failed with cost ~S, best " (benchmark-cost b))
 	    (if verbose 

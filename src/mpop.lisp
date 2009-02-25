@@ -82,7 +82,6 @@ mpop = metapopulation |#
 ; distance between 1 and 3 and then a random item
 (defun random-pick (rep &aux (d (1+ (random 3))) 
 		    (s (make-sampler (length (rep-knobs rep)))))
-
   (generate d (lambda (&aux (k (elt (rep-knobs rep) (funcall s))))
 		(cons k (1+ (random (1- (knob-arity k))))))))
 

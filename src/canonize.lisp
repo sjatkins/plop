@@ -15,6 +15,8 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) |#
 (in-package :plop) 
 
+(deftype cexpr () t);fixme'(or list (vector pexpr) real symbol))
+
 ;; cons with args in canonical form
 (defun canonize-args (expr context type)
   (if (atom expr) expr
