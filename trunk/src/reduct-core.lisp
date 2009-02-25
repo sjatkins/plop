@@ -198,7 +198,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	  (when (consp it)
 	    (push fully-reduced (mark simp it)))))))
 (define-test reduct
-  (assert-equal 'x (reduct %(and x (or y x)) *empty-context* bool))
+  (assert-equal 'x (reduct (copy-tree %(and x (or y x))) *empty-context* bool))
   (when (fboundp 'maxima-reduce) 
     (with-bound-types *empty-context* '(f g) 
 	'((function (num num) bool) (function (bool) num))
