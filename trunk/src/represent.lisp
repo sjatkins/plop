@@ -169,7 +169,7 @@ defines the interrelated structs addr and rep and associated algos |#
 					   context type))
 			  context type))
 		  (knobs (compute-knobs pnode cexpr context type)))))
-  (cexpr nil :type list);fixme canonical-expr)
+  (cexpr nil :type cexpr)
   (knobs nil :type (vector knob)))
 ;  subexprs-to-knobs
 

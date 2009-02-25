@@ -76,7 +76,9 @@ type. It returns three values - a boolean indicating if the
 		    (lambda (expr &aux (y (actual)))
 		      (if (eq y nan)
 			  +solution-fail-value+ 
-			  (abs (- y result))))))
+			  (log (+ 1 (/ (abs (- y result)) ;fixme
+				       (epsilon-size result-type)))
+			       2)))))
 		target))
       (bool ; target is a truth table or a function for computing one
        (when (functionp target)		; compute the truth table
