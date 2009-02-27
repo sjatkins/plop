@@ -17,7 +17,14 @@ Author: madscience@google.com (Moshe Looks)
 expected utility calculations |#
 (in-package :plop)
 
-(defun promote-max-utility (pnodes) ;fixme
-  (rotatef (car pnodes) 
-	   (nth (max-position pnodes #'< :key #'pnode-err) pnodes))
-  pnodes)
+;fixme
+(defun find-max-utility (pnodes 
+			 &aux (best nil) (err most-positive-single-float))
+  (maphash-keys (lambda (x) 
+		  (when (< (pnode-err x) err)
+		    (setf best x err (pnode-err x))))
+		pnodes)
+  best)
+;;   (rotatef (car pnodes) 
+;; 	   (nth (max-position pnodes #'< :key #'pnode-err) pnodes))
+;;   pnodes)

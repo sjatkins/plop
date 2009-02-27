@@ -636,8 +636,7 @@ miscelaneous non-numerical utilities |#
 	       (dll-length q) (hash-table-count cache) q cache)
        (cdar q)))
    (lambda (&rest args) ; lookup - doesn't compute or move args to top of queue
-     (mvbind (a b) (gethash args cache)
-       (if b (cdar a) nil)))))
+     (cdar (gethash args cache)))))
 (define-test make-lru
   (let* ((ncalls 0) (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3)))
     (assert-equal '(1 2 3 1 2 3) 

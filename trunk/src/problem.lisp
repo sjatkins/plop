@@ -57,7 +57,7 @@ I must have fruit!
 	   ,@body)
     (setf *pnode-cached-scores* nil)))
 
-(defun make-problem (scorers &key (lru-size 3))
+(defun make-problem (scorers &key (lru-size 10000))
   (aprog1 (make-problem-raw :scorers scorers :score-buffer 
 			    (make-array (length scorers) 
 					:element-type 'number

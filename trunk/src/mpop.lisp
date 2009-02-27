@@ -17,10 +17,22 @@ Author: madscience@google.com (Moshe Looks)
 mpop = metapopulation |#
 (in-package :plop)
 
-(defstruct (mpop (:constructor make-mpop (pnodes problem &key (size 1000))))
+;fixme- at some point pnodes should probably be a vector..
+(defstruct (mpop (:constructor make-mpop 
+		  (pnode-seq problem &key (size 1000)
+		   &aux (pnodes (aprog1 (make-hash-table :test 'eq)
+				  (map nil (lambda (pnode) 
+					     (setf (gethash pnode it) t))
+				       pnode-seq))))))
   (size nil :type (integer 1))
-  (pnodes nil :type list)
+  (pnodes nil :type hash-table)
   (problem nil :type problem))
+
+(defun get-rep (pnode mpop context type &optional expr)
+  (acase (gethash pnode (mpop-pnodes mpop))
+    ((t nil) (setf (gethash pnode (mpop-pnodes mpop)) 
+		   (make-rep pnode context type expr)))
+    (t it)))
 
 ;important - don't call cte directly, have a method that takes data with 
 ;optional mean/variance/? and returns expectation ...
@@ -80,8 +92,8 @@ mpop = metapopulation |#
 
 ; fixme to keep track of what's been picked - for now we just pick a random
 ; distance between 1 and 3 and then a random item
-(defun random-pick (rep &aux (d (1+ (random 3))) 
-		    (s (make-sampler (length (rep-knobs rep)))))
+(defun random-pick (rep &aux (l (length (rep-knobs rep))) 
+		    (d (1+ (random (min l 3)))) (s (make-sampler l)))
   (generate d (lambda (&aux (k (elt (rep-knobs rep) (funcall s))))
 		(cons k (1+ (random (1- (knob-arity k))))))))
 

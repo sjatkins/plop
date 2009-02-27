@@ -21,7 +21,6 @@ code for computing distances between addrs |#
   (dist (make-hash-table :test 'eq) :type hash-table)
   (tmag (make-hash-table :test 'eq) :type hash-table))
 
-
 ;;; the distance between pnodes x and y is the pairwise minimum of the
 ;;; distances over all pts (i.e. differnt representations of x and y)
 ;;; the pts are assumed to be addrs
@@ -43,17 +42,19 @@ code for computing distances between addrs |#
        (compute (x y &aux (ypts (pnode-pts y)))
 	 (reduce 
 	  #'min (pnode-pts x) :initial-value most-positive-single-float :key
-	  (lambda (xp &aux (xr (addr-rep xp)) (xt (addr-twiddles xp)))
+	  (lambda (xp &aux (xrp (aand (addr-rep xp) (rep-pnode it)))
+		   (xt (addr-twiddles xp)))
 	    (reduce 
 	     #'min ypts :initial-value most-positive-single-float :key
-	     (lambda (yp &aux (yr (addr-rep yp)) (yt (addr-twiddles yp)))
-	       (cond ((eq xr yr) (twiddles-distance xt yt))
-		     ((addr-root-p xp) (+ (tmag yt) (dist x yr)))
-		     ((addr-root-p yp) (+ (tmag xt) (dist xr y)))
+	     (lambda (yp &aux (yrp (aand (addr-rep yp) (rep-pnode it)))
+		      (yt (addr-twiddles yp)))
+	       (cond ((eq xrp yrp) (twiddles-distance xt yt))
+		     ((addr-root-p xp) (+ (tmag yt) (dist x yrp)))
+		     ((addr-root-p yp) (+ (tmag xt) (dist xrp y)))
 		     (t (let ((xm (tmag xt)) (ym (tmag yt)))
-			  (min (+ xm (dist xr y)) 
-			       (+ ym (dist x yr))
-			       (+ xm ym (dist xr yr))))))))))))
+			  (min (+ xm (dist xrp y)) 
+			       (+ ym (dist x yrp))
+			       (+ xm ym (dist xrp yrp))))))))))))
     (dist x y)))
 (define-test pnode-distance
   (let* ((a (make-rep-raw)) (b (make-rep-raw)) (c (make-rep-raw))
@@ -73,26 +74,27 @@ code for computing distances between addrs |#
 		 (5 3 4 2 4 0)))
 	 (pnodes `(,a ,b ,c ,d ,e ,f)) (names '(a b c d e f)))
 
-    (push (make-addr-root nil) (rep-pts a))
-    (push (make-addr b `((,kb1 . 0) (,kb2 . 2))) (rep-pts a))
+    (push (make-addr-root nil) (pnode-pts (rep-pnode a)))
+    (push (make-addr b `((,kb1 . 0) (,kb2 . 2))) (pnode-pts (rep-pnode a)))
 
-    (push (make-addr a `((,ka1 . 3) (,ka2 . 0))) (rep-pts b))
-    (push (make-addr c `((,kc1 . 1) (,kc2 . 0))) (rep-pts b))
+    (push (make-addr a `((,ka1 . 3) (,ka2 . 0))) (pnode-pts (rep-pnode b)))
+    (push (make-addr c `((,kc1 . 1) (,kc2 . 0))) (pnode-pts (rep-pnode b)))
 
-    (push (make-addr a `((,ka1 . 0) (,ka2 . 1))) (rep-pts c))
-    (push (make-addr f `((,kf1 . 0) (,kf2 . 6))) (rep-pts c))
+    (push (make-addr a `((,ka1 . 0) (,ka2 . 1))) (pnode-pts (rep-pnode c)))
+    (push (make-addr f `((,kf1 . 0) (,kf2 . 6))) (pnode-pts (rep-pnode c)))
 
-    (push (make-addr c `((,kc1 . 2) (,kc2 . 0))) (rep-pts d))
+    (push (make-addr c `((,kc1 . 2) (,kc2 . 0))) (pnode-pts (rep-pnode d)))
 
-    (push (make-addr c `((,kc1 . 1) (,kc2 . 1))) (rep-pts e))
-    (push (make-addr c `((,kc1 . 2) (,kc2 . 2))) (rep-pts e))
+    (push (make-addr c `((,kc1 . 1) (,kc2 . 1))) (pnode-pts (rep-pnode e)))
+    (push (make-addr c `((,kc1 . 2) (,kc2 . 2))) (pnode-pts (rep-pnode e)))
 	  
-    (push (make-addr d `((,kd1 . 1) (,kd2 . 1))) (rep-pts f))
-    (push (make-addr e `((,ke1 . 0) (,ke2 . 20))) (rep-pts f))
+    (push (make-addr d `((,kd1 . 1) (,kd2 . 1))) (pnode-pts (rep-pnode f)))
+    (push (make-addr e `((,ke1 . 0) (,ke2 . 20))) (pnode-pts (rep-pnode f)))
 
     (mapc (lambda (x distlist)
 	    (mapc (lambda (y dist)
-		    (assert-equal dist (pnode-distance x y)
+		    (assert-equal dist (pnode-distance (rep-pnode x) 
+						       (rep-pnode y))
 				  (nth (position x pnodes) names)
 				  (nth (position y pnodes) names)))
 		  pnodes distlist))
