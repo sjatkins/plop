@@ -99,6 +99,19 @@ Mixed discrete-continuous optimization problems
 |#
 (in-package :plop)
 
+(defun ppnode (pnode)
+  (format t "~S ~S ~S ~S~%" 
+	  (pnode-err pnode) 
+	  (- (pnode-err pnode) 1 
+	     (elt (pnode-scores pnode) (- (length (pnode-scores pnode)) 2)))
+	  (pnode-scores pnode) 
+	  (funcall (compose #'p2sexpr (bind #'reduct /1 *empty-context* bool)
+			    #'fn-body #'make-expr-from-pnode) pnode)))
+
+(defun ppnodes (pnodes)
+  (mapc #'ppnode (sort (copy-seq pnodes) #'< :key #'pnode-err))
+  nil)
+
 (defstruct benchmark
   (name nil :type symbol) (cost 0 :type integer)
   (type) (scorers) (terminationp) (start))
@@ -149,20 +162,30 @@ Mixed discrete-continuous optimization problems
 	       (funcall (benchmark-start b)) *empty-context* 
 	       (benchmark-type b))
     (aprog1 (numberp termination-result)
-      (if it
-	  (progn 
-	    (format t "passed with cost ~S" termination-result)
-	    (if verbose
-		(let ((best (min-element scored-solutions #'< :key #'car)))
-		  (format t ", best was ~S with a score of ~S.~%" 
-			  (p2sexpr (cdr best)) (car best)))
-		(format t "~%")))
-	  (let ((best (min-element scored-solutions #'< :key #'car)))
-	    (format t "failed with cost ~S, best " (benchmark-cost b))
-	    (if verbose 
-		(format t "was ~S with a score of ~S.~%" 
-			(p2sexpr (cdr best)) (car best))
-		(format t "score was ~S.~%"  (car best))))))))
+      (if (consp (car scored-solutions))
+	  (if it 
+	      (progn 
+		(format t "passed with cost ~S" termination-result)
+		(if verbose
+		    (let ((best (min-element scored-solutions #'< :key #'car)))
+		      (format t ", best was ~S with a score of ~S.~%" 
+			      (p2sexpr (cdr best)) (car best)))
+		    (format t "~%")))
+	      (let ((best (min-element scored-solutions #'< :key #'car)))
+		(format t "failed with cost ~S, best " (benchmark-cost b))
+		(if verbose 
+		    (format t "was ~S with a score of ~S.~%" 
+			    (p2sexpr (cdr best)) (car best))
+		    (format t "score was ~S.~%"  (car best)))))
+	  (progn
+	    (if it
+		(format t "passed with cost ~S~%" termination-result)
+		(let ((best (min-element scored-solutions #'< 
+					 :key #'pnode-err)))
+		  (format t "failed with cost ~S, best score was ~S~%"
+			  (benchmark-cost b) (pnode-err best))))
+	    (when verbose 
+	      (ppnodes scored-solutions)))))))
 		
 ;;; runs from easiest to hardest
 (defun run-benchmarks 
