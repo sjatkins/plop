@@ -33,6 +33,8 @@ Author: madscience@google.com (Moshe Looks) |#
 			 (unless (or (atom x) (simpp x 'maxima-prepare))
 			   (setf (mark 'maxima::simp x) nil)))
 		       (args expr))
+		 (when (rationalp (arg0 expr))
+		   (setf (arg0 expr) (coerce (arg0 expr) 'long-float)))
 		 expr)
   :preserves all)
 
@@ -40,7 +42,7 @@ Author: madscience@google.com (Moshe Looks) |#
   (if (atom expr) expr
       (pcons
        (acase (caar expr)
-	 (/ (assert nil () "to-maxima ~S" it))
+	 (/ (assert nil () "to-maxima can't handle division: ~S" it))
 	 (+ 'maxima::mplus)
 	 (* 'maxima::mtimes)
 	 (sin 'maxima::%sin)
@@ -60,8 +62,10 @@ Author: madscience@google.com (Moshe Looks) |#
   (if (atom expr) expr
       (pcons 
        (acase (caar expr) 
-	 ((maxima::rat maxima::$exp maxima::mexp)
-	  (assert nil () "from-maxima ~S" it))
+	 ((maxima::rat) (return-from from-maxima 
+			  (/ (cadr expr) (caddr expr)))); 'long-float)))
+	 ((maxima::$exp maxima::mexp)
+	  (assert nil () "from-maxima can't handle exponentiation: ~S" it))
 	 (maxima::mabs (return-from from-maxima (from-maxima (cadr expr))))
 	 (maxima::mexpt (assert (or (eql (cadr expr) 2.718281828459045)
 				    (eq (cadr expr) 'maxima::$%e)))
@@ -73,7 +77,9 @@ Author: madscience@google.com (Moshe Looks) |#
 	 (maxima::%log 'log)
 	 (t it))
        (mapcar #'from-maxima (cdr expr))
-       (remove 'maxima::simp (cdar expr)))))
+       (remove-if (lambda (x) (matches x (maxima::simp maxima::ratsimp 
+					  maxima::irreducible)))
+		  (cdar expr)))))
 (define-test to-from-maxima
   (flet ((test (expr &aux (orig (copy-tree expr)))
 	   (assert-equal orig (from-maxima (to-maxima expr)))))
