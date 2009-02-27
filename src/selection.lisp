@@ -68,7 +68,6 @@ return nondominated U restricted-tournament-select(n - |nondominated|,
                                                    dominated)
 |#
 (defun competitive-integrate (n nodes &aux (cache (make-pnode-distance-cache)))
-  (setf nodes (uniq nodes)) ; check for duplicates not very efficient...
   (flet ((rts (n nodes)
 	   (restricted-tournament-select 
 	    n nodes (bind #'pnode-distance /1 /2 cache)

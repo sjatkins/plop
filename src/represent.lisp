@@ -158,25 +158,22 @@ defines the interrelated structs addr and rep and associated algos |#
     (assert-equalp 23 (problem-err-sum problem))))
     
 ;;; a representation - the tricky bit...
-(defstruct (rep (:include pnode)
-		(:constructor make-rep-raw 
-		 (&aux (scores (vector)) (knobs (vector))))
+(defstruct (rep (:constructor make-rep-raw 
+		 (&aux (pnode (make-pnode nil 0)) (knobs (vector))))
 		(:constructor make-rep 
-		 (pnode context type &key expr &aux (pts (pnode-pts pnode))
-		  (scores (pnode-scores pnode)) (err (pnode-err pnode))
+		 (pnode context type &optional expr &aux
 		  (cexpr (canonize 
 			  (or expr (reduct (make-expr-from-pnode pnode) 
 					   context type))
 			  context type))
 		  (knobs (compute-knobs pnode cexpr context type)))))
+  (pnode nil :type pnode)
   (cexpr nil :type cexpr)
   (knobs nil :type (vector knob)))
 ;  subexprs-to-knobs
 
 (defun rep-nbits (rep)
   (reduce #'+ (rep-knobs rep) :initial-value 0 :key #'knob-nbits))
-(defun get-rep (pnode context type)
-  (if (rep-p pnode) pnode (make-rep pnode context type)))
 
 ;; we need to call the twiddles in reverse order to restore correctly
 (defun make-expr-from-twiddles (rep twiddles)
@@ -198,9 +195,7 @@ defines the interrelated structs addr and rep and associated algos |#
 	(prog1 (canon-clean (rep-cexpr (addr-rep addr)))
 	  (mapc #'funcall reverse)))))
 (defun make-expr-from-pnode (pnode)
-  (if (rep-p pnode)
-      (canon-clean (rep-cexpr pnode))
-      (make-expr-from-addr (car (pnode-pts pnode)))))
+  (make-expr-from-addr (car (pnode-pts pnode))))
 
 ;;; ok, this is the real tricky bit....
 (defun compute-knobs (pnode cexpr context type)
