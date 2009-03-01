@@ -50,7 +50,8 @@ Author: madscience@google.com (Moshe Looks) |#
 
 (defmacro test-by-truth-tables (rewrite)
   `(let ((vars (collecting (dolist (x *enum-exprs-test-symbols*)
-			     (if (and (eql 0 (cdr x)) (not (const-atom-p x)))
+			     (if (and (eql 0 (cdr x)) 
+				      (not (const-atom-p (car x))))
 				 (collect (car x)))))))
      (dolist (expr (enum-exprs *enum-exprs-test-symbols* 2) t)
        (strip-markup expr)
@@ -225,7 +226,6 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-reduction reduce-bool-by-clauses (expr)
   :type bool
   :assumes (sort-commutative flatten-associative remove-bool-duplicates
-	    ;bool-and-identities bool-or-identities
 	    ring-op-identities eval-const)
   :order upwards
   :condition (junctorp expr)
@@ -309,21 +309,42 @@ Author: madscience@google.com (Moshe Looks) |#
 ;;; probably not all of them will be needed - some are implied by reductions
 ;;; defined above....
 
-;; ;;; if the handle set centered at expr is inconsistent, remove the subtree
-;; ;;; rooted at expr
-;; (define-reduction remove-inconsistent-handles (expr :parents parents)
-;;   :type bool
-;;   :order downwards
-;; )
-
-;; ;;; holman calls this promote-common-constraints
-;; (define-reduction inverse-distribution (expr :parent parent)
-;;   :condition (distributive-over expr parent)
-
-;; ;;; holman's cut-unnecessary-or and cut-unnecessary-and
-;; (define-reduction eliminate-identities (expr)
-;;   :condition (and (identityp (car expr)) (not (cddr expr)))
-;; )
+;;; holman calls this promote-common-constraints
+;;; e.g. (or (and x (not y)) (and p (not y))) - > (and (not y) (or x p))
+;;;      (and (or x (not y)) (or p (not y)))  - > (or (not y) (and x p))
+(define-reduction inverse-distribution (expr)
+  :type bool  
+  :assumes (sort-commutative flatten-associative remove-bool-duplicates
+	    ring-op-identities eval-const)
+  :condition (and (junctorp expr)
+		  (reduce (bind #'intersection /1 /2 :test #'equalp)
+			  (args expr) :key 
+			  (lambda (arg) (if (junctorp arg) 
+					    (args arg)
+					    (list arg)))))
+  :action 
+  (pcons 
+   (bool-dual (fn expr))
+   (append
+    it (blockn 
+	 (list (pcons (fn expr)
+		      (collecting
+			(mapc (lambda (arg)
+				(aif (and (junctorp arg)
+					  (set-difference 
+					   (args arg) it :test #'equalp))
+				     (collect (pcons (fn arg) it (markup arg)))
+				     (return)))
+			      (args expr)))
+		      (markup expr)))))))
+(define-test inverse-distribution
+  (assert-equal '(and (not y) (or p x))
+		(p2sexpr (qreduct (copy-tree 
+				   %(or (and x (not y)) (and p (not y)))))))
+  (assert-equal '(or (not y) (and p x)) 
+		(p2sexpr (qreduct (copy-tree
+				   %(and (or x (not y)) (or p (not y)))))))
+  (test-by-truth-tables #'inverse-distribution))
 
 ;; ;;; constraints in expr's handle are subtracted from expr
 ;; (define-reduction subtract-redundant-constraints (expr :parents parents)
