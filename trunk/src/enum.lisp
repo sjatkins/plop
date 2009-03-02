@@ -51,6 +51,31 @@ Author: madscience@google.com (Moshe Looks) |#
        (get-exprs (n) (tabulate #'compute-exprs exprs n)))
     (loop for i from 0 to n-internal-nodes append (compute-exprs i))))
 
+(defun map-exprs (fn symbol-pairs n-internal-nodes &aux
+		   (exprs (make-array n-internal-nodes :initial-element nil))
+		   (arity-to-syms 
+		    (reduce (lambda (table symbol-pair)
+			      (push (car symbol-pair)
+				    (gethash (cdr symbol-pair) table))
+			      table)
+			    symbol-pairs :initial-value (make-hash-table))))
+  (labels
+      ((compute-exprs (n)
+	 (if (eql n 0) 
+	     (aprog1 (gethash 0 arity-to-syms)
+	       (mapc (lambda (expr) (funcall fn expr)) it))
+	     (hashmapcan (lambda (a syms) (if (> a 0) (build a syms n)))
+			 arity-to-syms)))
+       (build (arity syms n)
+	 (mapcan (lambda (prod) (build-by-root (car prod) (cdr prod)))
+		 (cross-prod #'cons syms (enum-sums (1- n) arity))))
+       (build-by-root (root child-sizes)
+	 (mapcar (lambda (child-exprs) (aprog1 (pcons root child-exprs)
+					 (funcall fn it)))
+		 (apply #'cartesian-prod (mapcar #'get-exprs child-sizes))))
+       (get-exprs (n) (tabulate #'compute-exprs exprs n)))
+    (dotimes (i (1+ n-internal-nodes)) (compute-exprs i))))
+
 (defun enum-exact-exprs (symbols n-nodes)
   (remove-if (lambda (tree) (/= (expr-size tree) n-nodes))
 	     (enum-exprs symbols (max (1- n-nodes) 0))))

@@ -45,11 +45,22 @@ General-purpose reductions that can apply to any type are defined here |#
 		  x y ((or simp (flatten-associative)) q w))
 		(flatten-associative (copy-tree %(and x (and y (or q w)))))))
 
+;; returns t if whole expr is const-reducible, nil if nothing is, the
+;; first reducible arg if parts are, e.g.
+;; (find-const-reducible %(and x y false z true)) -> (false z true)
+(defun find-const-reducible (expr)
+  (cond ((or (atom expr) (not (purep expr))) nil)
+	((const-expr-p expr) (not (matches (fn expr) (list tuple))))
+	((commutativep (fn expr))
+	 (awhen (member-if #'const-expr-p (args expr))
+	   (when (member-if #'const-expr-p (cdr it)) it)))))
+(define-test find-const-reducible
+  (assert-equal nil (find-const-reducible %(and x y true z q)))
+  (assert-equal '(false z true) 
+		(find-const-reducible %(and x y false z true))))
+
 (define-reduction eval-const (expr)
-  :condition (and (purep expr)
-		  (or (const-expr-p expr)
-		      (and (commutativep (fn expr))
-			   (member-if #'const-expr-p (args expr)))))
+  :condition (find-const-reducible expr)
   :action 
   (if (eq it t) 
       (value-to-expr (peval expr))

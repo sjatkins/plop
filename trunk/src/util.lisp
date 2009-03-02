@@ -18,7 +18,9 @@ miscelaneous non-numerical utilities |#
 (in-package :plop)
 
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
-;(declaim (optimize (speed 3) (safety 0) (debug 0)))
+;; (declaim (optimize (speed 3) (safety 0) (debug 0)))
+;; (sb-ext:without-package-locks
+;;  (defmacro assert (&rest foo) (declare (ignore foo)) nil))
 
 (defun nshuffle (sequence)
   (let ((temp (coerce sequence 'vector)))

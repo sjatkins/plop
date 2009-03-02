@@ -45,8 +45,9 @@ Author: madscience@google.com (Moshe Looks) |#
   (setf (mark simp expr)
 	(if exceptions
 	    (delete-if (lambda (reduction) 
-			 (and (eq (acar exceptions) reduction)
-			      (progn (setf exceptions (cdr exceptions)) t)))
+			 (if (eq (acar exceptions) reduction)
+			     (progn (setf exceptions (cdr exceptions)) nil)
+			     t))
 		       (mark simp expr))
 	    nil)))
 (defun mark-simp (expr reduction)
