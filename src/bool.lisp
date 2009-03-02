@@ -68,7 +68,7 @@ Author: madscience@google.com (Moshe Looks) |#
     :type bool
     :condition (and (eq (fn expr) 'not)
 		    (matches (afn (arg0 expr)) (and or not)))
-    :action 
+    :action
     (if (eq (fn (arg0 expr)) 'not)
 	(arg0 (arg0 expr))
 	(pcons (bool-dual (fn (arg0 expr)))
@@ -105,9 +105,10 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-reduction remove-bool-duplicates (expr)
   :type bool
   :assumes (sort-commutative)
-  :condition (and (junctorp expr) (some #'equal (args expr) (cdr (args expr))))
+  :condition (and (junctorp expr) 
+		  (some #'pequal (args expr) (cdr (args expr))))
   :action (pcons (fn expr)
-		 (remove-adjacent-duplicates (args expr) :test #'equal)
+		 (remove-adjacent-duplicates (args expr) :test #'pequal)
 		 (markup expr))
   :order upwards)
 (define-test remove-bool-duplicates
@@ -285,9 +286,8 @@ Author: madscience@google.com (Moshe Looks) |#
     (assert-equal 'true (mung %(or x (not x))))
     (assert-equal '(or x (not y)) (mung %(or x (not y))))
     (assert-equal 'z (mung %(and z (or x (not x)))))))
-(define-test bool-reduct (test-by-truth-tables 
-			  (bind #'reduct /1 *empty-context* bool)))
-
+(define-test bool-reduct 
+  (test-by-truth-tables (bind #'reduct /1 *empty-context* bool)))
 
 ;; (if true x y) -> x, (if false x y) -> y
 ;; if pred x y -> if (not pred) y x when shrink-by-negation applies to pred
@@ -316,7 +316,7 @@ Author: madscience@google.com (Moshe Looks) |#
   :type bool  
   :assumes (sort-commutative flatten-associative remove-bool-duplicates
 	    ring-op-identities eval-const)
-  :condition (and (junctorp expr)
+  :condition (and (junctorp expr) (longerp (args expr) 1)
 		  (reduce (bind #'intersection /1 /2 :test #'equalp)
 			  (args expr) :key 
 			  (lambda (arg) (if (junctorp arg) 
@@ -333,10 +333,14 @@ Author: madscience@google.com (Moshe Looks) |#
 				(aif (and (junctorp arg)
 					  (set-difference 
 					   (args arg) it :test #'equalp))
-				     (collect (pcons (fn arg) it (markup arg)))
+				     (collect 
+				      (if (longerp it 1)
+					  (pcons (fn arg) it (markup arg))
+					  (car it)))
 				     (return)))
 			      (args expr)))
-		      (markup expr)))))))
+		      (markup expr))))))
+  :order upwards)
 (define-test inverse-distribution
   (assert-equal '(and (not y) (or p x))
 		(p2sexpr (qreduct (copy-tree 
@@ -346,10 +350,10 @@ Author: madscience@google.com (Moshe Looks) |#
 				   %(and (or x (not y)) (or p (not y)))))))
   (test-by-truth-tables #'inverse-distribution))
 
-;; ;;; constraints in expr's handle are subtracted from expr
-;; (define-reduction subtract-redundant-constraints (expr :parents parents)
-;;   :type bool
-;; )
+;;; constraints in expr's handle are subtracted from expr
+;(define-reduction subtract-redundant-constraints (expr :parents parents)
+;  :type bool
+;)
 
 ;; ;;; and clauses containing unit-command literals have their subtrees removed
 ;; (define-reduction constraint-subsumption (expr :parents parents)

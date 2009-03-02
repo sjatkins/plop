@@ -112,6 +112,7 @@ Author: madscience@google.com (Moshe Looks) |#
 		(t (rec-mark it (lambda (x) 
 				  (clear-simp x preserves)
 				  (mark-simp x name)))))))))
+
 (defun visit-upwards (expr name reduction preserves assumes)
   (labels ((visit (x) 
 	     (if (or (atom x) (simpp x name)) x
@@ -124,20 +125,24 @@ Author: madscience@google.com (Moshe Looks) |#
 		       (clear-simp it preserves))
 		     (mark-simp it name))))))
     (visit expr)))
-(defun visit-downwards (expr name reduction preserves)
-  (labels ((visit (x)
-	     (if (or (atom x) (simpp x name)) x
-		 (aprog1 (mapargs #'visit
-				  (aprog1 (funcall reduction x)
-				    (when (atom it) (return-from visit it))))
-		   (when (consp it)
-		     (unless (or (eq 'all preserves) (eq it x))
-		       (clear-simp it preserves))
-		     (mark-simp it name))))))
-    (visit expr)))
 (define-test visit-upwards
   (let ((expr %(and x y z (or p d q))))
     (assert-eq expr (visit-upwards expr 'identity #'identity nil nil))))
+
+(defun visit-downwards (expr name reduction preserves)
+  (labels ((visit (x)
+	     (if (or (atom x) (simpp x name)) x
+		 (aprog1 (mapargs #'visit 
+				  (fixed-point reduction x :test 
+					       (lambda (x y)
+						 (when (atom y)
+						   (return-from visit y))
+						 (eq x y))))
+		   (assert (consp it))
+		   (unless (or (eq 'all preserves) (eq it x))
+		     (clear-simp it preserves))
+		   (mark-simp it name)))))
+    (visit expr)))
 
 (defmacro construct-reduction
     (name (&rest args) &key (type t) assumes obviates (condition t)
@@ -220,7 +225,11 @@ Author: madscience@google.com (Moshe Looks) |#
 
 	(assert-for-none (bind #'exact-simp-p /1 'push-nots) num-exprs)
 	(assert-for-none (bind #'exact-simp-p /1 'sort-commutative) num-exprs)
-	(assert-for-all (bind #'exact-simp-p /1 'maxima-reduce) num-exprs)))))
+	(assert-for-all (bind #'exact-simp-p /1 'maxima-reduce) num-exprs))))
+  (map-exprs (lambda (expr &aux (r (reduct (pclone expr) *empty-context* bool))
+		      (r2 (reduct (sexpr2p (p2sexpr r)) *empty-context* bool)))
+	       (assert-equal (p2sexpr r) (p2sexpr r2) expr r r2))
+	     '((and . 2) (or . 2) (not . 1) (x . 0) (y . 0)) 4))
 
 ;; for convenience
 (defun qreduct (expr) 
