@@ -113,9 +113,10 @@ Author: madscience@google.com (Moshe Looks) |#
 				  (clear-simp x preserves)
 				  (mark-simp x name)))))))))
 
-(defun visit-upwards (expr name reduction preserves assumes)
+(defun visit-upwards (expr name reduction preserves assumes &aux rls)
+  (print* 'visit-upwards name expr)
   (labels ((visit (x) 
-	     (if (or (atom x) (simpp x name)) x
+             (if (or (atom x) (simpp x name)) x
 		 (aprog1 (funcall reduction 
 				  (mapargs (bind #'cummulative-fixed-point
 						 (cons #'visit assumes) /1)
@@ -124,7 +125,29 @@ Author: madscience@google.com (Moshe Looks) |#
 		     (unless (or (eq 'all preserves) (eql it x))
 		       (clear-simp it preserves))
 		     (mark-simp it name))))))
-    (visit expr)))
+    (aprog1 (visit expr)
+      (print* 'done-visit name expr))))
+
+
+
+;;   (labels ((visit (x)
+;; 	     (when (or (atom x) (simpp x name))
+;; 	       (return-from visit x))
+;; 	     (setf x 
+;; 		   (do ((y (mapargs (bind #'cummulative-fixed-point rls /1) x)
+;; 			   (mapargs (bind #'cummulative-fixed-point rls /1) y)))
+;; 		       ((or (eq 'all preserves) (eql x y)) y)
+;; 		     (setf x y)
+;; 		     (clear-simp y preserves)
+;; 		     (when (atom (setf y (cummulative-fixed-point assumes y)))
+;; 		       (return-from visit y))))
+;; 	     (aprog1 (funcall reduction x)
+;; 	       (when (consp it)
+;; 		 (unless (or (eq 'all preserves) (eql it x))
+;; 		   (clear-simp it preserves))
+;; 		 (mark-simp it name)))))
+;;     (setf rls (append assumes (list #'visit)))
+;;     (visit expr)))
 (define-test visit-upwards
   (let ((expr %(and x y z (or p d q))))
     (assert-eq expr (visit-upwards expr 'identity #'identity nil nil))))

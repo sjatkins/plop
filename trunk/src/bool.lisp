@@ -18,8 +18,8 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun enum-bindings (arity)
   (if (eql arity 1) '((true) (false))
       (let ((x (enum-bindings (1- arity))))
-	(collecting (mapc (lambda (b) (collect (cons 'true b))) x)
-		    (mapc (lambda (b) (collect (cons 'false b))) x)))))
+	(collecting (mapc (lambda (b) (collect (cons true b))) x)
+		    (mapc (lambda (b) (collect (cons false b))) x)))))
 
 (defun truth-table (expr &optional (vs (sort (free-variables expr) #'string<))
 		    &aux (context (make-context)))
@@ -29,9 +29,9 @@ Author: madscience@google.com (Moshe Looks) |#
     (labels ((visit-bindings (vs)
 	       (if vs
 		   (dbind (v &rest vs) vs
-		     (setf (getvalue v context) 'true)
+		     (setf (getvalue v context) true)
 		     (visit-bindings vs)
-		     (setf (getvalue v context) 'false)
+		     (setf (getvalue v context) false)
 		     (visit-bindings vs))
 		   (collect (peval-cl expr context)))))
       (mapc (bind #'bind-type /1 context 'bool) vs)
@@ -280,10 +280,10 @@ Author: madscience@google.com (Moshe Looks) |#
 
 (define-test identify-contradictions-and-tautologies
   (flet ((mung (expr) (p2sexpr (qreduct (copy-tree expr)))))
-    (assert-equal 'false (mung %(and x (not x))))
+    (assert-equal false (mung %(and x (not x))))
     (assert-equal '(and x (not y)) (mung %(and x (not y))))
     (assert-equal 'z (mung %(or (and x (not x)) z)))
-    (assert-equal 'true (mung %(or x (not x))))
+    (assert-equal true (mung %(or x (not x))))
     (assert-equal '(or x (not y)) (mung %(or x (not y))))
     (assert-equal 'z (mung %(and z (or x (not x)))))))
 (define-test bool-reduct 
@@ -338,8 +338,9 @@ Author: madscience@google.com (Moshe Looks) |#
 					  (pcons (fn arg) it (markup arg))
 					  (car it)))
 				     (return)))
-			      (args expr)))
-		      (markup expr))))))
+			      (args expr)))))))
+   (markup expr))
+  :preserves (eval-const)
   :order upwards)
 (define-test inverse-distribution
   (assert-equal '(and (not y) (or p x))
@@ -350,19 +351,131 @@ Author: madscience@google.com (Moshe Looks) |#
 				   %(and (or x (not y)) (or p (not y)))))))
   (test-by-truth-tables #'inverse-distribution))
 
-;;; constraints in expr's handle are subtracted from expr
-;(define-reduction subtract-redundant-constraints (expr :parents parents)
-;  :type bool
-;)
-
-;; ;;; and clauses containing unit-command literals have their subtrees removed
-;; (define-reduction constraint-subsumption (expr :parents parents)
+;; (define-reduction dominant-and-command (expr)
 ;;   :type bool
-;;   :condition (eq 'and (car expr))
-;; )
+;;   :assumes (sort-commutative flatten-associative remove-bool-duplicates
+;; 	    ring-op-identities eval-const inverse-distribution 
+;;             reduce-bool-by-clauses)
+;;   :condition (and (junctorp expr) (find-if-not #'literalp (args expr)))
+;;   :action 
+;;   (let* ((tag (if (eqfn expr 'and) 'dominant 'command))
+;; 	 (opptag (if (eqfn expr 'or) 'dominant 'command))
+;; 	 (set (mark tag expr)) (oppset (mark opptag expr)))
+;;     (mapc (lambda (arg) (when (literalp arg) (push arg set))) (args expr))
+;;     (mapc (lambda (arg)
+;; 	    (when (and (junctorp arg) (not (simpp arg 'dominant-and-command)))
+;; 	      (setf (mark tag arg) set (mark opptag arg) oppset)))
+;; 	  (args expr))
+;;     expr)
+;;   :order downwards
+;;   :preserves all)
+;; (define-test dominant-and-command
+;;   (let* ((expr (pclone %(and a (or d (and b (or c (and d e)))))))
+;; 	 (r (dominant-and-command expr)))
+;;     (assert-eq expr r)
+    
+;;     (assert-equal nil (mark 'dominant r))
+;;     (assert-equal nil (mark 'command r))
 
-;; ;;; the negations of unit-command literals are subtracted from and clauses
-;; (define-reduction contraint-complement-subtraction (expr :parents parents)
+;;     (assert-equal '(a) (mark 'dominant (arg1 r)))
+;;     (assert-equal nil (mark 'command (arg1 r)))
+
+;;     (assert-equal '(a) (mark 'dominant (arg1 (arg1 r))))
+;;     (assert-equal '(d) (mark 'command (arg1 (arg1 r))))
+
+;;     (assert-equal '(b a) (mark 'dominant (arg1 (arg1 (arg1 r)))))
+;;     (assert-equal '(d) (mark 'command (arg1 (arg1 (arg1 r)))))
+
+;;     (assert-equal '(b a) (mark 'dominant (arg1 (arg1 (arg1 (arg1 r))))))
+;;     (assert-equal '(c d) (mark 'command (arg1 (arg1 (arg1 (arg1 r))))))))
+    
+
+(defun litvar (expr)
+  (cond ((atom expr) expr)
+	((and (eq 'not (fn expr)) (atom (arg0 expr))) (arg0 expr))))
+(defun map-literals (fn expr)
+  (do ((args (args expr) (cdr args))) ((not (literalp (car args))) args)
+    (funcall fn (car args))))
+(define-test map-literals
+  (let* ((expr %(and a (not b) c (or x y) (or p q))) lits 
+	 (tail (map-literals (lambda (arg) (push arg lits)) expr)))
+    (setf lits (nreverse lits))
+  (assert-equal `(a ,%(not b) c) lits)
+  (assert-equal `(,%(or x y) ,%(or p q)) tail)))
+
+;;; implements Holman's Subtract-Redundant-Constraints, 1-Constraint-
+;;; Subsumption, and 1-Constraint-Complement-Subtraction transformations - 
+;;; constraints in expr's dominant set are subtracted from expr,
+;;; clauses containing unit-command literals have their subtrees removed, and
+;;; the negations of unit-command literals are subtracted from and clauses,
+;;; respectively
+;; (define-reduction subtract-supervening-constraints (expr)
 ;;   :type bool
-;;   :condition (eq 'and (car expr))
-;; )
+;;   :assumes (dominant-and-command)
+;;   :condition 
+;;   (blockn (let ((dom (mark 'dominant expr)) (cmd (mark 'command expr)))
+;; 	    (when (and (not dom) (not cmd))
+;; 	      (return))
+;; 	    (collecting 
+;; 	      (map-literals 
+;; 	       (lambda (arg)
+;; 		 (aif (find (litvar arg) cmd :key #'litvar)
+;; 		      (if (xor (eq (fn expr) 'or) (negatesp it arg))
+;; 			  (collect arg)
+;; 			  (return t)) ; delete the whole subtree
+;; 		      (awhen (find (litvar arg) dom :key #'litvar)
+;; 			(if (xor (eq (fn expr) 'and) (negatesp it arg))
+;; 			    (collect arg)
+;; 			    (return t)))))
+;; 	       expr))))
+;;   :action
+;;   (if (eq it t)
+;;       (bool-dual (identity-elem (fn expr)))
+;;       (let* ((lits nil)
+;; 	     (tail (map-literals (lambda (arg) (if (eq (car it) arg)
+;; 						   (setf it (cdr it))
+;; 						   (push arg lits)))
+;; 				 expr))
+;; 	     (args (nconc (nreverse lits) tail)))
+;; 	(if args
+;; 	    (pcons (fn expr) args (markup expr))
+;; 	    (identity-elem (fn expr)))))
+;;   :order upwards)
+;; (define-test subtract-supervening-constraints
+;;   (assert-equal
+;;              '(and a (or e (and (not b) c (or (not d) z))))
+;;    (p2sexpr 
+;;     (subtract-supervening-constraints 
+;;      (pclone %(and a (or e (and (not b) c (or z (and a c (not d))))))))))
+
+;;   (assert-equal
+;;              '(and a (or d (and b c)))
+;;    (p2sexpr
+;;     (subtract-supervening-constraints 
+;;      (pclone %(and a (or d (and b (or c (and d e f)))))))))
+
+;;   (assert-equal
+;;              '(and a (or (not d) (and b (or c (and e f)))))
+;;    (p2sexpr
+;;     (subtract-supervening-constraints 
+;;      (pclone %(and a (or (not d) (and b (or c (and d e f)))))))))
+
+;;   (assert-equal 
+;;              '(and a (or b e))
+;;    (p2sexpr
+;;     (subtract-supervening-constraints 
+;;      (pclone %(and a (or b (and (or a c d) e)))))))
+
+;;   (test-by-truth-tables #'subtract-supervening-constraints))
+
+(defun big-bool-test () ; too slow to go in the unit tests..
+  (map-exprs (lambda (expr &aux (r (reduct (pclone expr) *empty-context* bool))
+		      (r2 (reduct (sexpr2p (p2sexpr r)) *empty-context* bool)))
+	       (assert (equal (truth-table expr '(x y z)) 
+			       (truth-table r '(x y z))) ()
+			"mismatched truth tables ~S, ~S -> ~S, ~S"
+			(p2sexpr expr) (truth-table expr '(x y z)) 
+			(p2sexpr r) (truth-table r '(x y z)))
+	       (assert (equal (p2sexpr r) (p2sexpr r2)) ()
+		       "badly marked reduct: ~S -> ~S -> ~S" expr r r2))
+	     '((and . 2) (or . 2) (not . 1) (x . 0) (y . 0) (z . 0)) 5))
