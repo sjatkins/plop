@@ -18,9 +18,9 @@ miscelaneous non-numerical utilities |#
 (in-package :plop)
 
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
-;; (declaim (optimize (speed 3) (safety 0) (debug 0)))
-;; (sb-ext:without-package-locks
-;;  (defmacro assert (&rest foo) (declare (ignore foo)) nil))
+;;(declaim (optimize (speed 3) (safety 0) (debug 0)))
+;;(sb-ext:without-package-locks
+;;    (defmacro assert (&rest foo) (declare (ignore foo)) nil))
 
 (defun nshuffle (sequence)
   (let ((temp (coerce sequence 'vector)))
@@ -663,3 +663,6 @@ miscelaneous non-numerical utilities |#
     (dotimes (i 100)
       (let ((l (shuffle (iota 6))))
 	(assert-equal (mapcar #'1+ l) (mapcar lru l))))))
+
+(defun xor (&rest args)
+  (reduce (lambda (x y) (not (eq x y))) args :initial-value nil))

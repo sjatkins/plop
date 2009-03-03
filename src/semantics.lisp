@@ -115,6 +115,7 @@ represent evolved programs. |#
   (if (consp expr)
       (and (eq (fn expr) 'not) (not (consp (arg0 expr))))
       (not (matches expr (true false)))))
+;      (and expr (not (matches expr (true false))))))
 (defun pequal (expr1 expr2) ;;; tests equality sans markup
   (if (atom expr1) 
       (and (atom expr2) (eql expr1 expr2))
