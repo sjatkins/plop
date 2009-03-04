@@ -132,13 +132,13 @@ Author: madscience@google.com (Moshe Looks) |#
 	   (call-all (x) (fixed-point #'call-once x))
 	   (call-once (x)
 	     (if (or (atom x) (simpp x name)) x
-		 (aprog1 (funcall reduction (aprog1 (prepare x)
-					      (print* 'prep name it)))
+		 (aprog1 (funcall reduction (prepare x))
 		   (when (consp it)
 		     (unless (or (eq 'all preserves) (eql it x))
 		       (clear-simp it preserves))
 		     (mark-simp it name))))))
-    (call-once expr) (print* 'done name it))))
+    (call-once expr)))
+; (print* 'done name it)))
 ;; 			  x)))
 ;;  (if (or (atom x) (simpp x name)) x
 ;; 	(funcall reduction (prepare x)))
@@ -234,8 +234,8 @@ Author: madscience@google.com (Moshe Looks) |#
     (assert-eq expr (visit-upwards expr 'identity #'identity nil nil))))
 
 (defun visit-downwards (expr name reduction preserves)
-  (print* 'visit-downwards name expr)
-  (aprog1
+;  (print* 'visit-downwards name expr)
+;  (aprog1
   (labels ((visit (x)
 	     (if (or (atom x) (simpp x name)) x
 		 (aprog1 (mapargs #'visit 
@@ -248,8 +248,8 @@ Author: madscience@google.com (Moshe Looks) |#
 		   (unless (or (eq 'all preserves) (eq it x))
 		     (clear-simp it preserves))
 		   (mark-simp it name)))))
-    (visit expr))
-    (print* 'done name it)))
+    (visit expr)))
+;    (print* 'done name it)))
 
 (defmacro construct-reduction
     (name (&rest args) &key (type t) assumes obviates (condition t)
