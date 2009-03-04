@@ -296,6 +296,14 @@ Author: madscience@google.com (Moshe Looks) |#
     (assert-equal '(or x (not y)) (mung %(or x (not y))))
     (assert-equal 'z (mung %(and z (or x (not x)))))))
 (define-test bool-reduct 
+;;   (assert-equal '(or z (and x y)) 
+;; 		(p2sexpr (qreduct %(or (and (or z y) (or z x)) z))))
+;;   (
+;; (qreduct (pclone '((or) ((and) ((or) z y) x) ((and) ((and) z y) x))))
+;; (p2sexpr (qreduct %(or z (and (not y) (not z) (or y z)))))
+;; (p2sexpr (qreduct %(or (not (or z y)) (and (not z) y))))
+;; |#
+
   (test-by-truth-tables (bind #'reduct /1 *empty-context* bool)))
 
 ;; (if true x y) -> x, (if false x y) -> y
@@ -336,22 +344,22 @@ Author: madscience@google.com (Moshe Looks) |#
    (bool-dual (fn expr))
    (append
     it (blockn 
-	 (list (pcons (fn expr)
-		      (collecting
-			(mapc (lambda (arg)
-				(aif (and (junctorp arg)
-					  (set-difference 
-					   (args arg) it :test #'equalp))
-				     (collect 
-				      (if (longerp it 1)
-					  (pcons (fn arg) it)
-					  (car it)))
-				     (return)))
-			      (args expr)))))))
+	 (list (aprog1 
+		   (pcons (fn expr)
+			  (collecting
+			    (mapc (lambda (arg)
+				    (aif (and (junctorp arg)
+					      (set-difference 
+					       (args arg) it :test #'equalp))
+					 (collect 
+					     (if (longerp it 1)
+						 (aprog1 (pcons (fn arg) it)
+						   (mark-simp it 'eval-const))
+						 (car it)))
+					 (return)))
+				  (args expr))))
+		 (mark-simp it 'eval-const)))))
    (markup expr))
-
-;			      (args expr))))))) fixme
-;   (markup expr))
   :preserves (eval-const)
   :order upwards)
 (define-test inverse-distribution
@@ -420,64 +428,64 @@ Author: madscience@google.com (Moshe Looks) |#
 ;;; clauses containing unit-command literals have their subtrees removed, and
 ;;; the negations of unit-command literals are subtracted from and clauses,
 ;;; respectively
-;; (define-reduction subtract-supervening-constraints (expr)
-;;   :type bool
-;;   :assumes (dominant-and-command)
-;;   :condition 
-;;   (blockn (let ((dom (mark 'dominant expr)) (cmd (mark 'command expr)))
-;; 	    (when (and (not dom) (not cmd))
-;; 	      (return))
-;; 	    (collecting 
-;; 	      (map-literals 
-;; 	       (lambda (arg)
-;; 		 (aif (find (litvar arg) cmd :key #'litvar)
-;; 		      (if (xor (eq (fn expr) 'or) (negatesp it arg))
-;; 			  (collect arg)
-;; 			  (return t)) ; delete the whole subtree
-;; 		      (awhen (find (litvar arg) dom :key #'litvar)
-;; 			(if (xor (eq (fn expr) 'and) (negatesp it arg))
-;; 			    (collect arg)
-;; 			    (return t)))))
-;; 	       expr))))
-;;   :action
-;;   (if (eq it t)
-;;       (bool-dual (identity-elem (fn expr)))
-;;       (let* ((lits nil)
-;; 	     (tail (map-literals (lambda (arg) (if (eq (car it) arg)
-;; 						   (setf it (cdr it))
-;; 						   (push arg lits)))
-;; 				 expr))
-;; 	     (args (nconc (nreverse lits) tail)))
-;; 	(if args
-;; 	    (pcons (fn expr) args (markup expr))
-;; 	    (identity-elem (fn expr)))))
-;;   :order upwards)
-;; (define-test subtract-supervening-constraints
-;;   (assert-equal
-;;              '(and a (or e (and (not b) c (or (not d) z))))
-;;    (p2sexpr 
-;;     (subtract-supervening-constraints 
-;;      (pclone %(and a (or e (and (not b) c (or z (and a c (not d))))))))))
+(define-reduction subtract-supervening-constraints (expr)
+  :type bool
+  :assumes (dominant-and-command)
+  :condition 
+  (blockn (let ((dom (mark 'dominant expr)) (cmd (mark 'command expr)))
+	    (when (and (not dom) (not cmd))
+	      (return))
+	    (collecting 
+	      (map-literals 
+	       (lambda (arg)
+		 (aif (find (litvar arg) cmd :key #'litvar)
+		      (if (xor (eq (fn expr) 'or) (negatesp it arg))
+			  (collect arg)
+			  (return t)) ; delete the whole subtree
+		      (awhen (find (litvar arg) dom :key #'litvar)
+			(if (xor (eq (fn expr) 'and) (negatesp it arg))
+			    (collect arg)
+			    (return t)))))
+	       expr))))
+  :action
+  (if (eq it t)
+      (bool-dual (identity-elem (fn expr)))
+      (let* ((lits nil)
+	     (tail (map-literals (lambda (arg) (if (eq (car it) arg)
+						   (setf it (cdr it))
+						   (push arg lits)))
+				 expr))
+	     (args (nconc (nreverse lits) tail)))
+	(if args
+	    (pcons (fn expr) args (markup expr))
+	    (identity-elem (fn expr)))))
+  :order upwards)
+(define-test subtract-supervening-constraints
+  (assert-equal
+             '(and a (or e (and (not b) c (or (not d) z))))
+   (p2sexpr 
+    (subtract-supervening-constraints 
+     (pclone %(and a (or e (and (not b) c (or z (and a c (not d))))))))))
 
-;;   (assert-equal
-;;              '(and a (or d (and b c)))
-;;    (p2sexpr
-;;     (subtract-supervening-constraints 
-;;      (pclone %(and a (or d (and b (or c (and d e f)))))))))
+  (assert-equal
+             '(and a (or d (and b c)))
+   (p2sexpr
+    (subtract-supervening-constraints 
+     (pclone %(and a (or d (and b (or c (and d e f)))))))))
 
-;;   (assert-equal
-;;              '(and a (or (not d) (and b (or c (and e f)))))
-;;    (p2sexpr
-;;     (subtract-supervening-constraints 
-;;      (pclone %(and a (or (not d) (and b (or c (and d e f)))))))))
+  (assert-equal
+             '(and a (or (not d) (and b (or c (and e f)))))
+   (p2sexpr
+    (subtract-supervening-constraints 
+     (pclone %(and a (or (not d) (and b (or c (and d e f)))))))))
 
-;;   (assert-equal 
-;;              '(and a (or b e))
-;;    (p2sexpr
-;;     (subtract-supervening-constraints 
-;;      (pclone %(and a (or b (and (or a c d) e)))))))
+  (assert-equal 
+             '(and a (or b e))
+   (p2sexpr
+    (subtract-supervening-constraints 
+     (pclone %(and a (or b (and (or a c d) e)))))))
 
-;;   (test-by-truth-tables #'subtract-supervening-constraints))
+  (test-by-truth-tables #'subtract-supervening-constraints))
 
 (defun big-bool-test () ; too slow to go in the unit tests..
   (map-exprs (lambda (expr &aux (r (reduct (pclone expr) *empty-context* bool))
@@ -490,10 +498,3 @@ Author: madscience@google.com (Moshe Looks) |#
 	       (assert (equal (p2sexpr r) (p2sexpr r2)) ()
 		       "badly marked reduct: ~S -> ~S -> ~S" expr r r2))
 	     '((and . 2) (or . 2) (not . 1) (x . 0) (y . 0) (z . 0)) 5))
-
-#| hard cases
-(qreduct %(or (and (or z y) (or z x)) z))
-(qreduct (pclone '((or) ((and) ((or) z y) x) ((and) ((and) z y) x))))
-(p2sexpr (qreduct %(or z (and (not y) (not z) (or y z)))))
-(p2sexpr (qreduct %(or (not (or z y)) (and (not z) y))))
-|#
