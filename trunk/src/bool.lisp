@@ -72,9 +72,15 @@ Author: madscience@google.com (Moshe Looks) |#
     (if (eq (fn (arg0 expr)) 'not)
 	(arg0 (arg0 expr))
 	(pcons (bool-dual (fn (arg0 expr)))
-	       (mapcar (lambda (subexpr)
-			 (pcons 'not (list subexpr)))
-		       (args (arg0 expr)))
+	       (let ((no-duplicates (simpp expr 'remove-bool-duplicates))
+		     (no-consts (simpp expr 'eval-const)))
+		 (mapcar (lambda (subexpr)
+			   (aprog1 (pcons 'not (list subexpr))
+			     (when no-duplicates
+			       (mark-simp it 'remove-bool-duplicates))
+			     (when no-consts
+			       (mark-simp it 'eval-const))))
+			 (args (arg0 expr))))
 	       (markup expr)))
     :order downwards
     :preserves (remove-bool-duplicates eval-const))
@@ -274,7 +280,7 @@ Author: madscience@google.com (Moshe Looks) |#
 		       '((or (not x) (and x (not y) z))))
     (assert-reduces-to '(or (not x) (and (not y) (f p q)))
 		       '((or (not x) (and x (not y) (f p q)))))
-    (assert-reduces-to '(or) ;reduct gives true
+    (assert-reduces-to true
 		       '((or (not x) (not y) (and x y))))
     (assert-reduces-to '(or x (not y) z)
 		       '((or x (not y) (and (not x) y z))))
@@ -487,6 +493,7 @@ Author: madscience@google.com (Moshe Looks) |#
 
 #| hard cases
 (qreduct %(or (and (or z y) (or z x)) z))
-(qreduct (pclone '((OR) ((AND) ((OR) Z Y) X) ((AND) ((AND) Z Y) X))))
-(p2sexpr (qreduct %(OR Z (AND (NOT Y) (NOT Z) (OR Y Z)))))
+(qreduct (pclone '((or) ((and) ((or) z y) x) ((and) ((and) z y) x))))
+(p2sexpr (qreduct %(or z (and (not y) (not z) (or y z)))))
+(p2sexpr (qreduct %(or (not (or z y)) (and (not z) y))))
 |#

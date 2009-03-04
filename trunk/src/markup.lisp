@@ -22,6 +22,8 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-constant fully-reduced (intern "")) ; so that its first in ordering
 
 (defun markup (expr) (cdar expr))
+(defun set-markup (expr value) (setf (cdar expr) value))
+(defsetf markup set-markup)
 
 (let ((unused (gensym)))
   (defun markp (tag expr) 
