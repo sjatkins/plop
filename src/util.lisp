@@ -418,8 +418,9 @@ miscelaneous non-numerical utilities |#
 
 ;;; computes the fixed point (fn (fn (fn ... (fn x)))) under the equality
 ;;; condition specified by test
-(defun fixed-point (fn x &key (test #'eql) &aux (y (funcall fn x)))
-  (if (funcall test x y) x (fixed-point fn y :test test)))
+(defun fixed-point (fn x &key (test #'eql))
+  (while (not (funcall test x (setf x (funcall fn x)))))
+  x)
 
 ;;; given fns = (f1 f2 ... fN), calls fns sequentially with the invariant that
 ;;; the initial condition of every fi is always a fixed point of fi-1 (except

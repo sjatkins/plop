@@ -99,6 +99,8 @@ Author: madscience@google.com (Moshe Looks) |#
     (assert-eq expr (mapargs #'identity expr))))
 
 (defun visit-root-only (expr name reduction preserves)
+;  (print* 'visit-root-only name expr)  
+;  (aprog1
   (labels ((rec-mark (x marker) 
 	     (funcall marker x)
 	     (mapc (lambda (x) (when (and (consp x) (not (simpp x name)))
@@ -112,21 +114,100 @@ Author: madscience@google.com (Moshe Looks) |#
 		(t (rec-mark it (lambda (x) 
 				  (clear-simp x preserves)
 				  (mark-simp x name)))))))))
+;    (print* 'done name it)))
 
-(defun visit-upwards (expr name reduction preserves assumes &aux rls)
-  (print* 'visit-upwards name expr)
-  (labels ((visit (x) 
-             (if (or (atom x) (simpp x name)) x
-		 (aprog1 (funcall reduction 
-				  (mapargs (bind #'cummulative-fixed-point
-						 (cons #'visit assumes) /1)
-					   x))
+(defun visit-upwards (expr name reduction preserves assumes)
+;  (print* 'visit-upwards name expr)
+;  (aprog1 
+  (labels ((donep (x y) (or (atom y) (eql x y)))
+	   (prepare (x)
+	     (fixed-point (lambda (x)
+			    (unless (or (eql x (setf x (mapargs #'call-all x)))
+					(eq 'all preserves))
+			      (clear-simp x preserves)
+			      (setf x (cummulative-fixed-point assumes x :test
+							       #'donep)))
+			    x)
+			  x :test #'donep))
+	   (call-all (x) (fixed-point #'call-once x))
+	   (call-once (x)
+	     (if (or (atom x) (simpp x name)) x
+		 (aprog1 (funcall reduction (aprog1 (prepare x)
+					      (print* 'prep name it)))
 		   (when (consp it)
 		     (unless (or (eq 'all preserves) (eql it x))
 		       (clear-simp it preserves))
 		     (mark-simp it name))))))
-    (aprog1 (visit expr)
-      (print* 'done-visit name expr))))
+    (call-once expr) (print* 'done name it))))
+;; 			  x)))
+;;  (if (or (atom x) (simpp x name)) x
+;; 	(funcall reduction (prepare x)))
+    
+
+;; 		  (unless (or (eql x (setf x (mapargs #'call-all x)))
+
+;; 	   (unless (or (eql x (setf x (mapargs #'call-all x)))
+;; 			      (eq 'all preserves))
+;; 		    (clear-simp x preserves)
+;; 		    (setf x (cummulative-fixed-point assumes x)))
+;; )
+;; 	   (call-all (x)
+;; 	     (setf x (call-it x))
+
+
+
+;; 	     (fixed-point
+;; 	      (lambda (x)
+;; 		(unless (or (atom x) (simpp x name))
+;; 		  (unless (or (eql x (setf x (mapargs #'call-all x)))
+;; 			      (eq 'all preserves))
+;; 		    (clear-simp x preserves)
+;; 		    (setf x (cummulative-fixed-point assumes x))))
+;; 		x)
+;; 				  y)))
+
+;; 	       (
+;;  (eql it x))
+	       
+;; 		 x
+;; 		 (cummulative-fixed-point 
+;; 		  rules (funcall reduction ))))
+;; 	   (call-it (x)
+;; 	     (if (or (atom x) (simpp x name))
+;; 		 x
+;; 		 (mapar
+
+;; (setf rules (append assumes (list #'call-all)))
+	       
+
+;; 	       (funcall redcution x
+;;  x
+		 
+
+;; 		 (aprog1 (funcall reduction (mapargs (lambda (x)
+;; 						       (cummulative-fixed-point
+;; 							rls (visit x)))
+;; 						     x))
+
+	     
+
+;; (visit (x) 
+;; 	     (print* 'visit name x)
+;;              (if (or (atom x) (simpp x name)) x
+;; 		 (aprog1 (funcall reduction (mapargs (lambda (x)
+;; 						       (cummulative-fixed-point
+;; 							rls (visit x)))
+;; 						     x))
+
+;; (bind #'cummulative-fixed-point
+;; 						 (cons #'visit assumes) /1)
+;; 					   x))
+;; 		   (when (consp it)
+;; 		     (unless (or (eq 'all preserves) (eql it x))
+;; 		       (clear-simp it preserves))
+;; 		     (mark-simp it name))))))
+;;     (aprog1 (visit expr)
+;;       (print* 'done-visit name expr))))
 
 
 
@@ -135,7 +216,7 @@ Author: madscience@google.com (Moshe Looks) |#
 ;; 	       (return-from visit x))
 ;; 	     (setf x 
 ;; 		   (do ((y (mapargs (bind #'cummulative-fixed-point rls /1) x)
-;; 			   (mapargs (bind #'cummulative-fixed-point rls /1) y)))
+;;		   (mapargs (bind #'cummulative-fixed-point rls /1) y)))
 ;; 		       ((or (eq 'all preserves) (eql x y)) y)
 ;; 		     (setf x y)
 ;; 		     (clear-simp y preserves)
@@ -153,6 +234,8 @@ Author: madscience@google.com (Moshe Looks) |#
     (assert-eq expr (visit-upwards expr 'identity #'identity nil nil))))
 
 (defun visit-downwards (expr name reduction preserves)
+  (print* 'visit-downwards name expr)
+  (aprog1
   (labels ((visit (x)
 	     (if (or (atom x) (simpp x name)) x
 		 (aprog1 (mapargs #'visit 
@@ -165,7 +248,8 @@ Author: madscience@google.com (Moshe Looks) |#
 		   (unless (or (eq 'all preserves) (eq it x))
 		     (clear-simp it preserves))
 		   (mark-simp it name)))))
-    (visit expr)))
+    (visit expr))
+    (print* 'done name it)))
 
 (defmacro construct-reduction
     (name (&rest args) &key (type t) assumes obviates (condition t)

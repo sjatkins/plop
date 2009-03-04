@@ -232,12 +232,15 @@ Author: madscience@google.com (Moshe Looks) |#
   :condition (junctorp expr)
   :action 
   (mvbind (clauses munged) (reduce-clauses (mapcar #'mkclause (args expr)))
-    (if munged 
-	(pcons (fn expr)
-	       (let ((dual (bool-dual (fn expr))))
-		 (mapcar (lambda (x) (if (singlep x) (car x) (pcons dual x)))
-			 clauses))
-	       (markup expr))
+    (if munged
+	(let ((dual (bool-dual (fn expr))))
+	  (if (emptyp clauses)
+	      (identity-elem  dual)
+	      (pcons (fn expr)
+		     (mapcar (lambda (x) 
+			       (if (singlep x) (car x) (pcons dual x)))
+			     clauses)
+		     (markup expr))))
 	expr)))
 (define-test reduce-bool-by-clauses
   (flet ((assert-reduces-to (target exprs)
@@ -335,11 +338,14 @@ Author: madscience@google.com (Moshe Looks) |#
 					   (args arg) it :test #'equalp))
 				     (collect 
 				      (if (longerp it 1)
-					  (pcons (fn arg) it (markup arg))
+					  (pcons (fn arg) it)
 					  (car it)))
 				     (return)))
 			      (args expr)))))))
    (markup expr))
+
+;			      (args expr))))))) fixme
+;   (markup expr))
   :preserves (eval-const)
   :order upwards)
 (define-test inverse-distribution
@@ -351,44 +357,43 @@ Author: madscience@google.com (Moshe Looks) |#
 				   %(and (or x (not y)) (or p (not y)))))))
   (test-by-truth-tables #'inverse-distribution))
 
-;; (define-reduction dominant-and-command (expr)
-;;   :type bool
-;;   :assumes (sort-commutative flatten-associative remove-bool-duplicates
-;; 	    ring-op-identities eval-const inverse-distribution 
-;;             reduce-bool-by-clauses)
-;;   :condition (and (junctorp expr) (find-if-not #'literalp (args expr)))
-;;   :action 
-;;   (let* ((tag (if (eqfn expr 'and) 'dominant 'command))
-;; 	 (opptag (if (eqfn expr 'or) 'dominant 'command))
-;; 	 (set (mark tag expr)) (oppset (mark opptag expr)))
-;;     (mapc (lambda (arg) (when (literalp arg) (push arg set))) (args expr))
-;;     (mapc (lambda (arg)
-;; 	    (when (and (junctorp arg) (not (simpp arg 'dominant-and-command)))
-;; 	      (setf (mark tag arg) set (mark opptag arg) oppset)))
-;; 	  (args expr))
-;;     expr)
-;;   :order downwards
-;;   :preserves all)
-;; (define-test dominant-and-command
-;;   (let* ((expr (pclone %(and a (or d (and b (or c (and d e)))))))
-;; 	 (r (dominant-and-command expr)))
-;;     (assert-eq expr r)
+(define-reduction dominant-and-command (expr)
+  :type bool
+  :assumes (sort-commutative flatten-associative remove-bool-duplicates
+	    ring-op-identities eval-const inverse-distribution 
+            reduce-bool-by-clauses)
+  :condition (and (junctorp expr) (find-if-not #'literalp (args expr)))
+  :action 
+  (let* ((tag (if (eqfn expr 'and) 'dominant 'command))
+	 (opptag (if (eqfn expr 'or) 'dominant 'command))
+	 (set (mark tag expr)) (oppset (mark opptag expr)))
+    (mapc (lambda (arg) (when (literalp arg) (push arg set))) (args expr))
+    (mapc (lambda (arg)
+	    (when (and (junctorp arg) (not (simpp arg 'dominant-and-command)))
+	      (setf (mark tag arg) set (mark opptag arg) oppset)))
+	  (args expr))
+    expr)
+  :order downwards
+  :preserves all)
+(define-test dominant-and-command
+  (let* ((expr (pclone %(and a (or d (and b (or c (and d e)))))))
+	 (r (dominant-and-command expr)))
+    (assert-eq expr r)
     
-;;     (assert-equal nil (mark 'dominant r))
-;;     (assert-equal nil (mark 'command r))
+    (assert-equal nil (mark 'dominant r))
+    (assert-equal nil (mark 'command r))
 
-;;     (assert-equal '(a) (mark 'dominant (arg1 r)))
-;;     (assert-equal nil (mark 'command (arg1 r)))
+    (assert-equal '(a) (mark 'dominant (arg1 r)))
+    (assert-equal nil (mark 'command (arg1 r)))
 
-;;     (assert-equal '(a) (mark 'dominant (arg1 (arg1 r))))
-;;     (assert-equal '(d) (mark 'command (arg1 (arg1 r))))
+    (assert-equal '(a) (mark 'dominant (arg1 (arg1 r))))
+    (assert-equal '(d) (mark 'command (arg1 (arg1 r))))
 
-;;     (assert-equal '(b a) (mark 'dominant (arg1 (arg1 (arg1 r)))))
-;;     (assert-equal '(d) (mark 'command (arg1 (arg1 (arg1 r)))))
+    (assert-equal '(b a) (mark 'dominant (arg1 (arg1 (arg1 r)))))
+    (assert-equal '(d) (mark 'command (arg1 (arg1 (arg1 r)))))
 
-;;     (assert-equal '(b a) (mark 'dominant (arg1 (arg1 (arg1 (arg1 r))))))
-;;     (assert-equal '(c d) (mark 'command (arg1 (arg1 (arg1 (arg1 r))))))))
-    
+    (assert-equal '(b a) (mark 'dominant (arg1 (arg1 (arg1 (arg1 r))))))
+    (assert-equal '(c d) (mark 'command (arg1 (arg1 (arg1 (arg1 r))))))))
 
 (defun litvar (expr)
   (cond ((atom expr) expr)
@@ -479,3 +484,9 @@ Author: madscience@google.com (Moshe Looks) |#
 	       (assert (equal (p2sexpr r) (p2sexpr r2)) ()
 		       "badly marked reduct: ~S -> ~S -> ~S" expr r r2))
 	     '((and . 2) (or . 2) (not . 1) (x . 0) (y . 0) (z . 0)) 5))
+
+#| hard cases
+(qreduct %(or (and (or z y) (or z x)) z))
+(qreduct (pclone '((OR) ((AND) ((OR) Z Y) X) ((AND) ((AND) Z Y) X))))
+(p2sexpr (qreduct %(OR Z (AND (NOT Y) (NOT Z) (OR Y Z)))))
+|#
