@@ -245,7 +245,7 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
 (defun lambda-type (args body &optional (context *empty-context*))
   (assert (lookup-lambda-type args body context)
 	  () "no type found for lambda ~S ~S" args body)
-  (lookup-lambda-type args body))
+  (lookup-lambda-type args body context))
 
 (defun lookup-value-type (value) ; returns nil iff no type found
   (cond
@@ -348,6 +348,26 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
 				   (tuple (list 1 2) 3)
 				   (tuple (list true true) false))
 			   *empty-context* bool)))
+
+;; maps subexpressions together with their types and/or parent
+;; doesn't visit leaves
+(macrolet 
+    ((map-gen (name parent)
+       `(defun ,name (fn expr &optional (context *empty-context*)
+		      (type (expr-type expr context)) ,@parent)
+	  (funcall fn expr type ,@parent)
+	  (if (lambdap expr)
+	      (with-bound-types context (fn-args expr) (cadr type)
+		(unless (atom (fn-body expr))
+		  (,name fn (fn-body expr) context (caddr type) 
+			  ,@(when parent '(expr)))))
+	      (mapc (lambda (arg type) 
+		      (unless (atom arg)
+			(,name fn arg context type 
+			       ,@(when parent '(expr)))))
+		    (args expr) (arg-types expr *empty-context* type))))))
+  (map-gen map-subexprs-with-type nil)
+  (map-gen map-subexprs-with-type-and-parent (parent)))
 
 ;;; this returns true iff arg-tyes can be infered
 (defun arg-types-p (expr context &aux (fn (fn expr)))

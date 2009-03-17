@@ -54,6 +54,10 @@ be passed between subprocesses. |#
 (defun symbols-with-type (type context)
   (or (gethash type (context-type-map context)) ; values nil
       (setf (gethash type (context-type-map context)) (make-hash-table))))
+(defun n-symbols-with-type (type context)
+  (aif (gethash type (context-type-map context))
+       (hash-table-count it)
+       0))
 
 ;;; when binding a symbol, value must be already evaled
 (defun bind-value (name context value &optional (type (value-type value)) &aux
@@ -143,26 +147,3 @@ be passed between subprocesses. |#
 		     (context-problem-stack ,context))
 	       ,@body)
      (pop (context-problem-stack ,context))))
-
-;; this is an unnormalized penalty score (zero is best) based on the contextual
-;; prior probability of expr
-;; fixme to take type/context into account
-(defun prior-penalty (expr context type &aux (size (expr-size expr)))
-  (declare (ignore context type))
-  (* 0.25 size))
-
- ; times log of size for tree structure
-
-;; fixme - maybe adapt this based on the distribution of values observed, with
-;; a type-based default?
-;(defun indiscriminability-levels (context)
- ; (mapcar 
-
-;;fixme - when make-pnode-unless-loser is redone, it will need to validate
-;; for nans, etc
-;; (defun validp (
-;; 	       (cond ((eq type num) (compose #'not (bind #'eq /1 nan)))
-;; 		     ((and (eq (acar type) function)
-;; 			   (eq (caddr type) num)) 
-;; 		      (compose #'not (bind #'eq /1 nan) #'fn-body))
-;; 		     (t (bind #'identity t))))

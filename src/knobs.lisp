@@ -53,8 +53,6 @@ Author: madscience@google.com (Moshe Looks) |#
 					"mismated munging ~S ~S | ~S"     
 					at set-to (cdr set-to))
 				(setf (cdr at) (cdr set-to))
-				(when (cdr set-to)
-				  (setf (cdr set-to) nil))
 				(setf set-to nil)))
 		   (mapcar (lambda (setting)
 			     (lambda () 

@@ -59,7 +59,9 @@ defines the interrelated structs addr and rep and associated algos |#
 (defun addr-equal-twiddles (addr rep twiddles)
   (and (eq rep (addr-rep addr))
        (eql (length twiddles) (hash-table-count (addr-twiddles addr)))
-       (every (lambda (ks) (gethash (car ks) (addr-twiddles addr))) twiddles)))
+       (every (lambda (ks) 
+		(equalp (gethash (car ks) (addr-twiddles addr)) (cdr ks)))
+	      twiddles)))
 (defun addr-equal (x y)
   (assert (and (addr-p x) (addr-p y)) () "addr-equal with non-addr ~S ~S" x y)
   (and (eq (addr-rep x) (addr-rep y))
@@ -109,8 +111,12 @@ defines the interrelated structs addr and rep and associated algos |#
 				 (bound (problem-loser-bound problem)))
     (setf expr (convert expr))
     (awhen (funcall (problem-lookup-pnode problem) expr)
+      (assert (let* ((x (make-expr-from-pnode it)) (y (qreduct (pclone x))))
+		(assert (pequal expr y) () "was ~S, now builds ~S -> ~S" 
+			expr x y)
+		t)) ; wrapped in assert so we can disable it
       (unless (find-if (bind #'addr-equal-twiddles /1 rep twiddles)
-		       (pnode-pts it))
+ 		       (pnode-pts it))
 	(push (make-addr rep twiddles) (pnode-pts it)))
       (return-from get-pnode-unless-loser 
 	(when (< (pnode-err it) bound) it)))
@@ -196,6 +202,49 @@ defines the interrelated structs addr and rep and associated algos |#
 	  (mapc #'funcall reverse)))))
 (defun make-expr-from-pnode (pnode)
   (make-expr-from-addr (car (pnode-pts pnode))))
+
+(define-test make-expr-from
+  (map-exprs (lambda (expr)
+  (let* ((expr (reduct (mklambda '(x y z) (pclone expr)) *empty-context*
+		       '(function (bool bool bool) bool)))
+	 (cexpr (canonize expr *empty-context*
+			  '(function (bool bool bool) bool)))
+	 (knobs (enum-knobs cexpr *empty-context* '(function (bool bool bool)
+						    bool)))
+	 (rep (make-rep-raw)))
+    (setf (rep-cexpr rep) cexpr)
+    (dorepeat 10
+      (let* ((twiddles 
+	      (collecting
+		(mapc (lambda (knob)
+			(when (randbool) 
+			  (collect
+			      (cons knob (1+ (random (1- (length 
+							  (knob-setters 
+							   knob)))))))))
+		      knobs)))
+	     (twiddles2 (shuffle twiddles))
+	     (other-twiddles 
+	      (collecting
+		(mapc (lambda (knob)
+			(when (randbool) 
+			  (collect
+			      (cons knob (1+ (random (1- (length 
+							  (knob-setters 
+							   knob)))))))))
+		      knobs)))
+	     (x (reduct (make-expr-from-twiddles rep twiddles)
+			*empty-context* '(function (bool bool bool) bool)))
+	     (y (reduct (make-expr-from-twiddles rep other-twiddles)
+			*empty-context* '(function (bool bool bool) bool)))
+	     (z (reduct (make-expr-from-twiddles rep twiddles2)
+			*empty-context* '(function (bool bool bool) bool)))
+	     (q (reduct (make-expr-from-addr (make-addr rep 
+							 other-twiddles))
+			*empty-context* '(function (bool bool bool) bool))))
+	(assert-true (pequal x z) x z twiddles)
+	(assert-true (pequal y q) y q other-twiddles)))))
+	     '((and . 2) (or . 2) (not . 1) (x . 0) (y . 0)) 3))
 
 ;;; ok, this is the real tricky bit....
 (defun compute-knobs (pnode cexpr context type)

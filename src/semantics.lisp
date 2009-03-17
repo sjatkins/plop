@@ -117,15 +117,12 @@ represent evolved programs. |#
       (and expr (not (matches expr (true false))))))
 (defun pequal (expr1 expr2) ;;; tests equality sans markup
   (if (atom expr1) 
-      (and (atom expr2) (eql expr1 expr2))
+      (equalp expr1 expr2)
       (and (consp expr2)
 	   (eq (fn expr1) (fn expr2))
 	   (let ((a1 (args expr1)) (a2 (args expr2)))
-	     (when (eql (length a1) (length a2))
-	       (mapc (lambda (sub1 sub2) (unless (pequal sub1 sub2)
-					   (return-from pequal)))
-		     a1 a2)
-	       t)))))
+	     (and (eql (length a1) (length a2))
+		  (every #'pequal a1 a2))))))
 (defun expr-size (expr)
   (if (atom expr) 1 
       (reduce #'+ (args expr) :key #'expr-size :initial-value 1)))

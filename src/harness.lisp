@@ -81,14 +81,18 @@ type. It returns three values - a boolean indicating if the
 			       2)))))
 		target))
       (bool ; target is a truth table or a function for computing one
-       (if (functionp target)		; compute the truth table
-	   (setf target (mapcar (lambda (x) (if x true false))
-				(truth-table target arg-names)))
-	   (when (or (eq (car target) t) (eq (car target) nil)) ;convert
-	     (setf target (mapcar (lambda (x) (if x true false)) target))))
-       (mapcar (lambda (result args)
-		 (lambda (expr) (impulse (not (eq (actual) result)))))
-	       target (enum-bindings (length arg-names)))))
+ 	(setf target (mapcar (lambda (x) 
+ 			       (case x ((t) true) ((nil) false) (t x)))
+ 			     (if (functionp target) ; compute the truth table
+ 				 (truth-table target arg-names)
+ 				 target)))
+ 	(let ((arity (length arg-names)))
+	  (mapcar (lambda (result args)
+		    (lambda (expr) 
+		      (if (or (eq result 'unk) (eq (actual) result))
+ 			  0
+			  (+ 1 (* 2 arity)))));fixme, this is a hack
+		  target (enum-bindings arity)))))
      (lambda (err) (<= err epsilon)) cost)))
 
 (define-problem-desc-maker tuple (target cost type &aux

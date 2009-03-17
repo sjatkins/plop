@@ -18,9 +18,9 @@ miscelaneous non-numerical utilities |#
 (in-package :plop)
 
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
-;;(declaim (optimize (speed 3) (safety 0) (debug 0)))
-;;(sb-ext:without-package-locks
-;;    (defmacro assert (&rest foo) (declare (ignore foo)) nil))
+;; (declaim (optimize (speed 3) (safety 0) (debug 0)))
+;; (sb-ext:without-package-locks
+;;   (defmacro assert (&rest foo) (declare (ignore foo)) nil))
 
 (defun nshuffle (sequence)
   (let ((temp (coerce sequence 'vector)))
@@ -43,7 +43,7 @@ miscelaneous non-numerical utilities |#
        ((>= ,var ,end) ,@result)
      ,@body))
 (defmacro awhile (test &body body) ; anaphoric while
-  `(do ((it ,test ,test)) ((not ,test)) ,@body))
+  `(do ((it ,test ,test)) ((not it)) ,@body))
 (defmacro dorepeat (n &body body)
   (let ((var (gensym)))
     `(dotimes (,var ,n)
@@ -339,11 +339,12 @@ miscelaneous non-numerical utilities |#
     res))
 (defun touch-hash (key table)
   (setf (gethash key table) (gethash key table)))
-(defun copy-hash-table (table)
-  (let ((copy (make-hash-table :size (hash-table-size table))))
-    (maphash (lambda (key value) (setf (gethash key copy) value))
-	     table)
-    copy))
+(defun copy-hash-table (table &key 
+			(key-copier #'identity) (value-copier #'identity))
+  (aprog1 (make-hash-table :size (hash-table-size table))
+    (maphash (lambda (key value) (setf (gethash (funcall key-copier key) it)
+				       (funcall value-copier value)))
+	     table)))
 (defun maphash-keys (fn table)
   (maphash (bind fn /1) table))
 (defun maphash-values (fn table)
@@ -667,3 +668,17 @@ miscelaneous non-numerical utilities |#
 
 (defun xor (&rest args)
   (reduce (lambda (x y) (not (eq x y))) args :initial-value nil))
+
+;;; some basic file munging
+(defun whitespacep (char)
+  (member char '(#\Space #\Tab #\Newline)))
+
+(defun read-word (stream &aux b c) 
+  (while (and (setf b (read-byte stream nil)) ; chomps whitespace
+	      (whitespacep (setf c (code-char b)))))
+  (let ((word (with-output-to-string (out)
+		(while (and b (not (whitespacep 
+				    (setf c (code-char b)))))
+		  (write-char c out)
+		  (setf b (read-byte stream nil))))))
+    (unless (eql 0 (length word)) word)))

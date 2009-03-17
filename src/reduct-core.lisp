@@ -245,11 +245,7 @@ Author: madscience@google.com (Moshe Looks) |#
 
 	(assert-for-none (bind #'exact-simp-p /1 'push-nots) num-exprs)
 	(assert-for-none (bind #'exact-simp-p /1 'sort-commutative) num-exprs)
-	(assert-for-all (bind #'exact-simp-p /1 'maxima-reduce) num-exprs))))
-  (map-exprs (lambda (expr &aux (r (reduct (pclone expr) *empty-context* bool))
-		      (r2 (reduct (sexpr2p (p2sexpr r)) *empty-context* bool)))
-	       (assert-equal (p2sexpr r) (p2sexpr r2) expr r r2))
-	     '((and . 2) (or . 2) (not . 1) (x . 0) (y . 0)) 4))
+	(assert-for-all (bind #'exact-simp-p /1 'maxima-reduce) num-exprs)))))
 
 ;; for convenience
 (defun qreduct (expr) 
