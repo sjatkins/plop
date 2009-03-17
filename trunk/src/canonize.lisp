@@ -15,7 +15,7 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) |#
 (in-package :plop) 
 
-(deftype cexpr () t);fixme'(or list (vector pexpr) real symbol))
+(deftype cexpr () t)
 
 ;; cons with args in canonical form
 (defun canonize-args (expr context type)
@@ -34,19 +34,6 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun qcanonize (expr) ;;;useful for testing
   (canonize expr *empty-context* (expr-type expr *empty-context*)))
 
-(defun map-subexprs-with-type-and-parent 
-    (fn expr &optional (context *empty-context*)
-     (type (expr-type expr context)) parent)
-  (funcall fn expr type parent)
-  (if (lambdap expr)
-      (with-bound-types context (fn-args expr) (cadr type)
-	(unless (atom (fn-body expr))
-	  (map-subexprs-with-type-and-parent
-	   fn (fn-body expr) context (caddr type) expr)))
-      (mapc (lambda (arg type) 
-	      (unless (atom arg)
-		(map-subexprs-with-type-and-parent fn arg context type expr)))
-	    (args expr) (arg-types expr *empty-context* type))))
 ;; useful for testing - note that to compile under sbcl these must be macros
 ;; rather than functions, else we get the dreaded "Objects of type FUNCTION
 ;; can't be dumped into fasl files." error...

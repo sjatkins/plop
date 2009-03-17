@@ -47,7 +47,6 @@ I must have fruit!
   (score-buffer nil :type (vector number))
   (err-sum 0.0 :type number) (err-squares-sum 0.0 :type number)
   (pnode-count 0 :type (integer 0)))
-;fixme - should we try a moving average here?
 
 (defparameter *pnode-cached-scores* nil) ; don't touch directly - use the 
 (defparameter *pnode-cached-err* 0.0)    ; macro with-cached-scores

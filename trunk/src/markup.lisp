@@ -45,13 +45,13 @@ Author: madscience@google.com (Moshe Looks) |#
 
 (defun clear-simp (expr &optional exceptions) ; exceptions must be sorted 
   (setf (mark simp expr)
-	(if exceptions
-	    (delete-if (lambda (reduction) 
-			 (if (eq (acar exceptions) reduction)
-			     (progn (setf exceptions (cdr exceptions)) nil)
-			     t))
-		       (mark simp expr))
-	    nil)))
+	(when exceptions
+	  (delete-if (lambda (reduction)
+		       (setf exceptions 
+			     (member-if (bind #'string>= /1 reduction) 
+					exceptions))
+		       (not (eq (car exceptions) reduction)))
+		     (mark simp expr)))))
 (defun mark-simp (expr reduction)
   (setf (mark simp expr)
 	(insert-if reduction (mark simp expr)
@@ -61,8 +61,9 @@ Author: madscience@google.com (Moshe Looks) |#
 		     (string> reduction2 reduction)))))
 
 (defun simpp (expr reduction)
-  (awhen (mark simp expr)
-    (or (eq (car it) fully-reduced) (find reduction it))))
+  (or (literalp expr)
+      (awhen (mark simp expr)
+	(or (eq (car it) fully-reduced) (find reduction it)))))
 (defun fully-reduced-p (expr)   
   (awhen (mark simp expr) (eq (car it) fully-reduced)))
 (defun exact-simp-p (expr reduction)

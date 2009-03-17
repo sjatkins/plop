@@ -60,7 +60,9 @@ Author: madscience@google.com (Moshe Looks) |#
   	       (:file "selection")
   	       (:file "lllsc")
 
- 	       (:file "hillclimb")  ; comparison/benchmarking
+ 	       (:file "hillclimb")   ; comparison/benchmarking
  	       (:file "harness")
  	       (:file "benchmark")
+
+	       (:file "nlp")         ; applications
 	       ))
