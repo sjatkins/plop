@@ -107,7 +107,7 @@ General-purpose reductions that can apply to any type are defined here |#
 	      (or (find-if (bind #'short-circuits-p /1 fn) it)
 		  (aif (remove (identity-elem fn) args :test #'equalp)
 		       (if (singlep it) (car it) (pcons fn it markup))
-			(identity-elem fn))))
+		       (identity-elem fn))))
   :order upwards)
 (define-test ring-op-identities
   ;; tests for and

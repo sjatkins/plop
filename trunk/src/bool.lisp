@@ -340,10 +340,12 @@ Author: madscience@google.com (Moshe Looks) |#
     (or (invert-bool expr))))
 (defun shrinkable-by-negation-p (expr) (matches (afn expr) (not or)))
 (defun make-impls (cl subcl cl2 neg)
-  (delete-adjacent-duplicates (merge 'list (delete subcl (copy-list cl))
-				     (delete neg (copy-list cl2) :test #'equal)
-				     #'total-order)
-			      :test #'equal))
+  (delete-adjacent-duplicates 
+   (merge 'list 
+	  (delete subcl (copy-list cl) :test #'pequal)
+	  (delete neg (copy-list cl2) :test #'pequal)
+	  #'total-order)
+   :test #'pequal))
 (defun reduce-clauses 
     (clauses &optional (munged nil)
      (initial-size (reduce #'+ clauses :key #'length)) &aux 
