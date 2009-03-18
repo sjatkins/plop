@@ -91,7 +91,7 @@ type. It returns three values - a boolean indicating if the
 		    (lambda (expr) 
 		      (if (or (eq result 'unk) (eq (actual) result))
  			  0
-			  (+ 1 (* 2 arity)))));fixme, this is a hack
+			  (+ 1 (* 200 arity)))));fixme, this is a hack
 		  target (enum-bindings arity)))))
      (lambda (err) (<= err epsilon)) cost)))
 

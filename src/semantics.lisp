@@ -111,10 +111,12 @@ represent evolved programs. |#
 (defun junctorp (expr) (matches (afn expr) (and or)))
 (defun ring-op-p (expr) ;true if rooted in + or * or and or or
   (matches (ifn expr) (+ * and or)))
+;(declaim (inline literalp))fixme
 (defun literalp (expr)
   (if (consp expr)
       (and (eq (fn expr) 'not) (not (consp (arg0 expr))))
-      (and expr (not (matches expr (true false))))))
+      (and expr (not (eq expr true)) (not (eq expr false)))))
+;(matches expr (true false))))))
 (defun pequal (expr1 expr2) ;;; tests equality sans markup
   (if (atom expr1) 
       (equalp expr1 expr2)

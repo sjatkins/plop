@@ -90,7 +90,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
   (while (and (< stuckness stuckness-bound)
 	      (setf twiddles (sample-pick rep context)))
     (setf expr (reduct (make-expr-from-twiddles rep twiddles) context type))
-;   (print* stuckness stuckness-bound best-err expr twiddles)
+    ;(print* stuckness stuckness-bound best-err (p2sexpr expr))
     (incf stuckness)
     (aif (get-pnode-unless-loser expr rep twiddles (mpop-problem mpop))
 	 (let ((err (pnode-err it)))

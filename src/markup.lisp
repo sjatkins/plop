@@ -61,9 +61,8 @@ Author: madscience@google.com (Moshe Looks) |#
 		     (string> reduction2 reduction)))))
 
 (defun simpp (expr reduction)
-  (or (literalp expr)
-      (awhen (mark simp expr)
-	(or (eq (car it) fully-reduced) (find reduction it)))))
+  (awhen (mark simp expr)
+    (or (eq (car it) fully-reduced) (find reduction it))))
 (defun fully-reduced-p (expr)   
   (awhen (mark simp expr) (eq (car it) fully-reduced)))
 (defun exact-simp-p (expr reduction)

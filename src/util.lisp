@@ -19,8 +19,8 @@ miscelaneous non-numerical utilities |#
 
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
 ;; (declaim (optimize (speed 3) (safety 0) (debug 0)))
-;; (sb-ext:without-package-locks
-;;   (defmacro assert (&rest foo) (declare (ignore foo)) nil))
+;; #+sbcl(sb-ext:without-package-locks
+;; 	(defmacro assert (&rest foo) (declare (ignore foo)) nil))
 
 (defun nshuffle (sequence)
   (let ((temp (coerce sequence 'vector)))
@@ -682,3 +682,11 @@ miscelaneous non-numerical utilities |#
 		  (write-char c out)
 		  (setf b (read-byte stream nil))))))
     (unless (eql 0 (length word)) word)))
+
+#+sbcl(defun watch (code)
+	(sb-profile:unprofile)
+	(sb-profile:reset)
+	(sb-profile:profile "PLOP")
+	(eval code)
+	(sb-profile:report)
+	(sb-profile:unprofile))
