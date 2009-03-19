@@ -23,6 +23,7 @@ Author: madscience@google.com (Moshe Looks) |#
   (parent nil :type (or null ngram-record))
   (best-child nil :type (or null (vector (integer 0)))))
 (defstruct (ngram-model (:constructor make-ngram-model ()))
+  (unigram-count 0 :type (integer 0))
   (words (make-hash-table :test 'equal) :type hash-table)
   (ids  (make-hash-table :test 'eql) :type hash-table)
   (table (make-hash-table :test 'equalp) :type hash-table))
@@ -72,6 +73,7 @@ Author: madscience@google.com (Moshe Looks) |#
     (dotimes (i l model)
       (when (and (> l 100) (= (mod i (1+ (floor (/ l 100)))) 0))
 	(format t "~S%~%" (1+ (floor (/ (* i 100) l)))))
+      (incf (ngram-model-unigram-count model))
       (incf-ngram (insert-ngram (make-array (min n (- l i))
 					    :element-type '(integer 0) 
 					    :displaced-to text 
@@ -120,21 +122,46 @@ Author: madscience@google.com (Moshe Looks) |#
 	  (pushnew (elt it l) candidates :test 'eql))
 	candidates)))
 
+(defun shrink-ngram (ngram)
+  (make-array (1- (length ngram)) :displaced-to ngram 
+	      :displaced-index-offset 1))
+(defun shrink-ngram-backwards (ngram)
+  (make-array (1- (length ngram)) :displaced-to ngram))
+
+(defun stupid-backoff (ngram model alpha &aux 
+		       (record (lookup-ngram ngram model)))
+    (if (eql (length ngram) 1)
+	(if record
+	   (/ (ngram-record-freq record)
+	      (ngram-model-unigram-count model))
+	   0)
+	(if record
+	   (/ (ngram-record-freq record)
+	      (ngram-record-freq (lookup-ngram (shrink-ngram ngram) model)))
+	   (* alpha (stupid-backoff (shrink-ngram ngram) model alpha)))))
+
 (defun map-ngrams (n fn text)
-  (dotimes (i (- (length text) n) text)
+  (dotimes (i (1+ (- (length text) n)) text)
     (funcall fn (make-array n :displaced-to text
 			    :displaced-index-offset i))))
+(defun mapcar-ngrams (n fn text)
+  (collecting (map-ngrams n (lambda (x) (collect (funcall fn x))) text)))
 
-;; (defun make-model-testers (text n model guess &optional (n-testers 1)
-;; 			   &aux (err 0.0))
-;;   (dotimes (i (- (length text) n) err)
-;;     (let ((actual (elt text (+ i n))) guesses)
-      
-;;     (print (lookup-id  model))
-;;     (unless (eql (elt text (+ i n))
-;; 		 (funcall guess model (make-array n :displaced-to text
-;; 						  :displaced-index-offset i)))
-;;       (incf err))))
-
-;; (defun stupid-backoff (model ngram alpha)
-;;   (if (> (ngram-freq ngram model) 0)
+(define-constant +default-prob+ (* 1000.0 least-positive-single-float))
+(defun score-smoother (n smoother text model)
+  (mapcar-ngrams
+   (1+ n) 
+   (lambda (ngram &aux (pre (shrink-ngram-backwards ngram))
+	    (last (elt ngram (1- (length ngram))))
+	    (p (max +default-prob+ (funcall smoother ngram model)))
+	    (c (reduce #'+ (remove last (candidates pre model)) :key
+		       (lambda (id)
+			 (prog2 (setf (elt ngram (1- (length ngram))) id)
+			     (max +default-prob+ 
+				  (funcall smoother ngram model))
+			   (setf (elt ngram (1- (length ngram))) last)))
+			      :initial-value p))
+	    (result (- (log c 2) (log p 2))))
+     (assert (>= result 0.0))
+     result)
+   text))

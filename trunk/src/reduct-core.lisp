@@ -170,8 +170,6 @@ Author: madscience@google.com (Moshe Looks) |#
      (has-decomp (ecase (length args) (3 t) (1 nil)))
      (expr (if has-decomp (gensym) (car args)))
      (ccore `(aif ,condition ,action ,expr)))
-  (unless (eq preserves 'all) 
-    (setf preserves (sort (copy-list preserves) #'string<)))
   (flet ((order-call (on)
 	   `(,(ecase order 
 	        (upwards 'visit-upwards)

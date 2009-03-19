@@ -200,12 +200,13 @@ Author: madscience@google.com (Moshe Looks) |#
     (zap expr)
     expr)
   :preserves all)
-(defun clear-enf (expr)
-  (clear-simp 
-   expr '(eval-const flatten-associative if-identities inverse-distribution 
-	  push-nots reduce-bool-by-clauses remove-bool-duplicates 
-	  ring-op-identities sort-commutative split-identities))
-  (mapc (lambda (arg) (when (junctorp arg) (clear-enf arg))) (args expr)))
+(let ((preserves '(eval-const flatten-associative if-identities
+		   inverse-distribution push-nots reduce-bool-by-clauses
+		   remove-bool-duplicates ring-op-identities 
+		   sort-commutative split-identities)))
+  (defun clear-enf (expr)
+    (clear-simp expr preserves)
+    (mapc (lambda (arg) (when (junctorp arg) (clear-enf arg))) (args expr))))
 (define-reduction dominant-and-command (expr)
   :type bool
   :assumes (dominant-and-command-clear-root)

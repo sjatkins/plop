@@ -58,7 +58,7 @@ defines the interrelated structs addr and rep and associated algos |#
 (defun addr-root-p (addr) (not (addr-twiddles addr)))
 (defun addr-equal-twiddles (addr rep twiddles)
   (and (eq rep (addr-rep addr))
-       (eql (length twiddles) (hash-table-count (addr-twiddles addr)))
+       (eql-length-p twiddles (hash-table-count (addr-twiddles addr)))
        (every (lambda (ks) 
 		(equalp (gethash (car ks) (addr-twiddles addr)) (cdr ks)))
 	      twiddles)))

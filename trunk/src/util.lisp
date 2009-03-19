@@ -75,7 +75,12 @@ miscelaneous non-numerical utilities |#
 (defun longerp (list n)
   (and list (or (eql n 0) (longerp (cdr list) (1- n)))))
 (defun eql-length-p (list n)
-  (if list (eql-length-p (cdr list) (1- n)) (eql n 0)))
+  (while list 
+    (when (eql n 0) (return-from eql-length-p))
+    (decf n)
+    (setf list (cdr list)))
+  (eql n 0))
+
 ;;; a stalk is a list with a single child (the cadr)
 (defun stalkp (l) (and (consp l) (consp (cdr l)) (not (cddr l))))
 (defun mappend (f l) (apply #'append (mapcar f l)))
@@ -445,15 +450,17 @@ miscelaneous non-numerical utilities |#
       ((not l) x)))
 
 (defun insert-if (item list pred)
-  (mapl (lambda (subl)
-	  (when (funcall pred (car subl))
-	    (rplacd subl (cons (car subl) (cdr subl)))
-	    (rplaca subl item)
-	    (return-from insert-if list)))
-	list)
-  (if list 
-      (progn (push item (cdr (last list))) list)
-      (list item)))
+  (declare (function pred))
+  (cond ((not list) (list item))
+	((funcall pred (car list)) (cons item list))
+	(t (setf (cdr (do ((at list (cdr at))
+			   (next (cdr list) (cdr next)))
+			  ((not next) at)
+                       (when (funcall pred (car next))
+                         (setf (cdr at) (cons item next))
+                         (return-from insert-if list))))
+                (cons item nil))
+	   list)))
 
 (defmacro prog-until (test &body body &aux (blockname (gensym)))
   `(block ,blockname 
@@ -683,10 +690,22 @@ miscelaneous non-numerical utilities |#
 		  (setf b (read-byte stream nil))))))
     (unless (eql 0 (length word)) word)))
 
-#+sbcl(defun watch (code)
-	(sb-profile:unprofile)
-	(sb-profile:reset)
-	(sb-profile:profile "PLOP")
-	(eval code)
-	(sb-profile:report)
-	(sb-profile:unprofile))
+(defun tokenize (str) ;very brittle!
+  (unless (eql (length str) 0)
+    (aif (position-if #'whitespacep str)
+	 (cons (make-array it :element-type 'character :displaced-to str)
+	       (tokenize (make-array (- (length str) it 1)
+				     :element-type 'character
+				     :displaced-to str
+				     :displaced-index-offset (1+ it))))
+	 (list str))))
+
+#+sbcl(defun profile (code &key except plus)
+ 	(sb-profile:unprofile)
+ 	(sb-profile:reset)
+ 	(sb-profile:profile "PLOP")
+	(when except (eval `(sb-profile:unprofile ,@except)))
+	(when plus (eval `(sb-profile:profile ,@plus)))
+ 	(eval code)
+ 	(sb-profile:report)
+ 	(sb-profile:unprofile))

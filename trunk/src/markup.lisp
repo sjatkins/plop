@@ -19,8 +19,9 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-constant canon 'canon) ; for canonical form subexpressions
 (define-constant mung 'mung) ; for subexpressions that have been destuctively
 		         ; modified, possibly invalidating their markup
-(define-constant fully-reduced (intern "")) ; so that its first in ordering
+(define-constant fully-reduced 'fully-reduced)
 
+(declaim (inline markup))
 (defun markup (expr) (cdar expr))
 (defun set-markup (expr value) (setf (cdar expr) value))
 (defsetf markup set-markup)
@@ -29,6 +30,7 @@ Author: madscience@google.com (Moshe Looks) |#
   (defun markp (tag expr) 
     (not (eq (getf (markup expr) tag unused) unused))))
 
+(declaim (inline mark))
 (defun mark (tag expr) (getf (markup expr) tag))
 (defun set-mark (tag expr value) (setf (getf (cdar expr) tag) value))
 (defsetf mark set-mark)
@@ -43,26 +45,16 @@ Author: madscience@google.com (Moshe Looks) |#
     (mapc #'strip-markup (args expr)))
   expr)
 
-(defun clear-simp (expr &optional exceptions) ; exceptions must be sorted 
-  (setf (mark simp expr)
+(defun clear-simp (expr &optional exceptions)
+  (setf (mark simp expr) 
 	(when exceptions
-	  (delete-if (lambda (reduction)
-		       (setf exceptions 
-			     (member-if (bind #'string>= /1 reduction) 
-					exceptions))
-		       (not (eq (car exceptions) reduction)))
-		     (mark simp expr)))))
+	  (intersection (mark simp expr) exceptions :test #'eq))))
 (defun mark-simp (expr reduction)
-  (setf (mark simp expr)
-	(insert-if reduction (mark simp expr)
-		   (lambda (reduction2)
-		     (when (eq reduction reduction2)
-		       (return-from mark-simp expr)) ; no need to modify
-		     (string> reduction2 reduction)))))
+  (pushnew reduction (mark simp expr) :test #'eq))
 
 (defun simpp (expr reduction)
   (awhen (mark simp expr)
-    (or (eq (car it) fully-reduced) (find reduction it))))
+    (or (eq (car it) fully-reduced) (member reduction it :test #'eq))))
 (defun fully-reduced-p (expr)   
   (awhen (mark simp expr) (eq (car it) fully-reduced)))
 (defun exact-simp-p (expr reduction)
