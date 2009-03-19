@@ -25,12 +25,6 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 				    (funcall terminationp x))
 			  (default-expr type) *empty-context* type))))
 
-(defun lllsc-benchmarker (scorers terminationp expr context type)
-  (mvbind (result pnodes) (run-lllsc scorers terminationp expr context type)
-    (values result (map 'list (lambda (x) 
-				(cons (pnode-err x) (make-expr-from-pnode x)))
-			pnodes))))
-
 (defun run-lllsc (scorers terminationp expr context type)
   ;; add scorers at the end (by convention)
   (setf scorers (cons (let ((first-scorer (car scorers)))
