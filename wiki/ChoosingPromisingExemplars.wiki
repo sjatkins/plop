@@ -31,7 +31,7 @@ The (unconditional) probability P(score_1 > best) can be estimated based on the 
 For setting c, consider the normalized measure of score divergence between two expressions `i` and `j`, `|s_i - s_j| / max(s_i, s_j)`. Discounting by distance and averaging over all moves from between expressions gives us
 
 {{{
-delta = (1 / |Moves|) *
+delta = (1 / sum_{(i,j) in Moves} distance(i,j)) *
         sum_{(i,j) in Moves} |s_i - s_j| /
                              (max(s_i, s_j) * distance(i,j))
 c = 1 - delta
