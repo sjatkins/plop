@@ -5,9 +5,9 @@ Expressions with corresponding pnodes are ordered by the expected utility using 
 ==Intuition==
 
 Consider (thanks to Nil for the example) two expressions, `A` and `B`. `A` is surrounded by vastly many better sub-optimal candidates, let's call them `better_A_neigh`. `B` has only a few better neighbors but they are optimal. And of course `A` has a better score than `B` to
-make things harder (an also `better_A_neigh` are syntactically far away from the optimal solution)... So the only way to solve the problem is to focus optimzation around `B`, but using it as an exemplar.
+make things harder (an also `better_A_neigh` are syntactically far away from the optimal solution)... So the only way to solve the problem is to focus optimization around `B`, by using it as an exemplar.
 
-This is addressed in the way that utility is calculated by prefering to search around `A` vs. `B` based not just on the mean fitness of nearby solutions, which will indeed be higher for `A`, but also on the (weighted) variance around `A` vs. `B`. My working understanding
+This is addressed in the way that utility is calculated by preferring to search around `A` vs. `B` based not just on the mean fitness of nearby solutions, which will indeed be higher for `A`, but also on the (weighted) variance around `A` vs. `B`. My working understanding
 (may be wrong) is that even if exploring around `A` at first has higher expected utility, after spending some time searching there our estimated variance will decrease (while our estimated variance around B should actually *increase* - see the way V2 is defined below). And, importantly, our estimated variance for points near `A` (`better_A_neigh`) will decrease along with our estimated variance for `A`. These changes *should* (if my intuitions about the math are correct) cause `A` and `better_A_neigh`'s utilities to decrease, while `B`'s will increase.
 
 ==The Gory Details==
