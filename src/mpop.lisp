@@ -26,7 +26,21 @@ mpop = metapopulation |#
 				       pnode-seq))))))
   (size nil :type (integer 1))
   (pnodes nil :type hash-table)
-  (problem nil :type problem))
+  (problem nil :type problem)
+
+  (nsamples 0 :type (integer 0))
+  (err-divergence-sum 0 :type (float 0))
+  (err-divergence-weight-sum 0 :type (float 0)))
+
+(defun err-divergence (twiddles err parent-err &aux 
+		       (weight (/ 1.0 (1+ (twiddles-magnitude twiddles)))))
+  (values (* weight (/ (abs (- err parent-err)) (max err parent-err)))
+	  weight))
+
+;;; a normalized measure from 0 (completely flat), to 1 (infinitely curved)
+(defun flatness (mpop)
+  (- 1.0 (/ (err-divergence-sum mpop) (err-divergence-weight-sum mpop))))
+  
 
 (defun get-rep (pnode mpop context type &optional expr)
   (acase (gethash pnode (mpop-pnodes mpop))
@@ -36,10 +50,18 @@ mpop = metapopulation |#
 
 ;important - don't call cte directly, have a method that takes data with 
 ;optional mean/variance/? and returns expectation ...
-;important - remember to compute p(fit>best) too!
+;important - remember to compute p(fit>best) too! (fixme)
 
 ;;; model update functions
 (defun update-frequencies (err twiddles rep mpop); &aux 
+  ;; update our estimate of problem difficulty
+  (incf (mpop-nsamples mpop))
+  (mvbind (divergence weight)
+      (err-diverence twiddles err (pnode-err (rep-pnode rep)))
+    (incf (err-divergence-sum mpop) divergence)
+    (incf (err-divergence-weight-sum weight))))
+
+  
   (declare (ignore err twiddles rep mpop))); &aux 
   
 ;

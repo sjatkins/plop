@@ -73,8 +73,8 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
     (setf done (funcall optimize (get-rep (find-max-utility (mpop-pnodes mpop))
 					  mpop context type)))
     (assert (validate-pnodes (mpop-pnodes mpop)))
-    ;fixme(competitive-integrate (mpop-size mpop) (mpop-pnodes mpop))
-    )
+    ;(competitive-integrate (mpop-size mpop) (mpop-pnodes mpop))fixme
+)
   done)
 
 (defun ll-optimize (mpop rep context type terminationp &aux (stuckness 0)

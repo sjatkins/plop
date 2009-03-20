@@ -26,7 +26,6 @@ I must have fruit!
 ;;;  * score vectors used to manage diversity (each dimension represents an
 ;;;    independent "error" source (the origin is considered best)
 ;;;  * err is a composite error measurement used to directly compare solutions
-;;;  * are a list of all of the pnodes giving this pnode as their parent
 (defstruct (pnode (:constructor make-pnode 
                    (raw-scores raw-err &aux 
 		    (scores (coerce raw-scores 'vector))
@@ -34,6 +33,7 @@ I must have fruit!
   (pts nil :type list)
   (scores (vector) :type (vector number))
   (err (coerce -1.0 'double-float) :type double-float))
+;fixme  rep expr)
 
 (defun pnode-equal (x y pt-equal)
   (intersection (pnode-pts x) (pnode-pts y) :test pt-equal))
