@@ -91,7 +91,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	   (ngram-model-table model))
   model)
 (define-test train-model
-  (let ((model (train-model "work/plop/data/test.txt" 5)))
+  (let ((model (train-model "/Users/madscience/work/plop/data/test.txt" 5)))
     (assert-equal 2 (ngram-freq (words-to-ngram '("red" "fox") model) model))
     (assert-equal 4 (ngram-freq (words-to-ngram '("fox") model) model))
     (assert-equal +nil-ngram-id+ (ngram-freq (words-to-ngram '("foo" "fox")

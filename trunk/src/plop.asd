@@ -25,7 +25,6 @@ Author: madscience@google.com (Moshe Looks) |#
 (in-package :plop-asd)
 (asdf:defsystem "plop"
   :description "Plop: Probabilistic Learning Of Programs"
-;  :depends-on (:cl-utilities :anaphora)
   :serial t
   :components ((:file "packages")
                (:file "util")        ; generic stuff
