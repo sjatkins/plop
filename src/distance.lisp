@@ -93,8 +93,8 @@ code for computing distances between addrs |#
 
     (mapc (lambda (x distlist)
 	    (mapc (lambda (y dist)
-		    (assert-equal dist (pnode-distance (rep-pnode x) 
-						       (rep-pnode y))
+		    (assert-equalp dist (pnode-distance (rep-pnode x) 
+							(rep-pnode y))
 				  (nth (position x pnodes) names)
 				  (nth (position y pnodes) names)))
 		  pnodes distlist))
