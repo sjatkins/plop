@@ -641,7 +641,11 @@ miscelaneous non-numerical utilities |#
   (defun lru-get (lru &rest args &aux (q (lru-q lru)) (cache (lru-cache lru)))
     (flet ((make-node () (make-lru-node args (apply (lru-f lru) args))))
       (acond 
-	((gethash args cache) (unless (eq it q) (unlink it) (link lru it)))
+	((gethash args cache) (if (lru-node-marked-p it)
+				  (return-from lru-get it)
+				  (unless (eq it q)
+				    (unlink it)
+				    (link lru it))))
 	(q (link lru (if (eql (hash-table-count cache) (lru-n lru))
 			 (aprog1 (lru-node-prev q)
 			   (let ((rem (remhash (lru-node-args it) cache)))
@@ -656,9 +660,6 @@ miscelaneous non-numerical utilities |#
 	(t (setf (lru-q lru) (make-node) q (lru-q lru) (gethash args cache) q
 		 (lru-node-prev q) q (lru-node-next q) q))))
     (assert (validate-lru-node q))
-    (assert (eql (lru-node-length q) (hash-table-count cache)) ()
-	    "length mismatch; |q|=~S, |cache|=~S" 
-	    (lru-node-length q) (hash-table-count cache) q cache)
     (lru-q lru))
   (defun lru-get-and-mark (lru &rest args &aux (cache (lru-cache lru)))
     (acond ((gethash args cache)
@@ -685,10 +686,14 @@ miscelaneous non-numerical utilities |#
 ;; lookup - doesn't compute or move args to top of queue
 (defun lru-lookup (lru &rest args) (gethash args (lru-cache lru)))
 
-(define-test make-lru
+(define-test lru-get
   (let* ((ncalls 0) 
 	 (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3))
-	 (lookup (compose #'lru-node-result (bind #'lru-get lru /1))))
+	 (lookup (lambda (x &aux (cache (lru-cache lru)))
+		   (prog1 (lru-node-result (lru-get lru x))
+		     (assert-eql (lru-node-length (lru-q lru))
+				 (hash-table-count cache) 
+				 (lru-q lru) cache)))))
     (assert-equal '(1 2 3 1 2 3) 
 		  (mapcar lookup (nconc (iota 3) (iota 3))))
     (assert-equal 3 ncalls)
@@ -713,6 +718,16 @@ miscelaneous non-numerical utilities |#
     (dotimes (i 100)
       (let ((l (shuffle (iota 6))))
 	(assert-equal (mapcar #'1+ l) (mapcar lookup l))))))
+(define-test lru-mark
+  (let* ((ncalls 0) 
+	 (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3))
+	 (lookup (compose #'lru-node-result (bind #'lru-get lru /1))))
+    (assert-equal 101 (lru-node-result (lru-get-and-mark lru 100)))
+    (assert-equal '(1 2 3 1 2 3) 
+		  (mapcar lookup (nconc (iota 3) (iota 3))))
+    (assert-equal 7 ncalls)
+    (assert-equal 101 (funcall lookup 100))
+    (assert-equal 7 ncalls)))
 
 (defun xor (&rest args)
   (reduce (lambda (x y) (not (eq x y))) args :initial-value nil))

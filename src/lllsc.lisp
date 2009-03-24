@@ -56,16 +56,16 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 	       (assert (pequal x y) () "mismatched addrs ~S and ~S" x y)))
 	   (pnode-pts pnode)))
    pnodes)
-  (maphash-keys (lambda (x)
-		  (maphash-keys 
-		   (lambda (y)
-		     (unless (eq x y)
-		       (assert (not (pnode-equal x y #'addr-equal)) ()
-			       "distinct pnodes equal:~%~S~%~S~%~S~%~S"
-			       (make-expr-from-pnode x) x
-			       (make-expr-from-pnode y) y)))
-		   pnodes))
-		pnodes)
+  ;; (maphash-keys (lambda (x)
+;; 		  (maphash-keys 
+;; 		   (lambda (y)
+;; 		     (unless (eq x y)
+;; 		       (assert (not (pnode-equal x y #'addr-equal)) ()
+;; 			       "distinct pnodes equal:~%~S~%~S~%~S~%~S"
+;; 			       (make-expr-from-pnode x) x
+;; 			       (make-expr-from-pnode y) y)))
+;; 		   pnodes))
+;; 		pnodes)
   t)
 ;fixme keep track of howmany evals? do we need a panic factor like moses?
 (defun competitive-learn (optimize mpop context type &aux done exemplar)
