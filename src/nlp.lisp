@@ -15,8 +15,6 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) |#
 (in-package :plop)
 
-;fixme make ids an array
- 
 (define-constant +nil-ngram-id+ 0)
 (defstruct ngram-record 		    
   (freq 0 :type (integer 0))
@@ -25,16 +23,16 @@ Author: madscience@google.com (Moshe Looks) |#
 (defstruct (ngram-model (:constructor make-ngram-model ()))
   (unigram-count 0 :type (integer 0))
   (words (make-hash-table :test 'equal) :type hash-table)
-  (ids  (make-hash-table :test 'eql) :type hash-table)
+  (ids  (make-array 0 :fill-pointer 0 :adjustable t) :type (vector string))
   (table (make-hash-table :test 'equalp) :type hash-table))
-(defun lookup-id (id model) (gethash id (ngram-model-ids model)))
+(defun lookup-id (id model) (aref (ngram-model-ids model) (1- id)))
 (defun lookup-word (word model)
   (or (gethash word (ngram-model-words model)) +nil-ngram-id+))  
 (defun insert-word (word model &aux (words (ngram-model-words model)))
   (or (gethash word words)
       (let ((id (1+ (hash-table-count words))))
-	(setf (gethash id (ngram-model-ids model)) word 
-	      (gethash word words) id))))
+	(vector-push-extend word (ngram-model-ids model))
+	(setf (gethash word words) id))))
 (defun lookup-ngram (ngram model) (gethash ngram (ngram-model-table model)))
 (defun insert-ngram (ngram model)
   (or (lookup-ngram ngram model)
@@ -60,8 +58,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	 (or (gethash word (ngram-model-words model)) 0))
        words))
 (defun ngram-to-words (ngram model)
-  (map '(vector string)
-       (lambda (id) (gethash id (ngram-model-ids model))) ngram))
+  (map '(vector string) (bind #'lookup-id /1 model) ngram))
 
 (defun train-model (filespec n &aux (model (make-ngram-model))
 		    (text (make-array 0 :element-type '(integer 0)
@@ -92,6 +89,13 @@ Author: madscience@google.com (Moshe Looks) |#
   model)
 (define-test train-model
   (let ((model (train-model "/Users/madscience/work/plop/data/test.txt" 5)))
+    (assert-equalp (vector "red" "fox") 
+		   (ngram-to-words (words-to-ngram '("red" "fox") model) 
+				   model))
+    (assert-equalp (vector "fox" "once") 
+		   (ngram-to-words (words-to-ngram '("fox" "once") model) 
+				   model))
+
     (assert-equal 2 (ngram-freq (words-to-ngram '("red" "fox") model) model))
     (assert-equal 4 (ngram-freq (words-to-ngram '("fox") model) model))
     (assert-equal +nil-ngram-id+ (ngram-freq (words-to-ngram '("foo" "fox")

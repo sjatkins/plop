@@ -311,3 +311,11 @@ abstaction should be far easier. |#
 	  (+ 1.0 (/ 1.0 (+ 0.002 (dotimes (x 25 sum)
 				   (incf sum (/ 1.0 (f x))))))))))
   :precision 12 :max 65.536 :cost 5000 :cases (3 :start 2))
+
+(defun run-expensive-tests ()
+  (time (run-tests))
+  (time (dorepeat 30 (run-benchmark 'easy-bool #'run-lllsc)))
+  (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+  (time (run-benchmarks #'run-lllsc 5000))
+  (time (dorepeat 30 (run-benchmark 'even-parity-3 #'run-lllsc)))
+  (time (big-bool-test)))
