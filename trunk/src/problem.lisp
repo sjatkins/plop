@@ -27,13 +27,12 @@ I must have fruit!
 ;;;    independent "error" source (the origin is considered best)
 ;;;  * err is a composite error measurement used to directly compare solutions
 (defstruct (pnode (:constructor make-pnode 
-                   (expr raw-scores raw-err &aux 
+                   (raw-scores raw-err &aux 
 		    (scores (coerce raw-scores 'vector))
 		    (err (coerce raw-err 'double-float)))))
-  (pts nil :type list)
+  rep (pts nil :type list)
   (scores (vector) :type (vector (float 0)))
   (err nil :type (float 0))
-  (expr nil :type pexpr)
   (weighted-err-sum 0.0 :type (float 0))
   (weighted-err-squares-sum 0.0 :type (float 0)))
 
@@ -65,7 +64,6 @@ I must have fruit!
 					:initial-element 0.0))
     (let ((lru (make-lru (lambda (expr)
 			   (prog1 (make-pnode 
-				   expr
 				   (aif *pnode-cached-scores*
 					(copy-array it)
 					(progn 
@@ -87,4 +85,3 @@ I must have fruit!
 	    (problem-lookup-pnode it) (lambda (x)
 					(awhen (lru-lookup lru x)
 					  (lru-node-result it)))))))
-

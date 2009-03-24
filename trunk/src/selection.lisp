@@ -191,8 +191,7 @@ else
   (flet ((check (l d n)
 	   (mvbind (dom nondom)
 	       (partition-by-dominance (mapcar (lambda (x) 
-						 (make-pnode nil x 
-							     (reduce #'+ x)))
+						 (make-pnode x (reduce #'+ x)))
 					       l))
 	     (assert-true
 	      (set-equal d (mapcar #'pnode-scores dom) :test #'equalp))
@@ -215,8 +214,8 @@ else
     (cond ((= a 1) (unless (= b 1) 'better))
 	  ((= b 1) 'worse))))
 (define-test dominance
-  (assert-false (dominance (make-pnode nil (vector 1 1 0) 2)
-			   (make-pnode nil (vector 0 0 1) 1))))
+  (assert-false (dominance (make-pnode (vector 1 1 0) 2)
+			   (make-pnode (vector 0 0 1) 1))))
 ;;; returns (x >= y, y >= x)
 (defun inclusion-grades (x y epsilons &aux (x-only 0) (y-only 0) (both 0))
   (map nil (lambda (x-err y-err epsilon &aux (d (abs (- x-err y-err))))
