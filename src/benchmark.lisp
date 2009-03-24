@@ -279,7 +279,7 @@ abstaction should be far easier. |#
      :cases ,cases :cost ,cost
      :type `(tuple ,@(ntimes n `(num :range (,,min ,,max)
 				     :precision ,,precision)))
-     :target ,target
+     :target (lambda (xs) (max (funcall ,target xs) 0.0))
      :start (apply #'vector (generate n (lambda () 
 					  (+ (random (- ,max ,min)) ,min))))))
 

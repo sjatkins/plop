@@ -68,10 +68,10 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 		pnodes)
   t)
 ;fixme keep track of howmany evals? do we need a panic factor like moses?
-(defun competitive-learn (optimize mpop context type &aux done)
+(defun competitive-learn (optimize mpop context type &aux done exemplar)
   (while (not done)
-    (setf done (funcall optimize (get-rep (find-max-utility (mpop-pnodes mpop))
-					  mpop context type)))
+    (setf exemplar (find-max-utility (mpop-pnodes mpop))
+	  done (funcall optimize (get-rep exemplar mpop context type)))
     (assert (validate-pnodes (mpop-pnodes mpop)))
     ;(competitive-integrate (mpop-size mpop) (mpop-pnodes mpop))fixme
 )
@@ -80,11 +80,11 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 (defun ll-optimize (mpop rep context type terminationp &aux (stuckness 0)
 		    (stuckness-bound (stuckness-bound rep context))
 		    (best-err (pnode-err (rep-pnode rep))) (best-scores nil)
-		    twiddles expr)
+		    twiddles expr) ;fixme visited)
   (while (and (< stuckness stuckness-bound)
 	      (setf twiddles (sample-pick rep context)))
     (setf expr (reduct (make-expr-from-twiddles rep twiddles) context type))
-    ;(print* stuckness stuckness-bound best-err (p2sexpr expr))
+;    (print* stuckness stuckness-bound best-err (p2sexpr expr))
     (incf stuckness)
     (aif (get-pnode-unless-loser expr rep twiddles (mpop-problem mpop))
 	 (let ((err (pnode-err it)))
@@ -94,6 +94,8 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 				    (log (reduce #'+ (pnode-scores it)))))))
 		   nil "err!=sum(scores) for ~S" it)
 	   (update-frequencies err twiddles rep mpop)
+;fixme get twiddles hash from pnode: get-pnode-unless-loser needs to give us 
+;back the addr as a secondary value?
 	   (when (< err best-err)
 	     (setf rep (get-rep it mpop context type expr)
 		   best-err err best-scores (pnode-scores it)

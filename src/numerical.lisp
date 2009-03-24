@@ -168,7 +168,12 @@ numerical functions |#
 	    "can't compute cte due to numerical instability; (erf ~S) = ~S"
 	    (/ d (* sd sqrt2)) erf)
     (+ m (/ (* sd sqrt2-over-pi (exp (/ (* d d) (* -2.0L0 v))))
-	    (- 1.0L0 erf)))))
+	    (- 1.0L0 erf))))
+  (defun normal-cdf (m v x)
+    (setf m (coerce m 'long-float)
+	  v (coerce v 'long-float)
+	  x (coerce x 'long-float))
+    (+ 0.5L0  (* 0.5L0 (erf (/ (- x m) (* (sqrt v) sqrt2)))))))
 (define-test conditional-tail-expectation
   ;; ensure that we are at least somewhat stable
   (let* ((values (iota 6.97 :start 6 :step 0.01))
@@ -180,3 +185,7 @@ numerical functions |#
 			   (nth (position x l) values)
 			   (nth (position y l) values)))
 	    l (cdr l))))
+(define-test normal-cdf
+  (assert-equal 0.5 (normal-cdf 0 1 0))
+  (assert-true (< 0.99 (normal-cdf 0 1 100)))
+  (assert-true (> 0.01 (normal-cdf 0 1 -100))))

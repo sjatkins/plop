@@ -17,8 +17,12 @@ Author: madscience@google.com (Moshe Looks)
 defines the interrelated structs addr and rep and associated algos |#
 (in-package :plop)
 
-(defun twiddles-magnitude (twiddles &aux (d 0))
-  (maphash (lambda (k s) (incf d (knob-setting-distance k 0 s))) twiddles)
+(defun twiddles-magnitude (twiddles &aux (d 0.0))
+  (if (hash-table-p twiddles)
+      (maphash (lambda (k s) (incf d (knob-setting-distance k 0 s))) twiddles)
+      (map nil (lambda (ks)
+		 (incf d (knob-setting-distance (car ks) 0 (cdr ks))))
+	   twiddles))
   d)
 (defun twiddles-distance (x y &aux (d 0))
   (maphash (lambda (xk xs)
@@ -86,11 +90,12 @@ defines the interrelated structs addr and rep and associated algos |#
 			    (s (problem-err-squares-sum problem)))
   (values m (/ (+ (* n m m) s (* -2 m e)) (1- n))))
 (define-test problem-err-moments
-  (let ((p (make-problem-raw :err-sum 10 :err-squares-sum 20 :pnode-count 10
-			     :score-buffer (vector))))
+  (let ((p (make-problem-raw :err-sum 10.0 :err-squares-sum 20.0 
+			     :pnode-count 10 :score-buffer (vector))))
     (mvbind (m v) (problem-err-moments p)
       (assert-equalp 1 m)
-      (assert-equalp (/ 10 9) v))))
+      (assert-equalp (coerce (/ 10 9) 'double-float) 
+		     (coerce v 'double-float)))))
 
 ;;; lookup/compute a pnode from an addr
 (labels ((convert (expr)
@@ -164,8 +169,8 @@ defines the interrelated structs addr and rep and associated algos |#
     (assert-equalp 23 (problem-err-sum problem))))
     
 ;;; a representation - the tricky bit...
-(defstruct (rep (:constructor make-rep-raw 
-		 (&aux (pnode (make-pnode nil 0)) (knobs (vector))))
+(defstruct (rep (:constructor make-rep-raw ; for testing
+		 (&aux (pnode (make-pnode nil nil 0)) (knobs (vector))))
 		(:constructor make-rep 
 		 (pnode context type &optional expr &aux
 		  (cexpr (canonize 

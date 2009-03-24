@@ -29,18 +29,19 @@ mpop = metapopulation |#
   (problem nil :type problem)
 
   (nsamples 0 :type (integer 0))
-  (err-divergence-sum 0 :type (float 0))
-  (err-divergence-weight-sum 0 :type (float 0)))
+  (err-divergence-sum 0.0 :type (float 0))
+  (err-divergence-weight-sum 0.0 :type (float 0)))
 
 (defun err-divergence (twiddles err parent-err &aux 
 		       (weight (/ 1.0 (1+ (twiddles-magnitude twiddles)))))
   (values (* weight (/ (abs (- err parent-err)) (max err parent-err)))
 	  weight))
 
-;;; a normalized measure from 0 (completely flat), to 1 (infinitely curved)
+;;; a normalized measure of the landscape, ranging from 0 (infinitely curved)
+;;; to 1 (completely flat)
 (defun flatness (mpop)
-  (- 1.0 (/ (err-divergence-sum mpop) (err-divergence-weight-sum mpop))))
-  
+  (- 1.0 (/ (mpop-err-divergence-sum mpop)
+	    (mpop-err-divergence-weight-sum mpop))))
 
 (defun get-rep (pnode mpop context type &optional expr)
   (acase (gethash pnode (mpop-pnodes mpop))
@@ -53,16 +54,14 @@ mpop = metapopulation |#
 ;important - remember to compute p(fit>best) too! (fixme)
 
 ;;; model update functions
-(defun update-frequencies (err twiddles rep mpop); &aux 
+(defun update-frequencies (err twiddles rep mpop)
   ;; update our estimate of problem difficulty
   (incf (mpop-nsamples mpop))
   (mvbind (divergence weight)
-      (err-diverence twiddles err (pnode-err (rep-pnode rep)))
-    (incf (err-divergence-sum mpop) divergence)
-    (incf (err-divergence-weight-sum weight))))
+      (err-divergence twiddles err (pnode-err (rep-pnode rep)))
+    (incf (mpop-err-divergence-sum mpop) divergence)
+    (incf (mpop-err-divergence-weight-sum mpop) weight)))
 
-  
-  (declare (ignore err twiddles rep mpop))); &aux 
   
 ;
   ;; for each of the twiddles' knobs, propagate signal back to parents
