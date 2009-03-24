@@ -593,85 +593,126 @@ miscelaneous non-numerical utilities |#
 
 (defun impulse (x) (if x 1 0))
 
-;;; for debugging doubly-linked lists
-(defun validate-dll (dll)
-  (do ((at dll (cddr at)))
-      ((eq at (cadr dll)) t)
-    (assert (eq at (cddadr at)) () "prev mismatch, ~S vs. ~S" at (cddadr at))
-    (assert (eq at (cadddr at)) () "next mismatch, ~S vs. ~S" at (cadddr at))))
-(defun dll-length (dll)
-  (if dll
-      (do ((n 1 (1+ n)) (at dll (cddr at))) 
-	  ((eq at (cadr dll)) n))
-      0))  
-
 ;;; least-recently-used cache for memoizing the last n calls to the function f
 ;;; test must be either equal or equalp so that it can be used on arg-lists
-;;; lru uses a hash table for the cache, and a doubly linked list organized as
-;;; ((args . value) (prev . next)) for the queue of least-recently-used items
-;;; the keys in the hash table are args, the values are nodes in the list
-(defun make-lru (f n &key (test 'equal) (hash-size (ceiling (* 1.35 n))) &aux
-		 q (cache (make-hash-table :test test :size hash-size)))
-  (when (= n 0) (return-from make-lru (values f (lambda (&rest args)
-						  (declare (ignore args))))))
-  (values
-   (lambda (&rest args) ; compute if not there & moves args to top of the queue
-     (labels
-	 ((make-node () (cons (cons args (apply f args)) (cons nil nil)))
-	  (link (node)
-	    (setf (cadr node) (cadr q) (cddr node) q
-		  (cddadr q) node (cadr q) node q node))
-	  (unlink (node)
-	    (setf (cddadr node) (cddr node) (cadddr node) (cadr node)))	 
-	  (update (node)
-	    (if (eq node cache)		; miss?
-		(link (if (eql (hash-table-count cache) n) ; replace the lru?
-			  (aprog1 (cadr q)
-			    (let ((remresult (remhash (caar it) cache)))
-			      (assert remresult () 
-				      "you junked the hash keys ~S ~S"
-				      (caar it) cache))	    
-			    (setf (caar it) args (cdar it) (apply f args))
-			    (unlink it))
-			  (make-node)))
-	        (unless (eq node q)
-		  (unlink node)
-		  (link node)
-		  nil)))			; to always return nil
-	  (init-q () (setf q (make-node) (cadr q) q (cddr q) q)))
-       (when (if q (update (gethash args cache cache)) (init-q))
-	 (setf (gethash args cache) q))
-       (assert (validate-dll q))
-       (assert (eql (dll-length q) (hash-table-count cache)) ()
-	       "length mismatch; |q|=~S, |cache|=~S" 
-	       (dll-length q) (hash-table-count cache) q cache)
-       (cdar q)))
-   (lambda (&rest args) ; lookup - doesn't compute or move args to top of queue
-     (cdar (gethash args cache)))))
+;;; lru uses a hash table for the cache, and a doubly linked list of lru-nodes
+;;; for the queue of least-recently-used items the keys in the hash table are
+;;; args, the values are nodes in the list
+;;; nodes may be marked keep them in the cache without being eligible for
+;;; deletion - marked nodes still count towards the size of the cache
+(defstruct (lru (:constructor make-lru
+                 (f n &key (test 'equal) (hash-size (ceiling (* 1.35 n))) &aux
+	 	  (cache (make-hash-table :test test :size hash-size)))))
+  (f nil :type function)
+  (n nil :type (integer 0))
+  (q nil :type (or null lru-node))
+  (cache nil :type hash-table))
+(defstruct (lru-node (:constructor make-lru-node (args result)))
+  (args nil :type list) result
+  (prev nil :type (or null lru-node))
+  (next nil :type (or null lru-node)))
+(defun lru-node-marked-p (node) (not (lru-node-prev node)))
+
+;; for testing
+(defun validate-lru-node (x)
+  (do ((at x (lru-node-next at)))
+      ((eq at (lru-node-prev x)) t)
+    (assert (eq at (lru-node-next (lru-node-prev at))) () 
+	    "prev mismatch, ~S vs. ~S" at (lru-node-next (lru-node-prev at)))
+    (assert (eq at (lru-node-prev (lru-node-next at))) () 
+	    "next mismatch, ~S vs. ~S" at (lru-node-prev (lru-node-next at)))))
+(defun lru-node-length (x)
+  (if x
+      (do ((n 1 (1+ n)) (at x (lru-node-next at))) 
+	  ((eq at (lru-node-prev x)) n))
+      0))
+
+
+;; compute if not there & moves args to top of the queue
+(flet ((link (lru node)
+	 (setf (lru-node-prev node) (lru-node-prev (lru-q lru)) 
+	       (lru-node-next node) (lru-q lru)
+	       (lru-node-next (lru-node-prev (lru-q lru))) node
+	       (lru-node-prev (lru-q lru)) node
+	       (lru-q lru) node))
+       (unlink (node)
+	 (setf (lru-node-next (lru-node-prev node)) (lru-node-next node)
+	       (lru-node-prev (lru-node-next node)) (lru-node-prev node))))
+  (defun lru-get (lru &rest args &aux (q (lru-q lru)) (cache (lru-cache lru)))
+    (flet ((make-node () (make-lru-node args (apply (lru-f lru) args))))
+      (acond 
+	((gethash args cache) (unless (eq it q) (unlink it) (link lru it)))
+	(q (link lru (if (eql (hash-table-count cache) (lru-n lru))
+			 (aprog1 (lru-node-prev q)
+			   (let ((rem (remhash (lru-node-args it) cache)))
+			     (assert rem () "you junked the hash keys ~S ~S"
+				     (lru-node-args it) cache))
+			   (unlink it)
+			   (setf (lru-node-args it) args 
+				 (lru-node-result it) 
+				 (apply (lru-f lru) args)))
+			 (make-node)))
+	   (setf (gethash args cache) (lru-q lru)))
+	(t (setf (lru-q lru) (make-node) q (lru-q lru) (gethash args cache) q
+		 (lru-node-prev q) q (lru-node-next q) q))))
+    (assert (validate-lru-node q))
+    (assert (eql (lru-node-length q) (hash-table-count cache)) ()
+	    "length mismatch; |q|=~S, |cache|=~S" 
+	    (lru-node-length q) (hash-table-count cache) q cache)
+    (lru-q lru))
+  (defun lru-get-and-mark (lru &rest args &aux (cache (lru-cache lru)))
+    (acond ((gethash args cache)
+	    (unless (lru-node-marked-p it)
+	      (unlink it))
+	    it)
+	   ((eql (hash-table-count cache) (lru-n lru))
+	    (aprog1 (lru-node-prev (lru-q lru))
+	      (let ((rem (remhash (lru-node-args it) cache)))
+		(assert rem () "you junked the hash keys ~S ~S"
+			(lru-node-args it) cache))
+	      (unlink it)
+	      (setf (lru-node-args it) args 
+		    (lru-node-result it) (apply (lru-f lru) args)
+		    (lru-node-prev it) nil 
+		    (lru-node-next it) nil)))
+	   (t (setf (gethash args (lru-cache lru))
+		    (make-lru-node args (apply (lru-f lru) args))))))
+  (defun lru-unmark (lru node)
+    (assert (gethash (lru-node-args node) (lru-cache lru)) ()
+	    "trying to unmark a node ~S that is not in lru ~S" node lru)
+    (when (lru-node-marked-p node)
+      (link (lru-q lru) node))))
+;; lookup - doesn't compute or move args to top of queue
+(defun lru-lookup (lru &rest args) (gethash args (lru-cache lru)))
+
 (define-test make-lru
-  (let* ((ncalls 0) (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3)))
+  (let* ((ncalls 0) 
+	 (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3))
+	 (lookup (compose #'lru-node-result (bind #'lru-get lru /1))))
     (assert-equal '(1 2 3 1 2 3) 
-		  (mapcar lru (nconc (iota 3) (iota 3))))
+		  (mapcar lookup (nconc (iota 3) (iota 3))))
     (assert-equal 3 ncalls)
-    (assert-equal '(1 2 3 4) (mapcar lru (iota 4)))
+    (assert-equal '(1 2 3 4) (mapcar lookup (iota 4)))
     (assert-equal 4 ncalls))
-  (let* ((ncalls 0) (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 5)))
+  (let* ((ncalls 0) 
+	 (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 5))
+	 (lookup (compose #'lru-node-result (bind #'lru-get lru /1))))
     (assert-equal '(1 2 3 4 5 1 2 3 4 5) 
-		  (mapcar lru (nconc (iota 5) (iota 5))))
+		  (mapcar lookup (nconc (iota 5) (iota 5))))
     (assert-equal 5 ncalls)
-    (assert-equal '(1 2 3 4 5 6) (mapcar lru (iota 6)))
+    (assert-equal '(1 2 3 4 5 6) (mapcar lookup (iota 6)))
     (assert-equal 6 ncalls)
-    (assert-equal '(6 5 4 3 2 1) (mapcar lru (nreverse (iota 6))))
+    (assert-equal '(6 5 4 3 2 1) (mapcar lookup (nreverse (iota 6))))
     (assert-equal 7 ncalls)
-    (assert-equal '(1 2 3 4 5 6) (mapcar lru (iota 6)))
+    (assert-equal '(1 2 3 4 5 6) (mapcar lookup (iota 6)))
     (assert-equal 8 ncalls)
     (dotimes (i 100)
       (let ((l (shuffle (iota 6 :start 1))))
-	(assert-equal (mapcar #'1+ l) (mapcar lru l)))
+	(assert-equal (mapcar #'1+ l) (mapcar lookup l)))
       (assert-equal 8 ncalls))
     (dotimes (i 100)
       (let ((l (shuffle (iota 6))))
-	(assert-equal (mapcar #'1+ l) (mapcar lru l))))))
+	(assert-equal (mapcar #'1+ l) (mapcar lookup l))))))
 
 (defun xor (&rest args)
   (reduce (lambda (x y) (not (eq x y))) args :initial-value nil))

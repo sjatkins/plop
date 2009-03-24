@@ -142,14 +142,16 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun hillclimb-benchmarker (scorers terminationp expr context type
 			      &key (lru-size 1000) &aux best best-score
 			      maxima termination-result scorer validp)
-  (setf scorer (make-lru (lambda (expr)
-			   (+ (reduce #'+ scorers :key 
-				      (bind #'funcall /1 expr))
-			      (* 0.001 (log (if (eqfn expr 'lambda)
-						(expr-size (fn-body expr))
-						(expr-size expr))
-					    2.0))))
-			 lru-size)
+  (setf scorer (let ((lru (make-lru 
+			   (lambda (expr)
+			     (+ (reduce #'+ scorers :key 
+					(bind #'funcall /1 expr))
+				(* 0.001 (log (if (eqfn expr 'lambda)
+						  (expr-size (fn-body expr))
+						  (expr-size expr))
+					      2.0))))
+			   lru-size)))
+		 (compose #'lru-node-result (bind #'lru-get lru /1)))
 	validp (cond ((eq type num) (compose #'not (bind #'eq /1 nan)))
 		     ((and (eq (acar type) function)
 			   (eq (caddr type) num)) 
