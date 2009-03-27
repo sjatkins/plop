@@ -17,22 +17,29 @@ Author: madscience@google.com (Moshe Looks)
 mpop = metapopulation |#
 (in-package :plop)
 
-;fixme- at some point pnodes should probably be a vector..
 (defstruct (mpop (:constructor make-mpop 
-		  (pnode-seq problem &key (size 1000)
-		   &aux (pnodes (aprog1 (make-hash-table :test 'eq)
-				  (map nil (lambda (pnode) 
-					     (setf (gethash pnode it) t))
-				       pnode-seq))))))
+		  (problem &key (size 1000) &aux 
+		   (nodes (make-array 0 :fill-pointer 0 :adjustable t
+				      :element-type 'lru-node)))))
   (size nil :type (integer 1))
-  (pnodes nil :type hash-table)
+  (nodes nil :type (vector lru-node))
   (problem nil :type problem)
 
   (nsamples 0 :type (integer 0))
   (err-divergence-sum 0.0 :type (float 0))
   (err-divergence-weight-sum 0.0 :type (float 0)))
+ ;fixme to allocate nodes based on size
+;; returns the node, or its replacement if its a duplicate
+(defun mpop-insert (mpop node &aux (lru (problem-lru (mpop-problem mpop))))
+  (acond 
+    ((lru-node-immortal-p node) node)
+    ((and (lru-node-disconnected-p node) (lru-lookup lru (dyad-arg node)))
+     (mpop-insert mpop it))
+    (t (vector-push-extend node (mpop-nodes mpop)) ;fixme to vector-push
+       (lru-immortalize lru node)
+       node)))
 
-(defun err-divergence (twiddles err parent-err &aux 
+(defun err-divergence (err parent-err twiddles &aux 
 		       (weight (/ 1.0 (1+ (twiddles-magnitude twiddles)))))
   (values (* weight (/ (abs (- err parent-err)) (max err parent-err)))
 	  weight))
@@ -43,55 +50,46 @@ mpop = metapopulation |#
   (- 1.0 (/ (mpop-err-divergence-sum mpop)
 	    (mpop-err-divergence-weight-sum mpop))))
 
-(defun get-rep (pnode mpop context type &optional expr)
-  (acase (gethash pnode (mpop-pnodes mpop))
-    ((t nil) (setf (gethash pnode (mpop-pnodes mpop)) 
-		   (make-rep pnode context type expr)))
-    (t it)))
+(defun get-rep (pnode expr context type)
+  (or (pnode-rep pnode)
+      (setf (pnode-rep pnode) (make-rep pnode expr context type))))
 
 ;important - don't call cte directly, have a method that takes data with 
 ;optional mean/variance/? and returns expectation ...
 ;important - remember to compute p(fit>best) too! (fixme)
 
 ;;; model update functions
-(defun update-frequencies (err twiddles rep mpop)
+(defun update-frequencies (err twiddles prep mpop)
   ;; update our estimate of problem difficulty
   (incf (mpop-nsamples mpop))
   (mvbind (divergence weight)
-      (err-divergence twiddles err (pnode-err (rep-pnode rep)))
+      (err-divergence err (pnode-err prep) twiddles)
     (incf (mpop-err-divergence-sum mpop) divergence)
     (incf (mpop-err-divergence-weight-sum mpop) weight)))
-
-  
-;
-  ;; for each of the twiddles' knobs, propagate signal back to parents
-  ;; and their parents, until the sinks
-
 
 ;have a generic correlation-counting struct that's configurable?
 ;  (incf (rep-
 ;  (incf 
 
 ;;; does update-frequences based on the expected score of a loser
-(defun update-frequencies-loser (twiddles rep mpop &aux 
+(defun update-frequencies-loser (bound twiddles prep mpop &aux 
 				 (p (mpop-problem mpop)))
   (mvbind (m v) (case (problem-pnode-count p) 
 		  (0 (return-from update-frequencies-loser))
 		  (1 (values (problem-err-sum p) (/ (problem-err-sum p) 2)))
-		  (t (problem-err-moments (mpop-problem mpop))))
+		  (t (problem-err-moments p)))
     (when (<= v 0) (return-from update-frequencies-loser))
     (update-frequencies (- (* 2 m) (conditional-tail-expectation 
-				    m v (- (* 2 m) (problem-loser-bound 
-						    (mpop-problem mpop)))))
-			twiddles rep mpop)))
-(defun update-structure (twiddles rep mpop); &aux (p (merge-penalty mpop)))
+				    m v (- (* 2 m) bound)))
+			twiddles prep mpop)))
+(defun update-structure (twiddles prep mpop); &aux (p (merge-penalty mpop)))
  ;;  (mapl (lambda (schemata &aux (x (car schemata)) (xs (cdr schemata)))
 ;; 	  (mapc (lambda (y &aux (cases (hash-intersection x y)))
 ;; 		 (when (and (> cases 3) ; can we plug in some math here? fixme
 ;; 			     (>
 ;;    (mpop-schemata mpop)
 
-  (declare (ignore twiddles rep mpop)))
+  (declare (ignore twiddles prep mpop)))
 
 ;;; parameter lookups - fixme
 (defun stuckness-bound (rep mpop) 

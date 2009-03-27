@@ -150,7 +150,7 @@ Author: madscience@google.com (Moshe Looks) |#
 						  (expr-size (fn-body expr))
 						  (expr-size expr))
 					      2.0))))
-			   lru-size)))
+			   lru-size :test 'equalp)))
 		 (compose #'lru-node-result (bind #'lru-get lru /1)))
 	validp (cond ((eq type num) (compose #'not (bind #'eq /1 nan)))
 		     ((and (eq (acar type) function)

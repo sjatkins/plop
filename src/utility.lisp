@@ -69,6 +69,8 @@ expected utility calculations |#
 ;(defun indiscriminability-levels (context)
  ; (mapcar 
 
+;; fixme take into account that err >= 0
+
 ;; v1 = sum w, v2 = sum w*w, m = sum w*x, v = sum w*x*x
 ;; P(score > best) * E(score | score>best)
 ;; details @ http://code.google.com/p/plop/wiki/ChoosingPromisingExemplars
@@ -81,146 +83,22 @@ expected utility calculations |#
 ;; for every node in new-pnodes, visit all pnodes in mpop-pnodes
 ;; out to an edit-distance of k, calling update-utility on each of them
 
-;; fixme should cache twiddles-distance and twiddles-mag (?)
-;; (defun find-max-utility (candidates points best flatness &aux
-;; 			 (cache (make-pnode-distance-cache)))
-;;   ;; this is the super-slow version. we'll see if its adequate
-;;   (assert (not (intersection candidates points)))
-;;   (max-element candidates #'< :key
-;; 	       (lambda (x &aux (v1 0.0) (v2 0.0) (m 0.0) (v 0.0))
-;; 		 (flet ((update (y &aux (e (pnode-err y))
-;; 				 (w (expt flatness (pnode-distance x y 
-;; 								   cache))))
-;; 			  (incf v1 w)
-;; 			  (incf v2 (* w w))
-;; 			  (incf m (* w e))
-;; 			  (incf v (* w e e))))
-;; 		   (map nil #'update candidates)
-;; 		   (map nil #'update points)
-;; 		   (expected-utility v1 v2 m v best)))))
-
-(defun find-max-utility (pnodes 
-			 &aux (best nil) (err most-positive-single-float))
-  (maphash-keys (lambda (x) 
-		  (when (< (pnode-err x) err)
-		    (setf best x err (pnode-err x))))
-		pnodes)
-  best)
-
-
-
-; (k 10) (rep-to-aps (make-hash-table :test 'eq)))
-;  (assert (not (intersection candidates points)))
-;; graph-min-weight-edge (cdr ap1) should check for <k
-;; should also check for equality of pnodes
-;; make it a macro so that 3rd arg doesn't have to be evaled
-
-;;   (map nil (lambda (pnode) 
-;; 	     (graph-add-node pnode)
-;; 	     (mapc (lambda (addr) 
-;; 		     (push (cons addr pnode)
-;; 			   (gethash (addr-rep addr) rep-to-pnodes)))))
-;;        candidates)
-;;   (maphash-values 
-;;    (lambda (aps)
-;;     (mapl (lambda (aps &aux (ap1 (car aps)) (tw1 (addr-twiddles (car ap1))))
-;; 	     (graph-min-weight-edge (cdr ap1) (addr-rep (car ap1))
-;; 				    (twiddles-magnitude tw1))
-;; 	     (mapc (lambda (ap2)
-;; 		     (graph-min-weight-edge 
-;; 		      (cdr ap1) (cdr ap2) 
-;; 		      (twiddles-distance tw1 (addr-twiddles (car ap2)))))
-;; 		   (cdr aps)))
-;; 	   aps))
-;;    rep-to-aps)
-;;   (map nil (lambda (pnode)
-;; 	     (mapc (lambda (addr)
-;; 		     (graph-update-edge 
-;; 		      pnode (addr-rep addr)
-;; 		      (twiddles-magnitude (addr-twiddles addr))))
-;; 		   (pnode-pts pnode)))
-;;        points
-
-;; 		     (lambda (
-
-  
-
-  
-
-;;   (flet ((traverse-collect (pnode)
-
-
-;; (new-pnodes mpop k &aux 
-;; 			 (graph (mpop-graph mpop)))
-;;   (labels ((update-edge (pnode1 pnode2 weight)
-;; 	     (setf (gethash pnode1 graph)
-;; 	     (unless (car entry)
-;; 	       (if (not entry) 
-;; 		   (setf entry (setf (gethash pnode graph) (list t)))
-;; 		   (setf (car entry) t))
-		       
-;;   ;; first, collect all nodes in the graph and compute their edges
-;;   (map nil (lambda (pnode &aux (node (lookup-node graph)))
-;; 	       (map nil (lambda (addr)
-;; 			  (unless (addr-root-p addr)
-;; 			    (update-edge pnode (rep-pnode (addr-rep addr))
-;; 					 (twiddles-magnitude 
-;; 					  (addr-twiddles addr)))))
-;; 		    (pnode-pts pnode)))
-;;        new-pnodes)
-
-
-;;   (max-element candidates #'< :key
-;; 	       (lambda (pnode &aux (v1 0.0) (v2 0.0) (m 0.0) (v 0.0)
-;; 			(neighbors (traverse-collect pnode)))
-;; 		 (mapc (lambda (x &aux (w (expt flatness (car x))) 
-;; 				(e (pnode-err (cdr x))))
-;; 			 (incf v1 w)
-;; 			 (incf v2 (* w w))
-;; 			 (incf m (* w e))
-;; 			 (incf v (* w e e)))
-;; 		       neighbors)
-;; 		 (expected-utility v1 v2 m v best)))
-	 
-	       
-		
-;; 	 (
-
-
-;; 	 (dfs (lambda (x &aux (e (pnode-err (car x))) (w cdr x))
-;; 		(incf v1 w)
-;; 		(incf v2 (* w w))
-;; 		(incf m (* w e))
-;; 		(incf v (* w e e)))
-;; 	      (lambda (x &aux (neighbors (gethash (car x) graph)) (w (cdr x)))
-;; 		(collecting (maphash (lambda (neighbor w2 &aux (s (+ w w2)))
-;; 				       (when (< s k)
-;; 					 (collect (cons neighbor s)
-					 
-;;        candidates)
-	   
-
-;;   ....
-
-;;   ;; now, remove all edges from 
-
-;; (setf 
-;; 		  (pnode-pts pnode)
-
-
-;;        (lambda (pnode &aux (err (pnode-err pnode)))
-;; 	 (dfs (lambda (pnode2)
-;; 		(update-utility pnode2 (pnode-distance pnode pnode2 cache)
-;; 				err))
-;; 	      (lambda (pnode)
-;; 		(collecting (
-		
-
-
-;; 			 (best nil) (err most-positive-single-float))
-;; 			 (rep-to-pnode
-;;   (maphash-keys (lambda (x) 
-;; 		  (when (< (pnode-err x) err)
-;; 		    (setf best x err (pnode-err x))))
-;; 		pnodes)
-;;   best)
+(defun find-max-utility (candidates nodes flatness &aux
+			 (best (- (reduce #'min candidates :key 
+					  (compose #'pnode-err 
+						   #'dyad-result))))
+			 (cache (make-pnode-distance-cache)))
+  ;; this is the super-slow version. we'll see if its adequate
+  (assert (not (intersection candidates nodes)))
+  (max-element 
+   candidates #'< :key
+   (lambda (dyad &aux (x (dyad-result dyad)) (v1 0.0) (v2 0.0) (m 0.0) (v 0.0))
+     (flet ((update (y &aux (e (- (pnode-err y)))
+		     (w (expt flatness (pnode-distance x y cache))))
+	      (incf v1 w)
+	      (incf v2 (* w w))
+	      (incf m (* w e))
+	      (incf v (* w e e))))
+       (map nil (compose #'update #'dyad-result) candidates)
+       (map nil (compose #'update #'dyad-result) nodes)
+       (expected-utility v1 v2 m v best)))))

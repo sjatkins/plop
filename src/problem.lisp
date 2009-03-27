@@ -29,7 +29,10 @@ I must have fruit!
 (defstruct (pnode (:constructor make-pnode 
                    (raw-scores raw-err &aux 
 		    (scores (coerce raw-scores 'vector))
-		    (err (coerce raw-err 'double-float)))))
+		    (err (progn 
+			   (assert (approx= raw-err (reduce #'+ scores)) ()
+				    "err!=sum(scores), ~S ~S" raw-err scores)
+			   (coerce raw-err 'double-float))))))
   rep (pts nil :type list)
   (scores (vector) :type (vector (float 0)))
   (err nil :type (float 0))
@@ -39,11 +42,8 @@ I must have fruit!
 (defun pnode-equal (x y pt-equal)
   (intersection (pnode-pts x) (pnode-pts y) :test pt-equal))
 
-;fixme (defstrct fdc
-
 (defstruct (problem (:constructor make-problem-raw))
-  (compute-pnode #'identity :type (function (list) pnode))
-  (lookup-pnode #'identity :type (function (list) (or pnode null)))
+  (lru nil :type (or null lru))
   (scorers nil :type list)
   (score-buffer nil :type (vector (float 0)))
   (err-sum 0.0 :type (float 0)) (err-squares-sum 0.0 :type (float 0))
@@ -62,26 +62,21 @@ I must have fruit!
 			    (make-array (length scorers) 
 					:element-type 'number
 					:initial-element 0.0))
-    (let ((lru (make-lru (lambda (expr)
-			   (prog1 (make-pnode 
-				   (aif *pnode-cached-scores*
-					(copy-array it)
-					(progn 
-					  (setf *pnode-cached-err* 0.0)
-					  (map 
-					   '(vector number)
-					   (lambda (scorer)
-					     (aprog1 (funcall scorer expr)
-					       (incf *pnode-cached-err* it)))
-					   scorers)))
-				   *pnode-cached-err*)
-			     (incf (problem-err-sum it) *pnode-cached-err*)
-			     (incf (problem-err-squares-sum it)
-				   (* *pnode-cached-err* *pnode-cached-err*))
-			     (incf (problem-pnode-count it))))
-			 lru-size :test 'equalp)))
-      (setf (problem-compute-pnode it) (compose #'lru-node-result
-						(bind #'lru-get lru /1))
-	    (problem-lookup-pnode it) (lambda (x)
-					(awhen (lru-lookup lru x)
-					  (lru-node-result it)))))))
+    (setf (problem-lru it)
+	  (make-lru (lambda (expr)
+		      (prog1 (make-pnode 
+			      (aif *pnode-cached-scores*
+				   (copy-array it)
+				   (progn 
+				     (setf *pnode-cached-err* 0.0)
+				     (map '(vector number)
+					  (lambda (scorer)
+					    (aprog1 (funcall scorer expr)
+					      (incf *pnode-cached-err* it)))
+					  scorers)))
+			      *pnode-cached-err*)
+			(incf (problem-err-sum it) *pnode-cached-err*)
+			(incf (problem-err-squares-sum it)
+			      (* *pnode-cached-err* *pnode-cached-err*))
+			(incf (problem-pnode-count it))))
+		    lru-size :test 'equalp))))

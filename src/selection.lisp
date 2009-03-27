@@ -67,19 +67,23 @@ if |nondominated|>=n
 return nondominated U restricted-tournament-select(n - |nondominated|, 
                                                    dominated)
 |#
-(defun competitive-integrate (n nodes &aux (cache (make-pnode-distance-cache)))
-  (flet ((rts (n nodes)
-	   (restricted-tournament-select 
-	    n nodes (bind #'pnode-distance /1 /2 cache)
-	    (lambda (x y) (> (pnode-err x) (pnode-err y)))
-	    (ceiling (/ (length nodes) 20)))))
-    (if (<= (length nodes) n)
-	nodes
-        (mvbind (dominated nondominated) (partition-by-dominance nodes)
-	  (let ((m (length nondominated)))
-	    (cond ((= m n) nondominated)
-		  ((> m n) (rts n nondominated))
-		  (t (nconc (rts (- n m) dominated) nondominated))))))))
+
+(defun competitive-integrate (mpop nodes);fixme
+  (map nil (bind #'mpop-insert mpop /1) nodes))
+
+;; (defun competitive-integrate (n nodes &aux (cache (make-pnode-distance-cache)))
+;;   (flet ((rts (n nodes)
+;; 	   (restricted-tournament-select 
+;; 	    n nodes (bind #'pnode-distance /1 /2 cache)
+;; 	    (lambda (x y) (> (pnode-err x) (pnode-err y)))
+;; 	    (ceiling (/ (length nodes) 20)))))
+;;     (if (<= (length nodes) n)
+;; 	nodes
+;;         (mvbind (dominated nondominated) (partition-by-dominance nodes)
+;; 	  (let ((m (length nondominated)))
+;; 	    (cond ((= m n) nondominated)
+;; 		  ((> m n) (rts n nondominated))
+;; 		  (t (nconc (rts (- n m) dominated) nondominated))))))))
 
 #|
 This is not exactly restricted tournament selection - we have a pool of
