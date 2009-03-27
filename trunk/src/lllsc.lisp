@@ -40,7 +40,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
       (mpop-insert mpop (score-expr expr (make-addr-root expr) problem))
       (values (competitive-learn (bind #'ll-optimize mpop /1 
 				       context type terminationp)
-				 type)
+				 mpop)
 	      (map 'list #'dyad-result (mpop-nodes mpop))))))
 
 (defun validate-nodes (nodes) ; for testing
@@ -61,7 +61,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
        nodes) t)
 (defun competitive-learn (optimize mpop &aux done exemplar nodes)
   (while (not done)
-    (setf exemplar (find-max-utility (mpop-nodes mpop) nodes (flatness mpop))
+    (setf exemplar (max-utility-elem (mpop-nodes mpop) nodes (flatness mpop))
 	  (values done nodes) (funcall optimize exemplar))
     (assert (validate-nodes (mpop-nodes mpop)))
     (competitive-integrate mpop nodes))
@@ -88,7 +88,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 			    stuckness-bound (stuckness-bound rep context)))
 		    (push dyad visited)))
 	    (err-exact (update-frequencies err twiddles prep mpop))
-	    (t (update-frequencies-loser err twiddles rep mpop))))
+	    (t (update-frequencies-loser err twiddles prep mpop))))
     (awhen (funcall terminationp best-err best-scores)
       (return-from ll-optimize (values it visited))))
   ;; if we reach this point we are either stuck or have completely exhausted

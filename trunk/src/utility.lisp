@@ -75,7 +75,8 @@ expected utility calculations |#
 ;; P(score > best) * E(score | score>best)
 ;; details @ http://code.google.com/p/plop/wiki/ChoosingPromisingExemplars
 (defun expected-utility (v1 v2 m v best &aux (mean (/ m v1))
-			 (var (/ (- (/ v v1) (* mean mean)) (- 1.0L0 v2))))
+			 (var (/ (- (/ v v1) (* mean mean))
+				 (- 1.0L0 (/ v2 (* v1 v1))))))
   (declare (long-float best v1 v2 m v mean var))
   (* (- 1.0L0 (normal-cdf mean var best))
      (conditional-tail-expectation mean var best)))
@@ -83,22 +84,38 @@ expected utility calculations |#
 ;; for every node in new-pnodes, visit all pnodes in mpop-pnodes
 ;; out to an edit-distance of k, calling update-utility on each of them
 
-(defun find-max-utility (candidates nodes flatness &aux
-			 (best (- (reduce #'min candidates :key 
-					  (compose #'pnode-err 
-						   #'dyad-result))))
-			 (cache (make-pnode-distance-cache)))
+(defun max-utility-elem (candidates nodes flatness)
+  (declare (ignore flatness))
+  (let ((x (min-element candidates #'< :key
+			(compose #'pnode-err #'dyad-result)))
+	(y (min-element nodes #'< :key (compose #'pnode-err #'dyad-result))))
+    (cond ((and x y)
+	   (min-element (list x y) #'< :key 
+			(compose #'pnode-err #'dyad-result)))
+	  (x x)
+	  (t y))))
+
+;; 			 &aux (best (- (reduce #'min candidates :key 
+;; 					       (compose #'pnode-err 
+;; 							#'dyad-result))))
+;; 			 (cache (make-pnode-distance-cache)))
+  
   ;; this is the super-slow version. we'll see if its adequate
-  (assert (not (intersection candidates nodes)))
-  (max-element 
-   candidates #'< :key
-   (lambda (dyad &aux (x (dyad-result dyad)) (v1 0.0) (v2 0.0) (m 0.0) (v 0.0))
-     (flet ((update (y &aux (e (- (pnode-err y)))
-		     (w (expt flatness (pnode-distance x y cache))))
-	      (incf v1 w)
-	      (incf v2 (* w w))
-	      (incf m (* w e))
-	      (incf v (* w e e))))
-       (map nil (compose #'update #'dyad-result) candidates)
-       (map nil (compose #'update #'dyad-result) nodes)
-       (expected-utility v1 v2 m v best)))))
+;;   (max-element 
+;;    candidates #'< :key
+;;    (lambda (dyad &aux (x (dyad-result dyad)) (v1 0.0) (v2 0.0) (m 0.0) (v 0.0))
+;;      (print 'mu)
+;;      (flet ((update (y &aux (e (- (pnode-err y)))
+;; 		     (w (expt flatness (pnode-distance x y cache))))
+;; 	      (print* 'w w 'e e)
+;; 	      (incf v1 w)
+;; 	      (incf v2 (* w w))
+;; 	      (incf m (* w e))
+;; 	      (incf v (* w e e))))
+;;        (map nil (compose #'update #'dyad-result) candidates)
+;;        (map nil (lambda (node) (unless (lru-node-immortal-p node)
+;; 				 (update (dyad-result node))))
+;; 	    nodes)
+;;        ;; first normalize the weights
+
+;;        (expected-utility v1 v2 m v best)))))

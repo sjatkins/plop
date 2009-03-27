@@ -177,7 +177,7 @@ defines the interrelated structs addr and rep and associated algos |#
     
 ;;; a representation - the tricky bit...
 (defstruct (rep (:constructor make-rep-raw ; for testing
-		 (&aux (pnode (make-pnode nil 0)) (knobs (vector))))
+		 (&aux (knobs (vector))))
 		(:constructor make-rep 
 		 (pnode expr context type &aux
 		  (cexpr (canonize expr context type))
