@@ -335,9 +335,6 @@ miscelaneous non-numerical utilities |#
     (assert-equal '(1 2 3 4 5) (copy-range l nil))))
 
 ;;; hashtable utilities
-(defmacro amodhash (key table to)
-  `(setf (gethash ,key ,table) (let ((it (gethash ,key ,table))) ,to)))
-(defun sethash (table key value) (setf (gethash key table) value))
 (defun hashmapcan (f h)
   (let ((res nil))
     (maphash (lambda (x y) (setf res (nconc (funcall f x y) res))) h) 
@@ -593,142 +590,200 @@ miscelaneous non-numerical utilities |#
 
 (defun impulse (x) (if x 1 0))
 
+(defstruct dyad arg result)
+
 ;;; least-recently-used cache for memoizing the last n calls to the function f
-;;; test must be either equal or equalp so that it can be used on arg-lists
 ;;; lru uses a hash table for the cache, and a doubly linked list of lru-nodes
 ;;; for the queue of least-recently-used items the keys in the hash table are
-;;; args, the values are nodes in the list
-;;; nodes may be marked keep them in the cache without being eligible for
-;;; deletion - marked nodes still count towards the size of the cache
+;;; arg, the values are nodes in the list
+;;; nodes may be immortalized to keep them in the cache without being eligible
+;;; for deletion - immortal nodes still count towards the size of the cache
 (defstruct (lru (:constructor make-lru
-                 (f n &key (test 'equal) (hash-size (ceiling (* 1.35 n))) &aux
+                 (f n &key (test 'eql) (hash-size (ceiling (* 1.35 n))) &aux
 	 	  (cache (make-hash-table :test test :size hash-size)))))
   (f nil :type function)
   (n nil :type (integer 0))
   (q nil :type (or null lru-node))
   (cache nil :type hash-table))
-(defstruct (lru-node (:constructor make-lru-node (args result)))
-  (args nil :type list) result
+(defstruct (lru-node (:include dyad)
+		     (:constructor make-lru-node (arg result)))
   (prev nil :type (or null lru-node))
   (next nil :type (or null lru-node)))
-(defun lru-node-marked-p (node) (not (lru-node-prev node)))
 
-;; for testing
-(defun validate-lru-node (x)
-  (do ((at x (lru-node-next at)))
-      ((eq at (lru-node-prev x)) t)
-    (assert (eq at (lru-node-next (lru-node-prev at))) () 
-	    "prev mismatch, ~S vs. ~S" at (lru-node-next (lru-node-prev at)))
-    (assert (eq at (lru-node-prev (lru-node-next at))) () 
-	    "next mismatch, ~S vs. ~S" at (lru-node-prev (lru-node-next at)))))
-(defun lru-node-length (x)
-  (if x
-      (do ((n 1 (1+ n)) (at x (lru-node-next at))) 
-	  ((eq at (lru-node-prev x)) n))
-      0))
+;; constants and simple property accessors
+(defun lru-node-immortal-p (node) (not (lru-node-prev node)))
+(defun lru-node-disconnected-p (node)
+  (and (eq (lru-node-prev node) node) (not (lru-node-next node))))
+(defun lru-full-p (lru)
+  (assert (<= (hash-table-count (lru-cache lru)) (lru-n lru)))
+  (eql (hash-table-count (lru-cache lru)) (lru-n lru)))
 
-
-;; compute if not there & moves args to top of the queue
-(flet ((link (lru node)
-	 (setf (lru-node-prev node) (lru-node-prev (lru-q lru)) 
-	       (lru-node-next node) (lru-q lru)
-	       (lru-node-next (lru-node-prev (lru-q lru))) node
-	       (lru-node-prev (lru-q lru)) node
-	       (lru-q lru) node))
-       (unlink (node)
-	 (setf (lru-node-next (lru-node-prev node)) (lru-node-next node)
-	       (lru-node-prev (lru-node-next node)) (lru-node-prev node))))
-  (defun lru-get (lru &rest args &aux (q (lru-q lru)) (cache (lru-cache lru)))
-    (flet ((make-node () (make-lru-node args (apply (lru-f lru) args))))
-      (acond 
-	((gethash args cache) (if (lru-node-marked-p it)
-				  (return-from lru-get it)
-				  (unless (eq it q)
-				    (unlink it)
-				    (link lru it))))
-	(q (link lru (if (eql (hash-table-count cache) (lru-n lru))
-			 (aprog1 (lru-node-prev q)
-			   (let ((rem (remhash (lru-node-args it) cache)))
-			     (assert rem () "you junked the hash keys ~S ~S"
-				     (lru-node-args it) cache))
-			   (unlink it)
-			   (setf (lru-node-args it) args 
-				 (lru-node-result it) 
-				 (apply (lru-f lru) args)))
-			 (make-node)))
-	   (setf (gethash args cache) (lru-q lru)))
-	(t (setf (lru-q lru) (make-node) q (lru-q lru) (gethash args cache) q
-		 (lru-node-prev q) q (lru-node-next q) q))))
+(labels ((validate-lru-node (x)		; for testing
+	   (when x
+	     (do ((at x (lru-node-next at)))
+		 ((eq at (lru-node-prev x)))
+	       (assert (eq at (lru-node-next (lru-node-prev at))) () 
+		       "prev mismatch, ~S vs. ~S" 
+		       at (lru-node-next (lru-node-prev at)))
+	       (assert (eq at (lru-node-prev (lru-node-next at))) () 
+		       "next mismatch, ~S vs. ~S" 
+		       at (lru-node-prev (lru-node-next at))))) t)
+	 (make-node (lru arg) (make-lru-node arg (funcall (lru-f lru) arg)))
+	 (node-disconnect (node)
+	   (setf (lru-node-prev node) node (lru-node-next node) nil))
+	 (q-init (lru node)
+	   (setf  (lru-node-prev node) node (lru-node-next node) node
+		  (lru-q lru) node))
+	 (q-insert (lru node &aux (q (lru-q lru)))
+	   (setf (lru-node-prev node) (lru-node-prev q) (lru-node-next node) q
+		 (lru-node-next (lru-node-prev q)) node (lru-node-prev q) node
+		 (lru-q lru) node))
+	 (q-remove (node)
+	   (setf (lru-node-next (lru-node-prev node)) (lru-node-next node)
+		 (lru-node-prev (lru-node-next node)) (lru-node-prev node)))
+	 (q-pop (lru &optional (last (lru-node-prev (lru-q lru))))
+	   (if (eq last (lru-q lru))	; only a single item in the q
+	       (setf (lru-q lru) nil)
+	       (q-remove last))
+	   (node-disconnect last))
+	 (pop-if-full (lru)
+	   (when (lru-full-p lru)
+	     (let* ((last (lru-node-prev (lru-q lru)))
+		    (rem (remhash (lru-node-arg last) (lru-cache lru))))
+	       (assert rem () "you junked the hash keys ~S ~S"
+		       (lru-node-arg last) (lru-cache lru))
+	       (q-pop lru last)))))
+  (defun lru-lookup (lru arg)	 ;  doesn't compute or move arg to top of queue
+    (gethash arg (lru-cache lru)))
+  ;; compute if not there & moves arg to top of the queue
+  (defun lru-get (lru arg &aux (q (lru-q lru)) (cache (lru-cache lru)))
     (assert (validate-lru-node q))
-    (lru-q lru))
-  (defun lru-get-and-mark (lru &rest args &aux (cache (lru-cache lru)))
-    (acond ((gethash args cache)
-	    (unless (lru-node-marked-p it)
-	      (unlink it))
+    (assert (<= (hash-table-count cache) (lru-n lru)) ()
+	     "cache ~S is too big" cache)
+    (acond ((gethash arg cache) (unless (or (lru-node-immortal-p it) (eq it q))
+				  (q-remove it)
+				  (q-insert lru it))
 	    it)
-	   ((eql (hash-table-count cache) (lru-n lru))
-	    (aprog1 (lru-node-prev (lru-q lru))
-	      (let ((rem (remhash (lru-node-args it) cache)))
-		(assert rem () "you junked the hash keys ~S ~S"
-			(lru-node-args it) cache))
-	      (unlink it)
-	      (setf (lru-node-args it) args 
-		    (lru-node-result it) (apply (lru-f lru) args)
-		    (lru-node-prev it) nil 
-		    (lru-node-next it) nil)))
-	   (t (setf (gethash args (lru-cache lru))
-		    (make-lru-node args (apply (lru-f lru) args))))))
-  (defun lru-unmark (lru node)
-    (assert (gethash (lru-node-args node) (lru-cache lru)) ()
-	    "trying to unmark a node ~S that is not in lru ~S" node lru)
-    (when (lru-node-marked-p node)
-      (link (lru-q lru) node))))
-;; lookup - doesn't compute or move args to top of queue
-(defun lru-lookup (lru &rest args) (gethash args (lru-cache lru)))
-
+	   (q (pop-if-full lru)
+	      (if (lru-q lru)
+		  (progn (q-insert lru (make-node lru arg))
+			 (setf (gethash arg cache) (lru-q lru)))
+		  (setf (gethash arg cache) (q-init lru (make-node lru arg)))))
+	   (t (aprog1 (make-node lru arg)
+		(if (lru-full-p lru) ; no room for any lru queueing..
+		    (node-disconnect it)
+		    (setf (gethash arg cache) (q-init lru it)))))))
+  (defun lru-immortalize (lru node &aux (cache (lru-cache lru)))
+    (assert (validate-lru-node (lru-q lru)))
+    (unless (lru-node-immortal-p node)
+      (assert (<= (hash-table-count cache) (lru-n lru)))
+      (cond ((lru-node-disconnected-p node)
+	     (assert (lru-q lru) () "excess immortality")
+	     (assert (not (gethash (dyad-arg node) cache)) ()
+		     "can't immortalize ~S with ~S already in cache"
+		     node (gethash (dyad-arg node) cache))
+	     (pop-if-full lru)
+	     (setf (gethash (dyad-arg node) cache) node))
+	    ((eq (lru-q lru) node) 
+	     (setf (lru-q lru) (lru-node-next node))
+	     (q-pop lru))
+	    (t (q-remove node)))
+      (setf (lru-node-prev node) nil (lru-node-next node) node)))
+  (defun lru-mortalize (lru node)
+    (when (lru-node-immortal-p node)
+      (funcall (if (lru-q lru) #'q-insert #'q-init) lru node))))
 (define-test lru-get
+  (flet ((lru-node-length (x)
+	   (if x
+	       (do ((n 1 (1+ n)) (at x (lru-node-next at))) 
+		   ((eq at (lru-node-prev x)) n))
+	       0)))
+    (let* ((ncalls 0) 
+	   (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3))
+	   (lookup (lambda (x &aux (cache (lru-cache lru)))
+		     (prog1 (lru-node-result (lru-get lru x))
+		       (assert-eql (lru-node-length (lru-q lru))
+				   (hash-table-count cache) 
+				   (lru-q lru) cache)))))
+      (assert-equal '(1 2 3 1 2 3) 
+		    (mapcar lookup (nconc (iota 3) (iota 3))))
+      (assert-equal 3 ncalls)
+      (assert-equal '(1 2 3 4) (mapcar lookup (iota 4)))
+      (assert-equal 4 ncalls))
+    (let* ((ncalls 0) 
+	   (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 5))
+	   (lookup (compose #'lru-node-result (bind #'lru-get lru /1))))
+      (assert-equal '(1 2 3 4 5 1 2 3 4 5) 
+		    (mapcar lookup (nconc (iota 5) (iota 5))))
+      (assert-equal 5 ncalls)
+      (assert-equal '(1 2 3 4 5 6) (mapcar lookup (iota 6)))
+      (assert-equal 6 ncalls)
+      (assert-equal '(6 5 4 3 2 1) (mapcar lookup (nreverse (iota 6))))
+      (assert-equal 7 ncalls)
+      (assert-equal '(1 2 3 4 5 6) (mapcar lookup (iota 6)))
+      (assert-equal 8 ncalls)
+      (dotimes (i 100)
+	(let ((l (shuffle (iota 6 :start 1))))
+	  (assert-equal (mapcar #'1+ l) (mapcar lookup l)))
+	(assert-equal 8 ncalls))
+      (dotimes (i 100)
+	(let ((l (shuffle (iota 6))))
+	  (assert-equal (mapcar #'1+ l) (mapcar lookup l)))))))
+(define-test lru-immortality
   (let* ((ncalls 0) 
 	 (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3))
-	 (lookup (lambda (x &aux (cache (lru-cache lru)))
-		   (prog1 (lru-node-result (lru-get lru x))
-		     (assert-eql (lru-node-length (lru-q lru))
-				 (hash-table-count cache) 
-				 (lru-q lru) cache)))))
-    (assert-equal '(1 2 3 1 2 3) 
-		  (mapcar lookup (nconc (iota 3) (iota 3))))
-    (assert-equal 3 ncalls)
-    (assert-equal '(1 2 3 4) (mapcar lookup (iota 4)))
-    (assert-equal 4 ncalls))
-  (let* ((ncalls 0) 
-	 (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 5))
-	 (lookup (compose #'lru-node-result (bind #'lru-get lru /1))))
-    (assert-equal '(1 2 3 4 5 1 2 3 4 5) 
-		  (mapcar lookup (nconc (iota 5) (iota 5))))
-    (assert-equal 5 ncalls)
-    (assert-equal '(1 2 3 4 5 6) (mapcar lookup (iota 6)))
-    (assert-equal 6 ncalls)
-    (assert-equal '(6 5 4 3 2 1) (mapcar lookup (nreverse (iota 6))))
-    (assert-equal 7 ncalls)
-    (assert-equal '(1 2 3 4 5 6) (mapcar lookup (iota 6)))
-    (assert-equal 8 ncalls)
-    (dotimes (i 100)
-      (let ((l (shuffle (iota 6 :start 1))))
-	(assert-equal (mapcar #'1+ l) (mapcar lookup l)))
-      (assert-equal 8 ncalls))
-    (dotimes (i 100)
-      (let ((l (shuffle (iota 6))))
-	(assert-equal (mapcar #'1+ l) (mapcar lookup l))))))
-(define-test lru-mark
-  (let* ((ncalls 0) 
-	 (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3))
-	 (lookup (compose #'lru-node-result (bind #'lru-get lru /1))))
-    (assert-equal 101 (lru-node-result (lru-get-and-mark lru 100)))
-    (assert-equal '(1 2 3 1 2 3) 
+	 (lookup (compose #'lru-node-result (bind #'lru-get lru /1)))
+	 (ilookup (lambda (x) (lru-node-result (aprog1 (lru-get lru x)
+						 (lru-immortalize lru it))))))
+    (assert-equal 101 (funcall ilookup 100))
+    (assert-equal '(1 2 3 1 2 3)
 		  (mapcar lookup (nconc (iota 3) (iota 3))))
     (assert-equal 7 ncalls)
     (assert-equal 101 (funcall lookup 100))
-    (assert-equal 7 ncalls)))
+    (assert-equal 7 ncalls)
+    (assert-equal 101 (funcall lookup 100))
+    (assert-equal 7 ncalls)
+    
+    (assert-equal 201 (funcall ilookup 200))
+    (assert-equal 8 ncalls)
 
+    (assert-equal 201 (funcall ilookup 200))
+    (assert-equal 8 ncalls)
+    (assert-equal '(1 2 1 2) 
+		  (mapcar lookup (nconc (iota 2) (iota 2))))
+    (assert-equal 12 ncalls)
+
+    (assert-equal 3 (funcall ilookup 2))
+    (assert-equal 13 ncalls)
+    ;; ok, the lru is full of immortals (100 200 2)
+    (assert-equal nil (lru-q lru))
+
+    (assert-equal '(1 1 1 1) (mapcar lookup '(0 0 0 0)))
+    (assert-equal 17 ncalls)
+
+    (lru-mortalize lru (lru-get lru 2))
+    (assert-equal 17 ncalls)
+
+    (lru-immortalize lru (lru-get lru 2))
+    (assert-equal 17 ncalls)
+    (assert-equal nil (lru-q lru))
+
+    (lru-mortalize lru (lru-get lru 200))
+    (assert-equal 17 ncalls)
+    (assert-equal 201 (funcall lookup 200))
+    (assert-equal 17 ncalls)
+
+    (assert-equal '(1 1 1 1) (mapcar lookup '(0 0 0 0)))
+    (assert-equal 18 ncalls)
+
+    (assert-equal 201 (funcall lookup 200))
+    (assert-equal 19 ncalls)
+
+    (assert-equal 201 (funcall ilookup 200))
+    (lru-mortalize lru (lru-get lru 100))
+    (lru-mortalize lru (lru-get lru 2))))
+
+;fixme write a test for immortalization etc with disconnected nodes
 (defun xor (&rest args)
   (reduce (lambda (x y) (not (eq x y))) args :initial-value nil))
 
@@ -765,3 +820,12 @@ miscelaneous non-numerical utilities |#
  	(eval code)
  	(sb-profile:report)
  	(sb-profile:unprofile))
+
+(defun approx= (x y &optional (precision 5) &aux (m (expt 10 precision))
+		(s1 (signum x)) (s2 (signum y)))
+  (setf x (log (1+ (abs x))) y (log (1+ (abs y))))
+  (= (floor (* m s1 x)) (floor (* m s2 y))))
+(define-test approx=
+  (assert-true (approx= 5.000001 5))
+  (assert-false (approx= 5.000001 4))
+  (assert-false (approx= 5.000001 5 20)))

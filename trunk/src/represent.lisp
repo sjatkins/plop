@@ -50,32 +50,30 @@ defines the interrelated structs addr and rep and associated algos |#
     (assert-equalp 9 (twiddles-distance y x))))
 
 ;;; an address is an encoding of an expression in a particular representations
-(defstruct (addr (:constructor make-addr-root (expr &aux (rep expr)))
+(defstruct (addr (:constructor make-addr-root (expr &aux (prep expr)))
 		 (:constructor make-addr ; we convert the seq of twiddles into
-		  (rep twiddles-seq &aux ; a hashtable for efficiency
+		  (prep twiddles-seq &aux ; a hashtable for efficiency
 		   (twiddles (aprog1 (make-hash-table :test 'eq)
 			       (map nil (lambda (x)
 					  (setf (gethash (car x) it) (cdr x)))
 				    twiddles-seq))))))
-  (rep nil :type (or rep pexpr))
+  (prep nil :type (or pnode pexpr))
   (twiddles nil :type (or null hash-table)))
 (defun addr-root-p (addr) (not (addr-twiddles addr)))
-(defun addr-equal-twiddles (addr rep twiddles)
-  (and (eq rep (addr-rep addr))
+(defun addr-rep (addr)  ; returns the pexpr if its a root
+  (if (addr-root-p addr)
+      (addr-prep addr)
+      (pnode-rep (addr-prep addr))))
+(defun addr-equal-twiddles (addr prep twiddles)
+  (and (eq prep (addr-prep addr))
        (eql-length-p twiddles (hash-table-count (addr-twiddles addr)))
        (every (lambda (ks) 
 		(equalp (gethash (car ks) (addr-twiddles addr)) (cdr ks)))
 	      twiddles)))
 (defun addr-equal (x y)
   (assert (and (addr-p x) (addr-p y)) () "addr-equal with non-addr ~S ~S" x y)
-  (and (eq (addr-rep x) (addr-rep y))
+  (and (eq (addr-prep x) (addr-prep y))
        (equalp (addr-twiddles x) (addr-twiddles y))))
-
-
-;;; the following are functions for dealing with pnodes & problems
-;;; that specifically map to addrs
-(defun pnode-root-p (rep)
-  (find-if #'addr-root-p (pnode-pts rep)))
 
 ;;; this is a heuristic to not bother computing pnodes expected to be well
 ;;; below "average" quality
@@ -106,35 +104,39 @@ defines the interrelated structs addr and rep and associated algos |#
 	   (if (consp expr)
 	       (pcons (fn expr) (mapcar #'convert2 (args expr)))
 	       expr)))
-  (defun get-pnode (expr addr problem &optional converted)
+  (defun score-expr (expr addr problem &optional converted)
     (unless converted
       (setf expr (convert expr)))
-    (aprog1 (funcall (problem-compute-pnode problem) expr)
-      (unless (find-if (bind #'addr-equal addr /1) (pnode-pts it))
-	(push addr (pnode-pts it)))))
-  (defun get-pnode-unless-loser (expr rep twiddles problem &aux
-				 (bound (problem-loser-bound problem)))
+    (aprog1 (lru-get (problem-lru problem) expr)
+      (unless (find-if (bind #'addr-equal addr /1)
+		       (pnode-pts (dyad-result it)))
+	(push addr (pnode-pts (dyad-result it))))))
+  ;; returns (values dyad err err-exact), dyad only returned for a non-loser
+  (defun score-expr-unless-loser (expr prep twiddles problem &aux
+				  (bound (problem-loser-bound problem)))
     (setf expr (convert expr))
-    (awhen (funcall (problem-lookup-pnode problem) expr)
-      (assert (let* ((x (make-expr-from-pnode it)) (y (qreduct (pclone x))))
-		(assert (pequal expr y) () "was ~S, now builds ~S -> ~S" 
-			expr x y)
-		t)) ; wrapped in assert so we can disable it
-      (unless (find-if (bind #'addr-equal-twiddles /1 rep twiddles)
- 		       (pnode-pts it))
-	(push (make-addr rep twiddles) (pnode-pts it)))
-      (return-from get-pnode-unless-loser 
-	(when (< (pnode-err it) bound) it)))
-    (let ((i 0) (err 0.0))
+    (awhen (lru-lookup (problem-lru problem) expr)
+      (let* ((pnode (dyad-result it)) (err (pnode-err pnode)))
+	(assert (let* ((x (make-expr-from-pnode pnode))
+		       (y (qreduct (pclone x))))
+		  (assert (pequal expr y) () "was ~S, now builds ~S -> ~S" 
+			  expr x y) t)) ; wrapped in assert so we can disable
+	(unless (find-if (bind #'addr-equal-twiddles /1 prep twiddles)
+			 (pnode-pts pnode))
+	  (push (make-addr prep twiddles) (pnode-pts pnode)))
+	(return-from score-expr-unless-loser 
+	  (values (when (< err bound) it) err t))))
+    (let ((i 0) (err 0.0) (buffer (problem-score-buffer problem)))
       (mapc (lambda (scorer)
-	      (incf err (setf (elt (problem-score-buffer problem) i) 
-			      (funcall scorer expr)))
+	      (incf err (setf (elt buffer i) (funcall scorer expr)))
 	      (when (>= err bound)
-		(return-from get-pnode-unless-loser))
+		(return-from score-expr-unless-loser
+		  (values nil err (eql i (1- (length buffer))))))
 	      (incf i))
 	    (problem-scorers problem))
       (with-cached-scores (problem-score-buffer problem) err
-	(get-pnode expr (make-addr rep twiddles) problem t)))))
+	(values (score-expr expr (make-addr prep twiddles) problem t)
+		err t)))))
 
 (define-test problem-addr
   (let ((problem (make-problem `(,(lambda (x) (+ (car (elt x 0)) (elt x 1)))
@@ -142,29 +144,34 @@ defines the interrelated structs addr and rep and associated algos |#
 	pnode0 pnode1 (addr0 (make-addr '(addr0) nil)))
     (assert-equal 0 (problem-pnode-count problem))
     
-    (setf pnode0 (get-pnode %(2 2) addr0 problem))
+    (setf pnode0 (dyad-result (score-expr %(2 2) addr0 problem)))
     (assert-equal 1 (problem-pnode-count problem))
     (assert-equalp 8 (problem-err-sum problem))
     (assert-equal (list addr0) (pnode-pts pnode0))
     (assert-equalp (vector 4 4) (pnode-scores pnode0))
     (assert-equalp 8 (pnode-err pnode0))
 
-    (setf pnode1 (get-pnode-unless-loser %(3 3) '(addr1) nil problem))
+    (let ((pnode (aprog1 (make-pnode '(0) 0) (push '(addr1) (pnode-pts it)))))
+      (setf pnode1
+	    (dyad-result (score-expr-unless-loser %(3 3) pnode nil problem))))
     (assert-equal 2 (problem-pnode-count problem))
     (assert-equalp 23 (problem-err-sum problem))
     (assert-eql 1 (length (pnode-pts pnode1)))
-    (assert-equal '(addr1) (addr-rep (car (pnode-pts pnode1))))
+    (assert-equal '(addr1) (car (pnode-pts 
+				 (addr-prep (car (pnode-pts pnode1))))) pnode1)
     (assert-equalp (make-hash-table :test 'eq)
 		   (addr-twiddles (car (pnode-pts pnode1))))
     (assert-equalp (vector 6 9) (pnode-scores pnode1))
     (assert-equalp 15 (pnode-err pnode1))
 
-    (assert-equal nil (get-pnode-unless-loser
-		       %(300 300) '(addrfoo) nil problem))
+    (let ((pnode (aprog1 (make-pnode '(0) 0) (push '(addrx) (pnode-pts it)))))
+      (assert-equal nil (score-expr-unless-loser
+			 %(300 300) pnode nil problem)))
     (assert-equal 2 (problem-pnode-count problem))
     (assert-equalp 23 (problem-err-sum problem))
 
-    (assert-eq pnode0 (get-pnode %(2 2) (make-addr '(addr2) nil) problem))
+    (assert-eq pnode0 (dyad-result (score-expr %(2 2) (make-addr '(addr2) nil)
+					       problem)))
     (assert-equal 2 (problem-pnode-count problem))
     (assert-equalp 23 (problem-err-sum problem))))
     
@@ -172,13 +179,9 @@ defines the interrelated structs addr and rep and associated algos |#
 (defstruct (rep (:constructor make-rep-raw ; for testing
 		 (&aux (pnode (make-pnode nil 0)) (knobs (vector))))
 		(:constructor make-rep 
-		 (pnode context type &optional expr &aux
-		  (cexpr (canonize 
-			  (or expr (reduct (make-expr-from-pnode pnode) 
-					   context type))
-			  context type))
+		 (pnode expr context type &aux
+		  (cexpr (canonize expr context type))
 		  (knobs (compute-knobs pnode cexpr context type)))))
-  (pnode nil :type pnode)
   (cexpr nil :type cexpr)
   (knobs nil :type (vector knob)))
 ;  subexprs-to-knobs
@@ -217,7 +220,8 @@ defines the interrelated structs addr and rep and associated algos |#
 			     '(function (bool bool bool) bool)))
 	    (knobs (enum-knobs cexpr *empty-context* 
 			       '(function (bool bool bool) bool)))
-	    (rep (make-rep-raw)))
+	    (rep (make-rep-raw))
+	    (pnode (aprog1 (make-pnode '(0) 0) (setf (pnode-rep it) rep))))
        (setf (rep-cexpr rep) cexpr)
        (dorepeat 10
 	 (let* ((twiddles 
@@ -247,7 +251,7 @@ defines the interrelated structs addr and rep and associated algos |#
 		(z1 (pclone (make-expr-from-twiddles rep twiddles2)))
 		(z2 (reduct (pclone z1)
 			   *empty-context* '(function (bool bool bool) bool)))
-		(q (reduct (make-expr-from-addr (make-addr rep 
+		(q (reduct (make-expr-from-addr (make-addr pnode
 							   other-twiddles))
 			   *empty-context* '(function (bool bool bool) bool))))
 	   (assert-true (pequal x2 z2) (p2sexpr expr) x1 x2 z1 z2 twiddles)

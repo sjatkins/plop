@@ -259,7 +259,8 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
     
 (let ((type-finders
        (aprog1 (make-hash-table :test 'eq)
-	 (mapc (bind #'apply #'sethash it /1)
+	 (mapc (lambda (type-finder)
+		 (setf (gethash (car type-finder) it) (cadr type-finder)))
 	       `((car ,(lambda (fn args) (cadr (funcall fn (car args)))))
 		 (cdr ,(lambda (fn args) (cadr (funcall fn (car args)))))
 		 (list ,(lambda (fn args) 

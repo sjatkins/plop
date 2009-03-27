@@ -20,13 +20,11 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 
 (defun lllsc (target cost type)
   (mvbind (scorers terminationp) (make-problem-desc target cost type)
-    (secondary (run-lllsc scorers (lambda (x &optional y)
-				    (declare (ignore y))
-				    (funcall terminationp x))
-			  (default-expr type) *empty-context* type))))
+    (secondary (run-lllsc scorers (bind terminationp /1) (default-expr type)
+			  *empty-context* type))))
 
 (defun run-lllsc (scorers terminationp expr context type)
-  ;; add scorers at the end (by convention)
+  ;; add scorers for size and runtime
   (setf scorers (cons (let ((first-scorer (car scorers)))
 			(lambda (expr)
 			  (setf *peval-counter* 0)
@@ -38,74 +36,62 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 				      (log (+ *peval-counter* 2) 2)))))
 	expr (reduct expr context type))
   (with-scorers context scorers
-    (let ((mpop (make-mpop (list (get-pnode expr (make-addr-root expr) 
-					    (current-problem context)))
-			   (current-problem context))))
+    (let* ((problem (current-problem context)) (mpop (make-mpop problem)))
+      (mpop-insert mpop (score-expr expr (make-addr-root expr) problem))
       (values (competitive-learn (bind #'ll-optimize mpop /1 
 				       context type terminationp)
-				 mpop context type)
-	      (collecting (maphash-keys (collector) (mpop-pnodes mpop)))))))
+				 type)
+	      (map 'list #'dyad-result (mpop-nodes mpop))))))
 
-(defun validate-pnodes (pnodes)
-  (maphash-keys
-   (lambda (pnode)
-     (mapc (lambda (pt)
-	     (let* ((x (qreduct (make-expr-from-addr pt)))
-		    (y (qreduct (make-expr-from-addr 
-				 (car (pnode-pts pnode))))))
-	       (assert (pequal x y) () "mismatched addrs ~S and ~S" x y)))
-	   (pnode-pts pnode)))
-   pnodes)
-  ;; (maphash-keys (lambda (x)
-;; 		  (maphash-keys 
-;; 		   (lambda (y)
-;; 		     (unless (eq x y)
-;; 		       (assert (not (pnode-equal x y #'addr-equal)) ()
-;; 			       "distinct pnodes equal:~%~S~%~S~%~S~%~S"
-;; 			       (make-expr-from-pnode x) x
-;; 			       (make-expr-from-pnode y) y)))
-;; 		   pnodes))
-;; 		pnodes)
-  t)
-;fixme keep track of howmany evals? do we need a panic factor like moses?
-(defun competitive-learn (optimize mpop context type &aux done exemplar)
+(defun validate-nodes (nodes) ; for testing
+  (map nil 
+       (lambda (node &aux (expr (dyad-arg node)) (pnode (dyad-result node)))
+	 (mapc (lambda (pt)
+		 (let ((expr2 (qreduct (make-expr-from-addr pt))))
+		   (assert (pequal expr expr2) ()
+			   "mismatched expr-addr, ~S and ~S" expr expr2)))
+	       (pnode-pts pnode))
+	 (map nil (lambda (node2 &aux (pnode2 (dyad-result node2)))
+		    (unless (eq node node2)
+		      (assert (not (pnode-equal pnode pnode2 #'addr-equal)) ()
+			      "distinct pnodes equal:~%~S~%~S~%~S~%~S"
+			      (make-expr-from-pnode pnode) pnode
+			      (make-expr-from-pnode pnode2) pnode2)))
+	      nodes))
+       nodes) t)
+(defun competitive-learn (optimize mpop &aux done exemplar nodes)
   (while (not done)
-    (setf exemplar (find-max-utility (mpop-pnodes mpop))
-	  done (funcall optimize (get-rep exemplar mpop context type)))
-    (assert (validate-pnodes (mpop-pnodes mpop)))
-    ;(competitive-integrate (mpop-size mpop) (mpop-pnodes mpop))fixme
-)
+    (setf exemplar (find-max-utility (mpop-nodes mpop) nodes (flatness mpop))
+	  (values done nodes) (funcall optimize exemplar))
+    (assert (validate-nodes (mpop-nodes mpop)))
+    (competitive-integrate mpop nodes))
   done)
 
-(defun ll-optimize (mpop rep context type terminationp &aux (stuckness 0)
+(defun ll-optimize (mpop exemplar context type terminationp &aux (stuckness 0)
+		    twiddles expr visited (prep (dyad-result exemplar))
+		    (rep (get-rep prep (dyad-arg exemplar) context type))
 		    (stuckness-bound (stuckness-bound rep context))
-		    (best-err (pnode-err (rep-pnode rep))) (best-scores nil)
-		    twiddles expr) ;fixme visited)
+		    (best-err (pnode-err prep)) (best-scores nil))
   (while (and (< stuckness stuckness-bound)
 	      (setf twiddles (sample-pick rep context)))
     (setf expr (reduct (make-expr-from-twiddles rep twiddles) context type))
 ;    (print* stuckness stuckness-bound best-err (p2sexpr expr))
     (incf stuckness)
-    (aif (get-pnode-unless-loser expr rep twiddles (mpop-problem mpop))
-	 (let ((err (pnode-err it)))
-	   (assert (or (< err 0) 
-		       (= (floor (* 100000 (log err)))
-			  (floor (* 100000 
-				    (log (reduce #'+ (pnode-scores it)))))))
-		   nil "err!=sum(scores) for ~S" it)
-	   (update-frequencies err twiddles rep mpop)
-;fixme get twiddles hash from pnode: get-pnode-unless-loser needs to give us 
-;back the addr as a secondary value?
-	   (when (< err best-err)
-	     (setf rep (get-rep it mpop context type expr)
-		   best-err err best-scores (pnode-scores it)
-		   stuckness 0 
-		   stuckness-bound (stuckness-bound rep context)))
-	   (setf (gethash it (mpop-pnodes mpop)) t))
-	 (update-frequencies-loser twiddles rep mpop))
+    (mvbind (dyad err err-exact)
+	(score-expr-unless-loser expr prep twiddles (mpop-problem mpop))
+      (cond (dyad (let* ((pnode (dyad-result dyad)) (err (pnode-err pnode)))
+		    (update-frequencies err twiddles prep mpop)
+		    (when (< err best-err)
+		      (setf prep pnode rep (get-rep pnode expr context type)
+			    best-err err best-scores (pnode-scores pnode)
+			    stuckness 0 
+			    stuckness-bound (stuckness-bound rep context)))
+		    (push dyad visited)))
+	    (err-exact (update-frequencies err twiddles prep mpop))
+	    (t (update-frequencies-loser err twiddles rep mpop))))
     (awhen (funcall terminationp best-err best-scores)
-      (return-from ll-optimize it)))
+      (return-from ll-optimize (values it visited))))
   ;; if we reach this point we are either stuck or have completely exhausted
-  ;; the neighborhood - the exemplar must be a local minima or near-minima
-  (update-structure twiddles rep mpop)
-  nil)
+  ;; the neighborhood - the exemplar must be a local optimum or near-optimum
+  (update-structure twiddles prep mpop)
+  (values nil visited))
