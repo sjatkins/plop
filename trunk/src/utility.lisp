@@ -84,7 +84,8 @@ expected utility calculations |#
 ;; for every node in new-pnodes, visit all pnodes in mpop-pnodes
 ;; out to an edit-distance of k, calling update-utility on each of them
 
-(defun max-utility-elem (candidates nodes flatness)
+(defun max-utility-elem (candidates nodes flatness
+			 )
   (declare (ignore flatness))
   (let ((x (min-element candidates #'< :key
 			(compose #'pnode-err #'dyad-result)))
@@ -100,14 +101,14 @@ expected utility calculations |#
 ;; 							#'dyad-result))))
 ;; 			 (cache (make-pnode-distance-cache)))
   
-  ;; this is the super-slow version. we'll see if its adequate
-;;   (max-element 
+;; ;;  this is the super-slow version. we'll see if its adequate
+;; (max-element 
 ;;    candidates #'< :key
 ;;    (lambda (dyad &aux (x (dyad-result dyad)) (v1 0.0) (v2 0.0) (m 0.0) (v 0.0))
-;;      (print 'mu)
+;; ;     (print 'mu)
 ;;      (flet ((update (y &aux (e (- (pnode-err y)))
 ;; 		     (w (expt flatness (pnode-distance x y cache))))
-;; 	      (print* 'w w 'e e)
+;; ;	      (print* 'w w 'e e)
 ;; 	      (incf v1 w)
 ;; 	      (incf v2 (* w w))
 ;; 	      (incf m (* w e))
@@ -116,6 +117,4 @@ expected utility calculations |#
 ;;        (map nil (lambda (node) (unless (lru-node-immortal-p node)
 ;; 				 (update (dyad-result node))))
 ;; 	    nodes)
-;;        ;; first normalize the weights
-
 ;;        (expected-utility v1 v2 m v best)))))

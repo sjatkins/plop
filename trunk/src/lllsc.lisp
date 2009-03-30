@@ -75,6 +75,10 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
   (while (and (< stuckness stuckness-bound)
 	      (setf twiddles (sample-pick rep context)))
     (setf expr (reduct (make-expr-from-twiddles rep twiddles) context type))
+    (assert (pequal expr (reduct (make-expr-from-twiddles rep twiddles)
+				 context type))
+	    () "invalid (non-idempotent) reduction of twiddles ~S vs. ~S"
+	    expr (reduct (make-expr-from-twiddles rep twiddles) context type))
 ;    (print* stuckness stuckness-bound best-err (p2sexpr expr))
     (incf stuckness)
     (mvbind (dyad err err-exact)

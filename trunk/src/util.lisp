@@ -782,8 +782,43 @@ miscelaneous non-numerical utilities |#
     (assert-equal 201 (funcall ilookup 200))
     (lru-mortalize lru (lru-get lru 100))
     (lru-mortalize lru (lru-get lru 2))))
+(define-test lru-disconnected
+  (let* ((ncalls 0) 
+	 (lru (make-lru (lambda (x) (incf ncalls) (1+ x)) 3))
+	 (lru-nodes (mapcar (bind #'lru-get lru /1) (iota 4)))
+	 (lookup (compose #'lru-node-result (bind #'lru-get lru /1))))
+    (assert-true (lru-node-disconnected-p (car lru-nodes)))
+    (assert-false (some #'lru-node-disconnected-p (cdr lru-nodes)))
 
-;fixme write a test for immortalization etc with disconnected nodes
+    (lru-mortalize lru (car lru-nodes)) ; should have no effect
+
+    (lru-immortalize lru (car lru-nodes))
+    (assert-equal 4 ncalls)
+
+    (assert-false (lru-lookup lru 1))
+    (assert-true (lru-lookup lru 0))
+
+    (lru-immortalize lru (cadr lru-nodes))
+
+    (assert-false (lru-lookup lru 2))
+    (assert-true (lru-lookup lru 0))
+    (assert-true (lru-lookup lru 1))
+
+    (assert-true (lru-q lru))
+
+    (lru-immortalize lru (caddr lru-nodes))
+
+    (assert-false (lru-lookup lru 3))
+    (assert-equal '(1 2 3) (mapcar lookup (iota 3)))
+    (assert-false (lru-q lru))
+
+    (lru-mortalize lru (cadr lru-nodes))
+    (assert-equal '(1 2 3) (mapcar lookup (iota 3)))
+    (assert-equal 4 ncalls)
+
+    (assert-equal 42 (funcall lookup 41))
+    (assert-equal 5 ncalls)))
+
 (defun xor (&rest args)
   (reduce (lambda (x y) (not (eq x y))) args :initial-value nil))
 
@@ -823,9 +858,11 @@ miscelaneous non-numerical utilities |#
 
 (defun approx= (x y &optional (precision 5) &aux (m (expt 10 precision))
 		(s1 (signum x)) (s2 (signum y)))
-  (setf x (log (1+ (abs x))) y (log (1+ (abs y))))
+  (setf x (log (1+ (abs (coerce x 'long-float))))
+	y (log (1+ (abs (coerce y 'long-float)))))
   (= (floor (* m s1 x)) (floor (* m s2 y))))
 (define-test approx=
   (assert-true (approx= 5.000001 5))
   (assert-false (approx= 5.000001 4))
-  (assert-false (approx= 5.000001 5 20)))
+  (assert-false (approx= 5.000001 5 20))
+  (assert-true (approx= 70.0 (reduce #'+ (vector 69 0.0f0 1.0f0)))))
