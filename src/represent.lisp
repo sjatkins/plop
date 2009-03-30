@@ -40,6 +40,10 @@ defines the interrelated structs addr and rep and associated algos |#
 	 (ks-dist (lambda (x y) (abs (- x y))))
 	 (k1 (make-knob ks-dist nil)) (k2 (make-knob ks-dist nil))
 	 (k3 (make-knob ks-dist '(1 2 3 4))))
+    (assert-equalp 0 (knob-nbits k1))
+    (assert-equalp 0 (knob-nbits k2))
+    (assert-equalp 2 (knob-nbits k3))
+
     (setf (gethash k1 x) 1)
     (setf (gethash k1 y) 1)
     (setf (gethash k2 x) 3)
