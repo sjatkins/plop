@@ -46,9 +46,11 @@ mpop = metapopulation |#
 
 ;;; a normalized measure of the landscape, ranging from 0 (infinitely curved)
 ;;; to 1 (completely flat)
-(defun flatness (mpop)
-  (- 1.0 (/ (mpop-err-divergence-sum mpop)
-	    (mpop-err-divergence-weight-sum mpop))))
+(defun flatness (mpop &aux (div (mpop-err-divergence-sum mpop))
+		 (weight-sum (mpop-err-divergence-weight-sum mpop)))
+  (if (> weight-sum 0)
+      (- 1.0 (/ div weight-sum))
+      1.0))
 
 (defun get-rep (pnode expr context type)
   (assert (pequal expr (qreduct (make-expr-from-pnode pnode))))

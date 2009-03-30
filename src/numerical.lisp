@@ -173,7 +173,7 @@ numerical functions |#
     (setf m (coerce m 'long-float)
 	  v (coerce v 'long-float)
 	  x (coerce x 'long-float))
-    (+ 0.5L0  (* 0.5L0 (erf (/ (- x m) (* (sqrt v) sqrt2)))))))
+    (+ 0.5L0 (* 0.5L0 (erf (/ (- x m) (* (sqrt v) sqrt2)))))))
 (define-test conditional-tail-expectation
   ;; ensure that we are at least somewhat stable
   (let* ((values (iota 6.97 :start 6 :step 0.01))
