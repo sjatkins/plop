@@ -77,7 +77,7 @@ Author: madscience@google.com (Moshe Looks) |#
 					  (when (consp (canon-expr cexpr))
 					    (markup (canon-expr cexpr))))
 			     (unmark simp it)))
-	(t (canon-expr cexpr))))
+	(t (pclone (canon-expr cexpr)))))
 
 ;; cons in canonical form - doesn't work for lambdas
 (defun ccons (fn args expr)

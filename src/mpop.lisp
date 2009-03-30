@@ -51,6 +51,7 @@ mpop = metapopulation |#
 	    (mpop-err-divergence-weight-sum mpop))))
 
 (defun get-rep (pnode expr context type)
+  (assert (pequal expr (qreduct (make-expr-from-pnode pnode))))
   (or (pnode-rep pnode)
       (setf (pnode-rep pnode) (make-rep pnode expr context type))))
 

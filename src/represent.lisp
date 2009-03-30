@@ -61,9 +61,7 @@ defines the interrelated structs addr and rep and associated algos |#
   (twiddles nil :type (or null hash-table)))
 (defun addr-root-p (addr) (not (addr-twiddles addr)))
 (defun addr-rep (addr)  ; returns the pexpr if its a root
-  (if (addr-root-p addr)
-      (addr-prep addr)
-      (pnode-rep (addr-prep addr))))
+  (pnode-rep (addr-prep addr)))
 (defun addr-equal-twiddles (addr prep twiddles)
   (and (eq prep (addr-prep addr))
        (eql-length-p twiddles (hash-table-count (addr-twiddles addr)))
@@ -107,6 +105,8 @@ defines the interrelated structs addr and rep and associated algos |#
   (defun score-expr (expr addr problem &optional converted)
     (unless converted
       (setf expr (convert expr)))
+    (assert (pequal expr (qreduct (make-expr-from-addr addr))) ()
+	      "bad insertion in score-expr, ~S and ~S" expr addr)
     (aprog1 (lru-get (problem-lru problem) expr)
       (unless (find-if (bind #'addr-equal addr /1)
 		       (pnode-pts (dyad-result it)))
@@ -114,13 +114,15 @@ defines the interrelated structs addr and rep and associated algos |#
   ;; returns (values dyad err err-exact), dyad only returned for a non-loser
   (defun score-expr-unless-loser (expr prep twiddles problem &aux
 				  (bound (problem-loser-bound problem)))
+    (assert (pequal expr (qreduct (make-expr-from-addr
+				   (make-addr prep twiddles)))))
     (setf expr (convert expr))
     (awhen (lru-lookup (problem-lru problem) expr)
       (let* ((pnode (dyad-result it)) (err (pnode-err pnode)))
 	(assert (let* ((x (make-expr-from-pnode pnode))
 		       (y (qreduct (pclone x))))
-		  (assert (pequal expr y) () "was ~S, now builds ~S -> ~S" 
-			  expr x y) t)) ; wrapped in assert so we can disable
+		  (assert (pequal expr y) () "was ~S, now builds ~S -> ~S ~S" 
+			  expr x y it) t)) ; in assert so we can disable
 	(unless (find-if (bind #'addr-equal-twiddles /1 prep twiddles)
 			 (pnode-pts pnode))
 	  (push (make-addr prep twiddles) (pnode-pts pnode)))
@@ -199,8 +201,8 @@ defines the interrelated structs addr and rep and associated algos |#
 	       (funcall (elt (knob-setters (car ks)) 0)))
 	 (reverse twiddles))))
 (defun make-expr-from-addr (addr)
-  (if (addr-root-p addr) ; for the root addr, rep is the actual expr
-      (addr-rep addr)    ; that the addr corresponds to
+  (if (addr-root-p addr) ; for the root addr, prep is the actual expr
+      (addr-prep addr)   ; that the addr corresponds to
       (let ((reverse nil))
 	(maphash (lambda (k s)
 		   (funcall (elt (knob-setters k) s))
@@ -211,6 +213,20 @@ defines the interrelated structs addr and rep and associated algos |#
 (defun make-expr-from-pnode (pnode)
   (make-expr-from-addr (car (pnode-pts pnode))))
 
+(define-test rep-twiddles
+  (let* ((type '(function (bool bool bool) bool))
+	 (rep (make-rep (make-pnode '(0) 0)
+		       (pclone %(lambda (x y z) (and z (or x y))))
+		       *empty-context* type)))
+    (dorepeat 1000
+      (let* ((twiddles (random-pick rep))
+	     (expr (reduct (make-expr-from-twiddles rep twiddles)
+			   *empty-context* type))
+	     (expr2 (reduct (make-expr-from-twiddles rep twiddles)
+			    *empty-context* type)))
+	(assert-equal (p2sexpr expr) (p2sexpr expr2)
+		      twiddles (make-expr-from-twiddles rep twiddles)
+		      (make-expr-from-twiddles rep twiddles))))))
 (define-test make-expr-from
   (map-exprs 
    (lambda (expr)
