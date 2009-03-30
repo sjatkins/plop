@@ -103,7 +103,7 @@ expected utility calculations |#
 ;; 						(compose #'pnode-err 
 ;; 							 #'dyad-result))))
 ;; 			 (cache (make-pnode-distance-cache)))
-;;   (print* 'flatness flatness 'nc (length candidates) 'nv (length nodes))
+;;   ;(print* 'flatness flatness 'nc (length candidates) 'nv (length nodes))
 ;;   ;;  this is the super-slow version. we'll see if its adequate
 ;;   (max-element 
 ;;    candidates #'< :key

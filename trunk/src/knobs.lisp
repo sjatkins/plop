@@ -27,7 +27,9 @@ Author: madscience@google.com (Moshe Looks) |#
 (defstruct (knob (:constructor make-knob 
 		  (setting-distance-fn setters-raw &aux
 		   (setters (coerce setters-raw 'vector))
-		   (nbits (log (length setters) 2)))))
+		   (nbits (if (eql 0 (length setters))
+			      0.0
+			      (log (length setters) 2))))))
   (setting-distance-fn nil :type (function ((integer 0) (integer 0)) real))
   (setters nil :type (vector (function () t)))
   (nbits nil :type (float 0)))

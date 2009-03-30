@@ -186,6 +186,6 @@ numerical functions |#
 			   (nth (position y l) values)))
 	    l (cdr l))))
 (define-test normal-cdf
-  (assert-equal 0.5 (normal-cdf 0 1 0))
+  (assert-equalp 0.5 (normal-cdf 0 1 0))
   (assert-true (< 0.99 (normal-cdf 0 1 100)))
   (assert-true (> 0.01 (normal-cdf 0 1 -100))))
