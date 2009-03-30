@@ -78,14 +78,13 @@ expected utility calculations |#
 			 (var (/ (- (/ v v1) (* mean mean))
 				 (- 1.0L0 (/ v2 (* v1 v1))))))
   (declare (long-float best v1 v2 m v mean var))
+  (assert (>= best mean))
+;  (print* 'mv mean var (- 1.0L0 (normal-cdf 0.0L0 var best))
+;	  (conditional-tail-expectation 0.0L0 var best))
   (* (- 1.0L0 (normal-cdf mean var best))
      (conditional-tail-expectation mean var best)))
 
-;; for every node in new-pnodes, visit all pnodes in mpop-pnodes
-;; out to an edit-distance of k, calling update-utility on each of them
-
-(defun max-utility-elem (candidates nodes flatness
-			 )
+(defun max-utility-elem (candidates nodes flatness)
   (declare (ignore flatness))
   (let ((x (min-element candidates #'< :key
 			(compose #'pnode-err #'dyad-result)))
@@ -96,25 +95,35 @@ expected utility calculations |#
 	  (x x)
 	  (t y))))
 
-;; 			 &aux (best (- (reduce #'min candidates :key 
-;; 					       (compose #'pnode-err 
-;; 							#'dyad-result))))
+;; (defun max-utility-elem (candidates nodes flatness &aux
+;; 			 (worst (reduce #'max candidates :key 
+;; 					(compose #'pnode-err 
+;; 						 #'dyad-result)))
+;; 			 (best (- worst (reduce #'min candidates :key 
+;; 						(compose #'pnode-err 
+;; 							 #'dyad-result))))
 ;; 			 (cache (make-pnode-distance-cache)))
-  
-;; ;;  this is the super-slow version. we'll see if its adequate
-;; (max-element 
+;;   (print* 'flatness flatness 'nc (length candidates) 'nv (length nodes))
+;;   ;;  this is the super-slow version. we'll see if its adequate
+;;   (max-element 
 ;;    candidates #'< :key
 ;;    (lambda (dyad &aux (x (dyad-result dyad)) (v1 0.0) (v2 0.0) (m 0.0) (v 0.0))
-;; ;     (print 'mu)
-;;      (flet ((update (y &aux (e (- (pnode-err y)))
+;; 					;     (print 'mu)
+;;      (flet ((update (y &aux (u (- worst (pnode-err y))) ; bigger u is better
 ;; 		     (w (expt flatness (pnode-distance x y cache))))
-;; ;	      (print* 'w w 'e e)
 ;; 	      (incf v1 w)
 ;; 	      (incf v2 (* w w))
-;; 	      (incf m (* w e))
-;; 	      (incf v (* w e e))))
+;; 	      (incf m (* w u))
+;; 	      (incf v (* w u u))))
 ;;        (map nil (compose #'update #'dyad-result) candidates)
 ;;        (map nil (lambda (node) (unless (lru-node-immortal-p node)
 ;; 				 (update (dyad-result node))))
 ;; 	    nodes)
+;; ;;        (print* (/ m v1) (/ (- (/ v v1) (* (/ m v1) (/ m v1)))
+;; ;; 				 (- 1.0L0 (/ v2 (* v1 v1))))
+;; ;;         (print*
+;; ;; 	 (pnode-err (dyad-result dyad)) 
+;; ;;  	(expected-utility v1 v2 m v best))
+;; ;; 	       (p2sexpr (dyad-arg dyad)))
+;; ;;        (print* v1 v2 m v best)
 ;;        (expected-utility v1 v2 m v best)))))

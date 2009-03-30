@@ -105,8 +105,6 @@ defines the interrelated structs addr and rep and associated algos |#
   (defun score-expr (expr addr problem &optional converted)
     (unless converted
       (setf expr (convert expr)))
-    (assert (pequal expr (qreduct (make-expr-from-addr addr))) ()
-	      "bad insertion in score-expr, ~S and ~S" expr addr)
     (aprog1 (lru-get (problem-lru problem) expr)
       (unless (find-if (bind #'addr-equal addr /1)
 		       (pnode-pts (dyad-result it)))
@@ -114,15 +112,9 @@ defines the interrelated structs addr and rep and associated algos |#
   ;; returns (values dyad err err-exact), dyad only returned for a non-loser
   (defun score-expr-unless-loser (expr prep twiddles problem &aux
 				  (bound (problem-loser-bound problem)))
-    (assert (pequal expr (qreduct (make-expr-from-addr
-				   (make-addr prep twiddles)))))
     (setf expr (convert expr))
     (awhen (lru-lookup (problem-lru problem) expr)
       (let* ((pnode (dyad-result it)) (err (pnode-err pnode)))
-	(assert (let* ((x (make-expr-from-pnode pnode))
-		       (y (qreduct (pclone x))))
-		  (assert (pequal expr y) () "was ~S, now builds ~S -> ~S ~S" 
-			  expr x y it) t)) ; in assert so we can disable
 	(unless (find-if (bind #'addr-equal-twiddles /1 prep twiddles)
 			 (pnode-pts pnode))
 	  (push (make-addr prep twiddles) (pnode-pts pnode)))
