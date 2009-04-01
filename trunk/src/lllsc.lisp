@@ -63,6 +63,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
   (while (not done)
     (setf exemplar (max-utility-elem (mpop-nodes mpop) nodes (flatness mpop))
 	  (values done nodes) (funcall optimize exemplar))
+    (assert (notany (bind #'mpop-contains-node-p mpop /1) nodes))
     (assert (validate-nodes (mpop-nodes mpop)))
     (competitive-integrate mpop nodes))
   done)
@@ -92,7 +93,7 @@ LLLSC = Linkage-Learning Large-Step Chain, a new approach to search
 			    stuckness-bound (stuckness-bound rep context)))
 		    (push dyad visited)))
 	    (err-exact (update-frequencies err twiddles prep mpop))
-	    (t (update-frequencies-loser err twiddles prep mpop))))
+	    (err (update-frequencies-loser err twiddles prep mpop))))
     (awhen (funcall terminationp best-err best-scores)
       (return-from ll-optimize (values it visited))))
   ;; if we reach this point we are either stuck or have completely exhausted
