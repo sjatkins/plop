@@ -116,8 +116,8 @@ else
 		(idx (max-position nodes #'> :key 
 				   (let ((bound most-positive-single-float))
 				     (lambda (x)
-				       (aprog1 (funcall distance node x
-							:bound bound)
+				       (aprog1 (funcall distance node x)
+							;fixme:bound bound)
 					 (setf bound (min bound it)))))
 				   :start (1+ i) :end (+ i window-size 1))))
 	   (if (funcall cmp node (aref nodes idx)) ; does node lose?
