@@ -181,54 +181,59 @@ else
 (defun partition-by-dominance (old new &aux (i 0) j nondominated
 			       (dominated (make-array 0 :fill-pointer t 
 						      :adjustable t)))
-  (setf new (delete-if   ; delete nodes from new that are dominated by some
-	     (lambda (x) ; node in old
-	       (dorange (k i (length old))
-		 (case (dominance x (aref old k))
-		   (worse (vector-push-extend x dominated)
-			  (return t))
-		   (better (vector-push-extend (aref old k) dominated) 
-			   (setf (aref old k) (aref old i))
-			   (incf i)))))
-	     (sort (make-array (length new) :initial-contents new)
-		   #'> :key #'pnode-err)); #'dyad-result)))
-	;; everything in old with an index >=i is now nondominated
-	nondominated (make-array (- (length old) i) :initial-contents
-				 (make-array (- (length old) i)
-					     :displaced-to old
-					     :displaced-index-offset i)
-				 :fill-pointer t :adjustable t)
-	j (1- (length new)) i 0) ; reset indices
-  (while (<= i j) ; check for nodes in new that are dominated by others in new
-    (when (dorange (k i j t)
-	    (case (dominance (aref new k) (aref new j))
-	      (worse (vector-push-extend (aref new k) dominated)
-		     (setf (aref new k) (aref new i))
-		     (incf i))
-	      (better (vector-push-extend (aref new j) dominated)
-		      (return))))
-      (vector-push-extend (aref new j) nondominated))
-    (decf j))
-  (values dominated nondominated))
+  (flet ((dominance (x y) (dominance (dyad-result x) (dyad-result y))))
+    (setf new (delete-if     ; delete nodes from new that are dominated by some
+	       (lambda (x)   ; node in old
+		 (dorange (k i (length old))
+		   (case (dominance x (aref old k))
+		     (worse (vector-push-extend x dominated)
+			    (return t))
+		     (better (vector-push-extend (aref old k) dominated) 
+			     (setf (aref old k) (aref old i))
+			     (incf i)))))
+	       (sort (make-array (length new) :initial-contents new)
+		     #'> :key (compose #'pnode-err #'dyad-result)))
+	  ;; everything in old with an index >=i is now nondominated
+	  nondominated (make-array (- (length old) i) :initial-contents
+				   (make-array (- (length old) i)
+					       :displaced-to old
+					       :displaced-index-offset i)
+				   :fill-pointer t :adjustable t)
+	  j (1- (length new)) i 0)	; reset indices
+    (while (<= i j) ; find nodes in new that are dominated by others in new
+      (when (dorange (k i j t)
+	      (case (dominance (aref new k) (aref new j))
+		(worse (vector-push-extend (aref new k) dominated)
+		       (setf (aref new k) (aref new i))
+		       (incf i))
+		(better (vector-push-extend (aref new j) dominated)
+			(return))))
+	(vector-push-extend (aref new j) nondominated))
+      (decf j))
+    (values dominated nondominated)))
 (define-test partition-by-dominance
-  (flet ((check (l d n)
-	   (mvbind (dom nondom)
-	       (partition-by-dominance (vector)
-				       (mapcar (lambda (x) 
-						 (make-pnode x (reduce #'+ x)))
-					       l))
-	     (assert-true
-	      (set-equal d (map 'list #'pnode-scores dom) :test #'equalp))
-	     (assert-true 
-	      (set-equal n (map 'list #'pnode-scores nondom) :test #'equalp))
-	     (assert-equal (length d) (length dom))
-	     (assert-equal (length n) (length nondom))
-	     (mvbind (dom2 nondom2) (partition-by-dominance nondom dom)
-	       (assert-true (set-equal (coerce dom2 'list) 
-				       (coerce dom 'list) :test #'eq) dom2 dom)
-	       (assert-true (set-equal (coerce nondom2 'list)
-				       (coerce nondom 'list) :test #'eq)
-			    nondom2 nondom)))))
+  (flet
+      ((check (l d n)
+	 (mvbind (dom nondom) 
+	     (partition-by-dominance 
+	      (vector) (mapcar (lambda (x) 
+				 (make-dyad :result 
+					    (make-pnode x (reduce #'+ x))))
+			       l))
+	   (assert-true (set-equal d (map 'list (compose #'pnode-scores 
+							 #'dyad-result) dom)
+				   :test #'equalp))
+	   (assert-true (set-equal n (map 'list (compose #'pnode-scores
+							 #'dyad-result) nondom)
+					  :test #'equalp))
+	   (assert-equal (length d) (length dom))
+	   (assert-equal (length n) (length nondom))
+	   (mvbind (dom2 nondom2) (partition-by-dominance nondom dom)
+	     (assert-true (set-equal (coerce dom2 'list) 
+				     (coerce dom 'list) :test #'eq) dom2 dom)
+	     (assert-true (set-equal (coerce nondom2 'list)
+				     (coerce nondom 'list) :test #'eq)
+			  nondom2 nondom)))))
 	     ;;add a test with some new nondoms in new
     (check '((1 1 1) (0 0 0)) (list (vector 1 1 1)) (list (vector 0 0 0)))
     (check '((1 1 0) (0 0 1)) nil (list (vector 1 1 0) (vector 0 0 1)))
