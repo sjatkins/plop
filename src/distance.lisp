@@ -36,9 +36,13 @@ code for computing distances between addrs |#
 	 (if cache
 	     (awhen (gethash y cache) (return-from dist it))
 	     (setf cache (setf (gethash x dist) (make-hash-table :test 'eq))))
-	 (setf (gethash y cache) most-positive-single-float ; to handle cycles
-	       (gethash y cache) (if (pnode-equal x y #'addr-equal) 0
-				     (compute x y))))
+	 (setf (gethash x (or (gethash y dist)
+			      (setf (gethash y dist)
+				    (make-hash-table :test 'eq))))
+	       ;; to handle cycles
+	       (setf (gethash y cache) most-positive-single-float
+		     (gethash y cache) (if (pnode-equal x y #'addr-equal) 0
+					   (compute x y)))))
        (compute (x y &aux (ypts (pnode-pts y)))
 	 (reduce 
 	  #'min (pnode-pts x) :initial-value most-positive-single-float :key

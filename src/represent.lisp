@@ -113,17 +113,17 @@ defines the interrelated structs addr and rep and associated algos |#
       (unless (find-if (bind #'addr-equal addr /1)
 		       (pnode-pts (dyad-result it)))
 	(push addr (pnode-pts (dyad-result it))))))
-  ;; returns (values dyad err err-exact), dyad only returned for a non-loser
+  ;; returns (values dyad err err-exact), dyad only returned for a non-loser,
+  ;; returns nil for already visited
   (defun score-expr-unless-loser (expr prep twiddles problem &aux
 				  (bound (problem-loser-bound problem)))
     (setf expr (convert expr))
     (awhen (lru-lookup (problem-lru problem) expr)
-      (let* ((pnode (dyad-result it)) (err (pnode-err pnode)))
+      (let ((pnode (dyad-result it)))
 	(unless (find-if (bind #'addr-equal-twiddles /1 prep twiddles)
 			 (pnode-pts pnode))
-	  (push (make-addr prep twiddles) (pnode-pts pnode)))
-	(return-from score-expr-unless-loser 
-	  (values (when (< err bound) it) err t))))
+	  (push (make-addr prep twiddles) (pnode-pts pnode))))
+	(return-from score-expr-unless-loser))
     (let ((i 0) (err 0.0) (buffer (problem-score-buffer problem)))
       (mapc (lambda (scorer)
 	      (incf err (setf (elt buffer i) (funcall scorer expr)))

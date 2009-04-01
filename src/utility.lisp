@@ -69,8 +69,6 @@ expected utility calculations |#
 ;(defun indiscriminability-levels (context)
  ; (mapcar 
 
-;; fixme take into account that err >= 0
-
 ;; v1 = sum w, v2 = sum w*w, m = sum w*x, v = sum w*x*x
 ;; P(score > best) * E(score | score>best)
 ;; details @ http://code.google.com/p/plop/wiki/ChoosingPromisingExemplars
@@ -79,32 +77,43 @@ expected utility calculations |#
 				 (- 1.0L0 (/ v2 (* v1 v1))))))
   (declare (long-float best v1 v2 m v mean var))
   (assert (>= best mean))
-;  (print* 'mv mean var (- 1.0L0 (normal-cdf 0.0L0 var best))
-;	  (conditional-tail-expectation 0.0L0 var best))
   (* (- 1.0L0 (normal-cdf mean var best))
      (conditional-tail-expectation mean var best)))
 
-(defun max-utility-elem (candidates nodes flatness)
-  (declare (ignore flatness))
-  (let ((x (min-element candidates #'< :key
-			(compose #'pnode-err #'dyad-result)))
-	(y (min-element nodes #'< :key (compose #'pnode-err #'dyad-result))))
-    (cond ((and x y)
-	   (min-element (list x y) #'< :key 
-			(compose #'pnode-err #'dyad-result)))
-	  (x x)
-	  (t y))))
-
-;; (defun max-utility-elem (candidates nodes flatness &aux
-;; 			 (worst (reduce #'max candidates :key 
-;; 					(compose #'pnode-err 
-;; 						 #'dyad-result)))
-;; 			 (best (- worst (reduce #'min candidates :key 
-;; 						(compose #'pnode-err 
-;; 							 #'dyad-result))))
-;; 			 (cache (make-pnode-distance-cache)))
-;;   ;(print* 'flatness flatness 'nc (length candidates) 'nv (length nodes))
-;;   ;;  this is the super-slow version. we'll see if its adequate
+(defun max-utility-elem (candidates nodes flatness &aux
+			 (worst (reduce #'max candidates :key 
+					(compose #'pnode-err 
+						 #'dyad-result)))
+			 (best (- worst (reduce #'min candidates :key 
+						(compose #'pnode-err 
+							 #'dyad-result))))
+			 (cache (make-pnode-distance-cache)))
+;;   (map nil (lambda (dyad) (setf (gethash (dyad-result dyad) 
+;; 					 (make-hash-table :test 'eq))))
+		   
+;;   (flet ((insert (dyad &aux (x (dyad-result dyad)))
+;; 	   (map nil (lambda (addr)
+;; 		      (touch-hash (
+;; 		      (setf 
+;; 		      (push x (gethash (addr-prep addr) preps-to-nodes)))
+;; 		(pnode-pts x))))
+;;     (map nil #'insert candidates)
+;;     (map nil #'insert nodes))
+  (max-element 
+   candidates #'< :key
+   (lambda (dyad &aux (x (dyad-result dyad)) (v1 0.0) (v2 0.0) (m 0.0) (v 0.0))
+     (flet ((update (y &aux (u (- worst (pnode-err y))) ; bigger u is better
+		     (w (expt flatness (pnode-distance x y cache))))
+	      (incf v1 w)
+	      (incf v2 (* w w))
+	      (incf m (* w u))
+	      (incf v (* w u u))))
+       (map nil (compose #'update #'dyad-result) candidates)
+       (map nil (lambda (node) (unless (lru-node-immortal-p node)
+				 (update (dyad-result node))))
+	    nodes)
+       (expected-utility v1 v2 m v best)))))
+  
 ;;   (max-element 
 ;;    candidates #'< :key
 ;;    (lambda (dyad &aux (x (dyad-result dyad)) (v1 0.0) (v2 0.0) (m 0.0) (v 0.0))
@@ -119,11 +128,4 @@ expected utility calculations |#
 ;;        (map nil (lambda (node) (unless (lru-node-immortal-p node)
 ;; 				 (update (dyad-result node))))
 ;; 	    nodes)
-;; ;;        (print* (/ m v1) (/ (- (/ v v1) (* (/ m v1) (/ m v1)))
-;; ;; 				 (- 1.0L0 (/ v2 (* v1 v1))))
-;; ;;         (print*
-;; ;; 	 (pnode-err (dyad-result dyad)) 
-;; ;;  	(expected-utility v1 v2 m v best))
-;; ;; 	       (p2sexpr (dyad-arg dyad)))
-;; ;;        (print* v1 v2 m v best)
 ;;        (expected-utility v1 v2 m v best)))))

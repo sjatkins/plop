@@ -340,7 +340,8 @@ miscelaneous non-numerical utilities |#
     (maphash (lambda (x y) (setf res (nconc (funcall f x y) res))) h) 
     res))
 (defun touch-hash (key table)
-  (setf (gethash key table) (gethash key table)))
+  (unless (gethash key table)
+    (setf (gethash key table) nil)))
 (defun copy-hash-table (table &key 
 			(key-copier #'identity) (value-copier #'identity))
   (aprog1 (make-hash-table :size (hash-table-size table))
@@ -546,7 +547,8 @@ miscelaneous non-numerical utilities |#
 (defmacro atom-else (x else &aux (result (gensym)))
   `(let ((,result ,x)) (if (atom ,result) ,result ,else)))
 
-(defun group-equals (l &aux (table (make-hash-table :test 'equal)))
+(defun group-equals (l &key (test 'equal)
+		     &aux (table (make-hash-table :test test)))
   (mapc (lambda (x) (aif (gethash x table) 
 			 (setf (gethash x table) (incf it))
 			 (setf (gethash x table) 1)))

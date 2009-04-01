@@ -19,23 +19,26 @@ mpop = metapopulation |#
 
 (defstruct (mpop (:constructor make-mpop 
 		  (problem &key (size 1000) &aux 
-		   (nodes (make-array 0 :fill-pointer 0 :adjustable t
-				      :element-type 'lru-node)))))
-  (size nil :type (integer 1))
+		   (nodes (make-array size :fill-pointer 0
+                                      :element-type 'lru-node)))))
   (nodes nil :type (vector lru-node))
   (problem nil :type problem)
-
   (nsamples 0 :type (integer 0))
   (err-divergence-sum 0.0 :type (float 0))
   (err-divergence-weight-sum 0.0 :type (float 0)))
- ;fixme to allocate nodes based on size
+(defun mpop-size (mpop) (length (mpop-nodes mpop)))
+(defun mpop-total-size (mpop) (array-total-size (mpop-nodes mpop)))
+(defun mpop-contains-node-p (mpop node)
+  (declare (ignore mpop))
+  (lru-node-immortal-p node))
 ;; returns the node, or its replacement if its a duplicate
 (defun mpop-insert (mpop node &aux (lru (problem-lru (mpop-problem mpop))))
   (acond 
-    ((lru-node-immortal-p node) node)
+    ((mpop-contains-node-p mpop node) node)
     ((and (lru-node-disconnected-p node) (lru-lookup lru (dyad-arg node)))
      (mpop-insert mpop it))
-    (t (vector-push-extend node (mpop-nodes mpop)) ;fixme to vector-push
+    (t (assert (< (mpop-size mpop) (mpop-total-size mpop)))
+       (vector-push node (mpop-nodes mpop))
        (lru-immortalize lru node)
        node)))
 
