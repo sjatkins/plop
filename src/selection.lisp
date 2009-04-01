@@ -72,7 +72,8 @@ return nondominated U restricted-tournament-select(n - |nondominated|,
 			      (cache (make-pnode-distance-cache)))
   (flet ((rts (n nodes)
 	   (restricted-tournament-select 
-	    n nodes (bind #'pnode-distance /1 /2 cache)
+	    n nodes (lambda (x y)
+		      (pnode-distance (dyad-result x) (dyad-result y) cache))
 	    (lambda (x y) (> (pnode-err (dyad-result x))
 			     (pnode-err (dyad-result y))))
 	    (ceiling (/ (length nodes) 20)))))
@@ -141,7 +142,7 @@ else
 		 (incf i)
 		 (decf j)))
 	   (assert (= i j) () "logic error - ~S doesn't match ~S" i j)
-	   (cond ((> i n)
+	   (cond ((and (> i n) (not (eql i m))) ; if i=m then all are winners
 		  (setf m i window-size (min window-size (1- m)))
 		  (select n (make-array m :displaced-to nodes)))
 		 ((< i n)
@@ -213,7 +214,7 @@ else
     (values dominated nondominated)))
 (define-test partition-by-dominance
   (flet
-      ((check (l d n)
+      ((check (l d n &aux (best (make-dyad :result (make-pnode '(0 0 0) 0))))
 	 (mvbind (dom nondom) 
 	     (partition-by-dominance 
 	      (vector) (mapcar (lambda (x) 
@@ -233,7 +234,14 @@ else
 				     (coerce dom 'list) :test #'eq) dom2 dom)
 	     (assert-true (set-equal (coerce nondom2 'list)
 				     (coerce nondom 'list) :test #'eq)
-			  nondom2 nondom)))))
+			  nondom2 nondom))
+	   (unless (find best nondom :test #'equalp)
+	     (mvbind (dom3 nondom3) (partition-by-dominance 
+				     nondom (cons best (coerce dom 'list)))
+	       (assert-equalp (vector best) nondom3 dom nondom)
+	       (assert-true (set-equal (concatenate 'list nondom dom) 
+				       (coerce dom3 'list)
+				       :test #'equalp)))))))
 	     ;;add a test with some new nondoms in new
     (check '((1 1 1) (0 0 0)) (list (vector 1 1 1)) (list (vector 0 0 0)))
     (check '((1 1 0) (0 0 1)) nil (list (vector 1 1 0) (vector 0 0 1)))
