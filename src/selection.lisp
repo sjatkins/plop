@@ -155,27 +155,31 @@ else
     (when (> m n) (select n nodes))
     (subseq nodes 0 n)))
 (define-test restricted-tournament-select 
-  (flet ((counts (&rest args) 
+  (flet ((counts (times &rest args) 
 	   (group-equals 
 	    (generate
-	     200 (lambda () 
+	     times (lambda () 
 		   (sort (apply #'restricted-tournament-select args) #'<)))
 	    :test 'equalp)))
     ;; the following distribution should be ~ 
     ;; ((100 (3 16 29)) (50 (16 28 29)) (25 (15 16 29)) (25 (3 28 29)))
-    (let ((groups (counts 3 '(1 2 3 14 15 16 27 28 29) 
-			  (lambda (x y &key bound) 
-			    (declare (ignore bound))
-			    (abs (- x y)))
-			  #'< 7)))
+    (let ((groups (counts 200 3 '(1 2 3 14 15 16 27 28 29) 
+			  (lambda (x y) (abs (- x y))) #'< 7))
+	  (groups2 (counts 1000 3 (iota 100)
+			   (lambda (x y) (abs (- x y))) #'< 2)))
       (assert-equal 4 (length groups))
-      (assert-equalp (vector 3 16 29) (cadar groups))
-      (assert-equalp (vector 16 28 29) (cadadr groups))
+      (assert-equalp (vector 3 16 29) (cadr (first groups)))
+      (assert-equalp (vector 16 28 29) (cadr (second groups)))
       (assert-true
        (or (and (equalp (vector 15 16 29) (cadr (third groups)))
 		(equalp (vector 3 28 29) (cadr (fourth groups))))
 	   (and (equalp (vector 3 28 29) (cadr (third groups)))
-		(equalp (vector 15 16 29) (cadr (fourth groups)))))))))
+		(equalp (vector 15 16 29) (cadr (fourth groups))))))
+      (assert-for-all (bind #'find 99 /1) (mapcar #'cadr groups2))
+      (assert-for-none (bind #'find 0 /1) (mapcar #'cadr groups2))
+      (assert-true
+       (or (equalp (vector 96 98 99) (cadr (second groups2)))
+	   (equalp (vector 96 98 99) (cadr (third groups2))))))))
       
 ;; partition-by-dominance heuristically starts at the worst and compares them
 ;; to the best - old are already a nondominating set
