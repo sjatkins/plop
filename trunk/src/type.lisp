@@ -276,8 +276,8 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
 				    (funcall fn (caddr args))))))))))
   (labels ((easy-lookup-fn (fn)
 	     (case fn
-	       ((and or not <) bool)
-	       ((+ - * / exp log sin abs) num)))
+	       ((and or not 0< <) bool)
+	       ((+ - * / exp log sin abs impulse) num)))
 	   (lookup-fn (fn args lookup)
 	     (or (easy-lookup-fn fn)
 		 (progn (assert (gethash fn type-finders)
@@ -316,6 +316,8 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
     (< (let ((type (reduce #'union-type (args expr)
 			   :key (bind #'expr-type /1 context))))
 	 `(,type ,type)))
+    (0< '(num))
+    (impulse '(bool))
     (list (ntimes (arity expr) (cadr type)))
     (split (let ((ttypes (mapcar (bind #'expr-type /1 context) 
 				 (cdr (args expr)))))
@@ -374,7 +376,7 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
 (defun arg-types-p (expr context &aux (fn (fn expr)))
   (assert (or (not (typedp fn context)) 
 	      (function-type-p (gettype fn context))))
-  (or (matches fn (< list split lambda tuple if)) (closurep fn) 
+  (or (matches fn (impulse 0< < list split lambda tuple if)) (closurep fn) 
       (typedp fn context)))
 
 ;;; later this can be expanded to give nice names based on what the types are

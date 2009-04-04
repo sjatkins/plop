@@ -32,6 +32,10 @@ Numerical functions
     (* (expt x 3) (exp (- x)) (cos x) (+ (* (expt (sin x) 2) (cos x)) -1))
     in comparison to PEEL
 
+Mixed Real-Boolean functions
+  * The easy mixed function: if (and (x < 3) y) then z else -z
+  * more...
+
 Timeseries  
   * Sunspot timeseries
   * Translated scaled sine
@@ -186,6 +190,13 @@ Mixed discrete-continuous optimization problems
 			  (benchmark-cost b) (pnode-err best))))
 	    (when verbose 
 	      (ppnodes scored-solutions)))))))
+
+(defun score-on-benchmark (name expr)
+  (let* ((scores (mapcar (bind #'funcall /1 expr) 
+			 (benchmark-scorers (gethash name *benchmarks*))))
+	 (err (reduce #'+ scores)))
+    (format t "err: ~S, scores: ~S.~%" err scores)))
+  
 		
 ;;; runs from easiest to hardest
 (defun run-benchmarks 
@@ -233,7 +244,7 @@ abstaction should be far easier. |#
 
 #| Numerical functions |#
 (defbenchmark easy-num
-    :cost 20000 :type '(function (num) num)
+    :cost 500 :type '(function (num) num)
     :target (mapcar (lambda (x) (list (+ 0.1 (* 2 x)) x)) '(-1 .3 .5)))
 (defbenchmark-seq linear-funs (n)
   :cases ((10 :start 1) (100 :start 10 :step 10))
@@ -252,6 +263,18 @@ abstaction should be far easier. |#
   (mapcar (lambda (x &aux (y 0))
 	    (list (dotimes (k n y) (incf y (expt x (1+ k)))) x))
 	  (generate 20 (lambda () (1- (random 2.0))))))
+
+#| Mixed Boolean-Real functions |#
+;; if (and (y < 3) x) then y else -y
+(defbenchmark easy-mixed-num
+    :cost 500 :type '(function (bool num) num)
+    :target '((-3.1 true 3.1) (-3.1 false 3.1)
+	      (-2.9 false 2.9) (2.9 true 2.9)))
+;; (or (not x) (y < 3))
+;;fixme (defbenchmark easy-mixed-num
+;;     :cost 500 :type '(function (bool num) bool)
+;;     :target '((-3.1 true 3.1) (-3.1 false 3.1)
+;; 	      (-2.9 false 2.9) (2.9 true 2.9)))
 
 #| Discrete optimization |#
 (defbenchmark-seq onemax (n)

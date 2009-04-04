@@ -41,12 +41,15 @@ numerical functions |#
 	elems)
   bins)
 
+;;; i can has maxima?
+(defun has-maxima-p () (find-package 'maxima))
+
 ;;; erf = the gaussian error function
 ;;; this is a bit ugly, but I'm not sure what would be a better way
 ;;; to do it...
-(let ((fn (cond ((fboundp 'cl-user::erf)
+(let ((fn (cond ((fboundp 'cl-user::erf) ; clisp supports this
 		 (symbol-function (find-symbol "ERF" (find-package 'cl-user))))
-		((find-package 'maxima)
+		((has-maxima-p)
 		 (symbol-function (find-symbol "ERF" (find-package 'maxima))))
 		(t (let ((table (make-array 
 				 300 :initial-contents

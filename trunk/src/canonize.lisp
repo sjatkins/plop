@@ -196,7 +196,7 @@ numerical constants. So the full canonical form for (+ c x y) is:
 			   (* 4 ,@*s ,*block (+ 0 ,@+s x)))
 		       (qcanonize %(* 4 x)))
     (let (src dst)
-      (if (fboundp 'maxima-reduce) ; maxima ordering is different
+      (if (has-maxima-p) ; maxima ordering is different
 	  (setf src %(+ 1 (* 2 x) y) dst `((* 2 ,@*s ,*block (+ 0 ,@+s x))
 					   (* 1 ,@*s y)))
 	  (setf src %(+ 1 y (* 2 x)) dst `((* 1 ,@*s y)

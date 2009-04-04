@@ -142,7 +142,10 @@ Author: madscience@google.com (Moshe Looks) |#
       (with-nil-bound-values context vars ; to prevent vars from being visited
 	(maphash-keys (lambda (x) 
 			(collect (make-inserter-knob expr expr x (negate x))))
-		      (symbols-with-type bool context))))))
+		      (symbols-with-type bool context)))
+;  fixme add numbers for 0<    (with-nil-bound-values context ltvars
+
+)))
 
 (defknobs num (expr context)
   (when (ring-op-p expr)

@@ -55,11 +55,15 @@ Author: madscience@google.com (Moshe Looks) |#
 		       (list (pcons 'maxima::mabs 
 				     (list (to-maxima (arg0 expr)))))
 		       (markup expr))))
+	 (< 'maxima::mlessp)
+	 (0< (return-from to-maxima
+	       (pcons 'maxima::mlessp (list 0 (to-maxima (arg0 expr))))))
 	 (t it))
        (mapcar #'to-maxima (args expr))
        (markup expr))))
 (defun from-maxima (expr)
-  (if (atom expr) expr
+  (if (atom expr) 
+      (case expr ((t) true) ((nil) false) (t expr))
       (pcons 
        (acase (caar expr) 
 	 ((maxima::rat) (return-from from-maxima 
@@ -132,54 +136,65 @@ Author: madscience@google.com (Moshe Looks) |#
 	       munged)))
     (mung mexpr) mexpr))
 
-(define-reduction maxima-reduce (expr)
+(labels ((mreduce (mexpr) (maxima::simplify (mung1s (maxima::$float mexpr))))
+	 (mung-expts (mexpr) (mung-helper mexpr) mexpr)
+	 (mung-helper (mexpr &aux (munged nil))
+	   (when (consp mexpr)
+	     (mapc (lambda (subexpr) (if (mung-helper subexpr)
+					 (setf munged t)))
+		   (cdr mexpr))
+	     (when (and (eq (caar mexpr) 'maxima::mexpt)
+			(not (or (eq (cadr mexpr) 'maxima::$%e)
+				 (eql (cadr mexpr) 2.718281828459045))))
+	       (setf munged t)
+	       (setf (caddr mexpr) (list (list 'maxima::mtimes)
+					 (caddr mexpr)
+					 (list (list 'maxima::%log)
+					       (list (list 'maxima::mabs)
+						     (cadr mexpr)))))
+	       (setf (cadr mexpr) 'maxima::$%e))
+	     (when munged
+	       (rplaca mexpr (list (caar mexpr))))) ;nix simp flag
+	   munged)
+	 (all-simped-p (mexpr)
+	   (or (atom mexpr) (and (eq (cadar mexpr) 'maxima::simp)
+				 (every #'all-simped-p (cdr mexpr))))))
+  (defun full-mreduce (mexpr)
+    (handler-case (catch* (maxima::raterr 
+			   maxima::errorsw
+			   maxima::macsyma-quit)
+		    (return-from full-mreduce
+		      (fixed-point (lambda (mexpr)
+				     (mung-expts (mreduce mexpr)))
+				   ;(maxima::$ratsimp fixme
+				    (maxima::simplify mexpr);)
+				   :test #'equalp)))
+      #+clisp(system::simple-floating-point-overflow ())
+      #+clisp(system::simple-arithmetic-error ()))
+    nan))
+
+(define-reduction maxima-reduce-num (expr)
   :type num
   :assumes (maxima-prepare)
   :obviates (eval-const sort-commutative)
-  :action 
-  (labels ((mreduce (mexpr) (maxima::simplify (mung1s (maxima::$float mexpr))))
-	   (mung-expts (mexpr) (mung-helper mexpr) mexpr)
-	   (mung-helper (mexpr &aux (munged nil))
-	     (when (consp mexpr)
-	       (mapc (lambda (subexpr) (if (mung-helper subexpr)
-					   (setf munged t)))
-		     (cdr mexpr))
-	       (when (and (eq (caar mexpr) 'maxima::mexpt)
-			  (not (or (eq (cadr mexpr) 'maxima::$%e)
-				   (eql (cadr mexpr) 2.718281828459045))))
-		 (setf munged t)
-		 (setf (caddr mexpr) (list (list 'maxima::mtimes)
-					   (caddr mexpr)
-					   (list (list 'maxima::%log)
-						 (list (list 'maxima::mabs)
-						       (cadr mexpr)))))
-		 (setf (cadr mexpr) 'maxima::$%e))
-	       (when munged
-		 (rplaca mexpr (list (caar mexpr))))) ;nix simp flag
-	     munged)
-	   (full-mreduce (mexpr)
-	     (handler-case (catch* (maxima::raterr 
-				    maxima::errorsw
-				    maxima::macsyma-quit)
-			     (return-from full-mreduce
-			       (fixed-point (lambda (mexpr)
-					      (mung-expts (mreduce mexpr)))
-					    (maxima::$ratsimp (maxima::simplify mexpr))
-					    :test #'equalp)))
-	       #+clisp(system::simple-floating-point-overflow ())
-	       #+clisp(system::simple-arithmetic-error ()))
-	     nan)
-	   (all-simped-p (mexpr)
-	     (or (atom mexpr) (and (eq (cadar mexpr) 'maxima::simp)
-				   (every #'all-simped-p (cdr mexpr))))))
-    (let* ((mexpr (to-maxima expr))
-	   (reduced (full-mreduce mexpr)))
-      (if (pequal mexpr reduced)
-	  expr
-	  (from-maxima reduced)))))
-(define-test maxima-reduce
-  (assert-equal '(sin x) (p2sexpr (maxima-reduce %(* 1 (sin (* 1 x))))))
+  :action (let* ((mexpr (to-maxima expr)) (reduced (full-mreduce mexpr)))
+	    (if (pequal mexpr reduced) expr (from-maxima reduced))))  
+(define-test maxima-reduce-num
+  (assert-equal '(sin x) (p2sexpr (maxima-reduce-num %(* 1 (sin (* 1 x))))))
 ; the below won't work because maxima doesn't get rid of floats by default -
 ; maybe at some point we should make it?
-; (assert-equal %(sin x) (maxima-reduce %(* 1.0 (sin (* 1.0 x))))))
-  (assert-equal 4.4 (maxima-reduce %(+ 2.0 2.4))))
+; (assert-equal %(sin x) (maxima-reduce-num %(* 1.0 (sin (* 1.0 x))))))
+  (assert-equal 4.4 (maxima-reduce-num %(+ 2.0 2.4))))
+
+(define-reduction maxima-reduce-ineq (expr)
+  :type bool
+  :assumes (maxima-prepare)
+  :condition (eq (fn expr) '0<)
+  :action 
+  (let* ((mexpr (to-maxima expr))
+	 (reduced (maxima::mevalp 
+		   (if (or (atom (arg0 expr))
+			   (simpp (arg0 expr) 'maxima-reduce-num))
+			   mexpr
+			   (full-mreduce mexpr)))))
+    (if (pequal mexpr reduced) expr (from-maxima reduced))))
