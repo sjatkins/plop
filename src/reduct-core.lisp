@@ -99,8 +99,6 @@ Author: madscience@google.com (Moshe Looks) |#
     (assert-eq expr (mapargs #'identity expr))))
 
 (defun visit-root-only (expr name reduction preserves)
-;  (print* 'visit-root-only name expr)  
-;  (aprog1
   (labels ((rec-mark (x marker) 
 	     (funcall marker x)
 	     (mapc (lambda (x) (when (and (consp x) (not (simpp x name)))
@@ -114,11 +112,8 @@ Author: madscience@google.com (Moshe Looks) |#
 		(t (rec-mark it (lambda (x) 
 				  (clear-simp x preserves)
 				  (mark-simp x name)))))))))
-;    (print* 'done name it)))
 
 (defun visit-upwards (expr name reduction preserves assumes)
-  ;(print* 'visit-upwards name expr)
-  ;(aprog1 
   (labels ((donep (x y) (or (atom y) (eql x y)))
 	   (prepare (x)
 	     (fixed-point (lambda (x)
@@ -133,7 +128,6 @@ Author: madscience@google.com (Moshe Looks) |#
 	   (call-once (x)
 	     (if (or (atom x) (simpp x name)) x
 		 (aprog1 (funcall reduction (aprog1 (prepare x)
-;					      (print* 'prep it)
 					      (when (atom it)
 						(return-from call-once it))))
 		   (when (consp it)
@@ -141,14 +135,11 @@ Author: madscience@google.com (Moshe Looks) |#
 		       (clear-simp it preserves))
 		     (mark-simp it name))))))
     (call-once expr)))
-; (print* 'done name it)))
 (define-test visit-upwards
   (let ((expr %(and x y z (or p d q))))
     (assert-eq expr (visit-upwards expr 'identity #'identity nil nil))))
 
 (defun visit-downwards (expr name reduction preserves)
-;  (print* 'visit-downwards name expr)
-;  (aprog1
   (labels ((visit (x)
 	     (if (or (atom x) (simpp x name)) x
 		 (aprog1 (mapargs #'visit 
@@ -162,7 +153,6 @@ Author: madscience@google.com (Moshe Looks) |#
 		     (clear-simp it preserves))
 		   (mark-simp it name)))))
     (visit expr)))
-;    (print* 'done name it)))
 
 (defmacro construct-reduction
     (name (&rest args) &key (type t) assumes obviates (condition t)
@@ -222,7 +212,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	    (push fully-reduced (mark simp it)))))))
 (define-test reduct
   (assert-equal 'x (reduct (copy-tree %(and x (or y x))) *empty-context* bool))
-  (when (fboundp 'maxima-reduce) 
+  (when (has-maxima-p)
     (with-bound-types *empty-context* '(f g) 
 	'((function (num num) bool) (function (bool) num))
       (let* ((expr (copy-tree %(and (f 42 (+ (g (or a b)) m)) (or x y))))
@@ -239,11 +229,13 @@ Author: madscience@google.com (Moshe Looks) |#
       
 	(assert-for-all (bind #'exact-simp-p /1 'push-nots) bool-exprs)
 	(assert-for-all (bind #'exact-simp-p /1 'sort-commutative) bool-exprs)
-	(assert-for-none (bind #'exact-simp-p /1 'maxima-reduce) bool-exprs)
+	(assert-for-none (bind #'exact-simp-p /1 'maxima-reduce-num)
+			 bool-exprs)
 
 	(assert-for-none (bind #'exact-simp-p /1 'push-nots) num-exprs)
 	(assert-for-none (bind #'exact-simp-p /1 'sort-commutative) num-exprs)
-	(assert-for-all (bind #'exact-simp-p /1 'maxima-reduce) num-exprs)))))
+	(assert-for-all (bind #'exact-simp-p /1 'maxima-reduce-num)
+			num-exprs)))))
 
 ;; for convenience
 (defun qreduct (expr) 

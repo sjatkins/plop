@@ -79,11 +79,13 @@ for speed have an all-positive marker? |#
 				  (log arg))))
 		       (sin (sin (funcall eval-fn (car args))))
 
+		       (0< (< 0 (funcall eval-fn (car args))))
+
 		       (tuple (apply #'vector args))
 	       
 		       (if (funcall eval-fn (if (funcall eval-fn (car args))
-					      (cadr args)
-					      (caddr args))))
+						(cadr args)
+						(caddr args))))
 
 		       ,@others)))
 	    ,@body)))

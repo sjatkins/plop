@@ -656,6 +656,7 @@ miscelaneous non-numerical utilities |#
 		       (lru-node-arg last) (lru-cache lru))
 	       (q-pop lru last)))))
   (defun lru-lookup (lru arg)	 ;  doesn't compute or move arg to top of queue
+;    (print* 'lookup (p2sexpr arg)) fixme - attend to resampling
     (gethash arg (lru-cache lru)))
   ;; compute if not there & moves arg to top of the queue
   (defun lru-get (lru arg &aux (q (lru-q lru)) (cache (lru-cache lru)))
@@ -858,7 +859,7 @@ miscelaneous non-numerical utilities |#
  	(sb-profile:report)
  	(sb-profile:unprofile))
 
-(defun approx= (x y &optional (precision 5) &aux (m (expt 10 precision))
+(defun approx= (x y &optional (precision 4) &aux (m (expt 10 precision))
 		(s1 (signum x)) (s2 (signum y)))
   (setf x (log (1+ (abs (coerce x 'long-float))))
 	y (log (1+ (abs (coerce y 'long-float)))))

@@ -61,43 +61,53 @@ type. It returns three values - a boolean indicating if the
 				    counter))
 			(when it (setf counter 0)))))))
 
+;; examples is a list of (result ,@args) lists
+(defun make-scorers-from-examples (examples result-scorer arg-names result-type
+				   &aux (results (mapcar #'car examples))
+				   (arglists (mapcar #'cdr examples)))
+  (mapcar (lambda (result args)
+	    (lambda (expr)
+	      (funcall result-scorer result
+		       (with-bound-values *empty-context* arg-names args
+			 (peval (fn-body expr) *empty-context* result-type)))))
+	  results arglists))
+
 (defdefbytype define-problem-desc-maker make-problem-desc :args (target cost))
 
-(define-problem-desc-maker function (target cost type &aux 
+(define-problem-desc-maker function (target cost type &aux result-scorer
 				     (epsilon (* (if (atom target) 1 
 						     (length target))
 						 (epsilon-size (caddr type))))
 				     (result-type (caddr type))
 				     (arg-names (make-arg-names (cadr type))))
-  (macrolet ((actual ()
-	       `(with-bound-values *empty-context* arg-names args
-		  (peval (fn-body expr) *empty-context* result-type))))
-    (count-cost
-     (ecase (icar result-type)
-       (num  ; target is an list of (result ,@args) lists
-	(mapcar (lambda (example) 
-		  (dbind (result &rest args) example
-		    (lambda (expr &aux (y (actual)))
-		      (if (eq y nan)
-			  +solution-fail-value+ 
-			  (log (+ 1 (/ (abs (- y result)) ;fixme
-				       (epsilon-size result-type)))
-			       2)))))
-		target))
-      (bool ; target is a truth table or a function for computing one
- 	(setf target (mapcar (lambda (x) 
- 			       (case x ((t) true) ((nil) false) (t x)))
- 			     (if (functionp target) ; compute the truth table
- 				 (truth-table target arg-names)
- 				 target)))
- 	(let ((arity (length arg-names)))
-	  (mapcar (lambda (result args)
-		    (lambda (expr) 
-		      (if (or (eq result 'unk) (eq (actual) result))
- 			  0
-			  (+ 1 (* 200 arity)))));fixme, this is a hack
-		  target (enum-bindings arity)))))
-     (lambda (err) (<= err epsilon)) cost)))
+  (ecase (icar result-type)
+    (num (setf result-scorer (lambda (result actual)
+			       (if (eq actual nan)
+				   +solution-fail-value+ 
+				   (log (+ 1 (/ (abs (- result actual)) ;fixme
+						(epsilon-size result-type)))
+					2)))))
+    (bool ; target may a truth table, function for computing one, 
+          ; or a list of (result ,@args) lists as above
+     (let* ((arity (length arg-names)) (penalty (+ 1 (* 200 arity))))
+;					 (+ 2 arity (log arity 2))))
+;fixme       shouldn't the penalty depend on how much data you actually have?
+       (setf result-scorer (lambda (result actual)
+				 (if (or (eq result 'unk) (eq result actual))
+				     0
+				     penalty)))
+       (unless (and (consp target) (consp (car target)))
+	 (setf target 
+	       (mapcar #'cons
+		       (mapcar (lambda (x) 
+				 (case x ((t) true) ((nil) false) (t x)))
+			       (if (functionp target) ; compute truth table
+				   (truth-table target arg-names)
+				   target))
+		       (enum-bindings arity)))))))
+  (count-cost (make-scorers-from-examples target result-scorer 
+					  arg-names result-type)
+	      (lambda (err) (<= err epsilon)) cost))
 
 (define-problem-desc-maker tuple (target cost type &aux
 				  (epsilon (max-element 
