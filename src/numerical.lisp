@@ -158,11 +158,13 @@ numerical functions |#
   (defun erf (x) (funcall fn x)))
 
 ;;; E(X|X>x) for gaussian var X with mean m and variance v
-(let ((sqrt2 (sqrt 2.0L0))
-      (sqrt2-over-pi (sqrt (/ 2.0L0 pi)))
-      (erf-unstable 4.97L0)
-      (erf-unstable-squared 24.700899999999997L0)
-      (erf-smallest-difference 2.0855539517583566e-12))
+(let* ((sqrt2 (sqrt 2.0L0))
+       (sqrt2-over-pi (sqrt (/ 2.0L0 pi)))
+       (erf-max-arg 4.97L0)
+       (min-erfc (- 1.0L0 (erf erf-max-arg)))
+       (gain-factor 
+	(- (/ (* sqrt2-over-pi (exp (- (* erf-max-arg erf-max-arg)))) min-erfc)
+	   (* erf-max-arg sqrt2))))
   (defun conditional-tail-expectation (m v x &aux d sd erf-arg)
     (setf m (coerce m 'long-float)
 	  v (coerce v 'long-float)
@@ -170,11 +172,10 @@ numerical functions |#
 	  d (- x m)
 	  sd (sqrt v)
 	  erf-arg (/ d (* sd sqrt2)))
-    (+ m (if (< erf-arg erf-unstable) ; nice & stable
-	     (/ (* sd sqrt2-over-pi (exp (/ (* d d) (* -2.0L0 v))))
-		(- 1.0L0 (erf erf-arg)))
-	     (* (/ (* sd sqrt2-over-pi) erf-smallest-difference)
-		(exp (- erf-unstable erf-arg (/ erf-unstable-squared v)))))))
+    (if (<= erf-arg erf-max-arg) ; if erf-arg is too big, inerpolate with exp
+	(+ m (/ (* sd sqrt2-over-pi (exp (/ (* d d) (* -2.0L0 v))))
+		(- 1.0L0 (erf erf-arg))))
+	(+ x (* sd gain-factor (exp (- erf-max-arg erf-arg))))))
   (defun normal-cdf (m v x)
     (setf m (coerce m 'long-float)
 	  v (coerce v 'long-float)
