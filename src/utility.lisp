@@ -100,7 +100,7 @@ expected utility calculations |#
 ;;     (map nil #'insert candidates)
 ;;     (map nil #'insert nodes))
   (max-element 
-   candidates #'< :key
+   candidates #'< :key ;(compose #'- #'pnode-err #'dyad-result)))
    (lambda (dyad &aux (x (dyad-result dyad)) (v1 0.0) (v2 0.0) (m 0.0) (v 0.0))
      (flet ((update (y &aux (u (- worst (pnode-err y))) ; bigger u is better
 		     (w (expt flatness (pnode-distance x y cache))))

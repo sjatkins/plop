@@ -118,11 +118,6 @@ for speed have an all-positive marker? |#
 						 (false nil)
 						 (t it)))))
 		     (t expr))))
-  (defun pfuncall (fn args)
-    (eval-with (lambda (value) (unless (eq value 'false) value))
-	       ((list args) (t (apply fn args)))
-	       (with-error-handling pfuncall (call fn args) 
-				    (funcall-type fn args))))
   (defun peval (expr &optional (context *empty-context*) type)
     (with-error-handling peval (peval-cl expr context)
 			 (lambda () (or type (expr-type expr context))))))
@@ -132,6 +127,3 @@ for speed have an all-positive marker? |#
 			    %(and false true)))
 	  (list 4 (list %(+ 1 1 1 1) 
 			%(* 2 2)))))
-
-(defun papply (fn context &rest args)
-  (apply #'apply #'pfuncall fn context args)) ;just beautiful...

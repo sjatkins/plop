@@ -278,12 +278,12 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
 	     (case fn
 	       ((and or not 0< <) bool)
 	       ((+ - * / exp log sin abs impulse) num)))
-	   (lookup-fn (fn args lookup)
+	   (lookup-fn (fn args lookup context)
 	     (or (easy-lookup-fn fn)
-		 (progn (assert (gethash fn type-finders)
-				() "can't find a type for fn ~S" fn)
-			(funcall (gethash fn type-finders) lookup args)))))
-    (defun funcall-type (fn args) (lookup-fn fn args #'value-type))
+		 (aand (gethash fn type-finders) (funcall it lookup args))
+		 (caddr (gettype fn context)))))
+    (defun funcall-type (fn args &optional (context *empty-context*))
+      (lookup-fn fn args #'value-type context))
     (defun lookup-expr-type (expr context)
       (if (consp expr)
 	  (or (easy-lookup-fn (fn expr))
@@ -297,7 +297,8 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
 					(gettype expr context)))))
     (defun expr-type (expr &optional (context *empty-context*))
       (if (consp expr)
-	  (lookup-fn (fn expr) (args expr) (bind #'expr-type /1 context))
+	  (lookup-fn (fn expr) (args expr) 
+		     (bind #'expr-type /1 context) context)
 	  (or (lookup-atom-type expr) (gettype expr context))))))
 (define-all-equal-test expr-type
     `((bool (true false ,%(and true false) ,%(not (or true false))))
@@ -307,7 +308,10 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
   (assert-equal bool (expr-type 'x (init-context '((x true)))))
   (assert-equal num (expr-type 'x (init-context '((x 42)))))
   (assert-equal '(list num) (expr-type %(list x) (init-context '((x 3.3)))))
-  (assert-equal num (expr-type %(car (list x)) (init-context '((x 0))))))
+  (assert-equal num (expr-type %(car (list x)) (init-context '((x 0)))))
+  (assert-equal bool (with-bound-types *empty-context* '(ff x y)
+			 '((function (bool) bool) bool bool)
+		       (expr-type %(ff x) *empty-context*))))
 
 ;;; determines the types for the children based on the structure of expr and
 ;;; its type, given the bindings in context

@@ -127,25 +127,18 @@ Author: madscience@google.com (Moshe Looks) |#
 (defknobs bool (expr context &aux vars)
   (when (junctorp expr)
     (collecting 
-      (aif (extract-literal expr)
-	   (push (litvariable it) vars)
-	   (mapc (lambda (x)
-		   (awhen (extract-literal x)
-		     (assert (and (junctorp x) (singlep (args x)))
-			     () "uncanonical expr ~S with arg ~S" expr x)
-		     (push (litvariable it) vars)
-		     (collect 
-		      (make-replacer-knob 
-		       x (args x)
-		       (bool-dual (identity-elem (fn x))) (negate it)))))
-		 (args expr)))
+      (mapc (lambda (x)
+	      (awhen (extract-literal x)
+		(push (litvariable it) vars))
+	      (when (and (junctorp x) (singlep (args x)))
+		(collect (make-replacer-knob x (args x)
+					     (bool-dual (identity-elem (fn x)))
+					     (negate (arg0 x))))))
+	    (args expr))
       (with-nil-bound-values context vars ; to prevent vars from being visited
 	(maphash-keys (lambda (x) 
 			(collect (make-inserter-knob expr expr x (negate x))))
-		      (symbols-with-type bool context)))
-;  fixme add numbers for 0<    (with-nil-bound-values context ltvars
-
-)))
+		      (symbols-with-type bool context))))))
 
 (defknobs num (expr context)
   (when (ring-op-p expr)
