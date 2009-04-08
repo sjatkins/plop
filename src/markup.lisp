@@ -71,7 +71,7 @@ Author: madscience@google.com (Moshe Looks) |#
 
 ;;; also ensures that the expr is a deep copy of the original
 (defun canon-clean (cexpr)
-  (cond ((atom cexpr) cexpr)
+  (cond ((atom cexpr) (pclone cexpr))
 	((or (not (canonp cexpr)) (mark mung cexpr))
 	 (aprog1 (pcons (fn cexpr) (mapcar #'canon-clean (args cexpr))
 			(when (consp (canon-expr cexpr))
