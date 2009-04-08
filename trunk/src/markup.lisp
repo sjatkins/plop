@@ -71,12 +71,12 @@ Author: madscience@google.com (Moshe Looks) |#
 
 ;;; also ensures that the expr is a deep copy of the original
 (defun canon-clean (cexpr)
-  (cond ((not (canonp cexpr)) (pclone cexpr))
-	((mark mung cexpr) (aprog1 (pcons (fn cexpr) 
-					  (mapcar #'canon-clean (args cexpr))
-					  (when (consp (canon-expr cexpr))
-					    (markup (canon-expr cexpr))))
-			     (unmark simp it)))
+  (cond ((atom cexpr) cexpr)
+	((or (not (canonp cexpr)) (mark mung cexpr))
+	 (aprog1 (pcons (fn cexpr) (mapcar #'canon-clean (args cexpr))
+			(when (consp (canon-expr cexpr))
+			  (markup (canon-expr cexpr))))
+	   (unmark simp it)))
 	(t (pclone (canon-expr cexpr)))))
 
 ;; cons in canonical form - doesn't work for lambdas

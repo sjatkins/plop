@@ -94,7 +94,7 @@ represent evolved programs. |#
 		(defun identity-elem (x)
 		  (ecase x ,@items)))))
   (build-identity-functions
-   ((and 'true) (or 'false) (* 1) (+ 0) (append nil))))
+   ((and true) (or false) (* 1) (+ 0) (append nil))))
 (defun short-circuits-p (x fn)
   (case fn 
     (and (eq x false))
@@ -313,10 +313,9 @@ represent evolved programs. |#
 ;;; a deep copy for values and expressions
 ;;; note - copies markup too, but assumes it to be all symbols
 (defun pclone (expr)
-  (if (consp expr) 
-      (if (mark canon expr)
-	  (qcanonize (pclone (canon-clean expr)))
-	  (pcons (fn expr) (mapcar #'pclone (args expr)) (markup expr)))
+  (assert (not (canonp expr)))
+  (if (consp expr)
+      (pcons (fn expr) (mapcar #'pclone (args expr)) (markup expr))
       (etypecase expr 
 	(vector (map 'vector #'pclone expr))
 	(lambda-list (make-lambda-list 

@@ -112,7 +112,7 @@ General-purpose reductions that can apply to any type are defined here |#
 (define-test ring-op-identities
   ;; tests for and
   (assert-equal '(and x y) (p2sexpr (ring-op-identities %(and x true y))))
-  (assert-for-all (compose (bind #'eq 'false /1) #'ring-op-identities)
+  (assert-for-all (compose (bind #'eq false /1) #'ring-op-identities)
 		  (mapcar #'sexpr2p 
 			  '((and false x y) (and x false y) (and x y false))))
   (assert-equal 'x  (eval-const (ring-op-identities %(and x))))

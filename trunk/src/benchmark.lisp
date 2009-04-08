@@ -110,7 +110,10 @@ Mixed discrete-continuous optimization problems
 	     (elt (pnode-scores pnode) (- (length (pnode-scores pnode)) 2)))
 	  (pnode-scores pnode) 
 	  (funcall (compose #'p2sexpr (bind #'reduct /1 *empty-context* bool)
-			    #'fn-body #'make-expr-from-pnode) pnode)))
+			    (lambda (expr) (if (eqfn expr 'lambda)
+					       (fn-body expr)
+					       expr))
+			    #'make-expr-from-pnode) pnode)))
 
 (defun ppnodes (pnodes)
   (mapc #'ppnode (sort (copy-seq pnodes) #'< :key #'pnode-err))
@@ -161,6 +164,7 @@ Mixed discrete-continuous optimization problems
 			     (gethash name *benchmarks*))))
   (format t "~S " (benchmark-name b))
   (when verbose (format t "seed: ~S " *random-state*))
+  (setf +count-with-duplicates+ 0)
   (mvbind (termination-result scored-solutions)
       (funcall fn (benchmark-scorers b) (benchmark-terminationp b)
 	       (funcall (benchmark-start b)) *empty-context* 
@@ -169,25 +173,29 @@ Mixed discrete-continuous optimization problems
       (if (consp (car scored-solutions))
 	  (if it 
 	      (progn 
-		(format t "passed with cost ~S" termination-result)
+		(format t "passed with cost ~S (~S)" termination-result
+			+count-with-duplicates+)
 		(if verbose
 		    (let ((best (min-element scored-solutions #'< :key #'car)))
 		      (format t ", best was ~S with a score of ~S.~%" 
 			      (p2sexpr (cdr best)) (car best)))
 		    (format t "~%")))
 	      (let ((best (min-element scored-solutions #'< :key #'car)))
-		(format t "failed with cost ~S, best " (benchmark-cost b))
+		(format t "failed with cost ~S (~S), best " (benchmark-cost b)
+			+count-with-duplicates+)
 		(if verbose 
 		    (format t "was ~S with a score of ~S.~%" 
 			    (p2sexpr (cdr best)) (car best))
 		    (format t "score was ~S.~%"  (car best)))))
 	  (progn
 	    (if it
-		(format t "passed with cost ~S~%" termination-result)
+		(format t "passed with cost ~S (~S)~%" termination-result
+			+count-with-duplicates+)
 		(let ((best (min-element scored-solutions #'< 
 					 :key #'pnode-err)))
-		  (format t "failed with cost ~S, best score was ~S~%"
-			  (benchmark-cost b) (pnode-err best))))
+		  (format t "failed with cost ~S (~S), best score was ~S~%"
+			  (benchmark-cost b) +count-with-duplicates+
+			  (pnode-err best))))
 	    (when verbose 
 	      (ppnodes scored-solutions)))))))
 

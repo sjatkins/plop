@@ -47,6 +47,7 @@ type. It returns three values - a boolean indicating if the
 
 ;;; wraps scorer and terminationp to keep track of costs, has
 ;;; terminationp return cost if success, t if timeout
+(defparameter +count-with-duplicates+ 0)
 (defun count-cost (scorers terminationp cost &aux (counter 0))
   (setf (car scorers)
 	(let ((first (car scorers)))
@@ -54,7 +55,7 @@ type. It returns three values - a boolean indicating if the
   (let ((last-counter 0) (panic 0))
     (values scorers (lambda (err)
 		      (if (eql counter last-counter)
-			  (incf panic)
+			  (progn (incf panic) (incf +count-with-duplicates+))
 			  (setf last-counter counter panic 0))
 		      (aprog1 (or (>= (max counter panic) cost)
 				  (when  (funcall terminationp err)

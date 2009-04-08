@@ -90,7 +90,10 @@ Author: madscience@google.com (Moshe Looks) |#
   (test-by-truth-tables #'push-nots))
 
 (defun negate (expr)
-  (if (eq (afn expr) 'not) (arg0 expr) (pcons 'not (list expr))))
+  (cond ((eq (afn expr) 'not) (arg0 expr))
+	((junctorp expr) (pcons (bool-dual (fn expr)) 
+				(mapcar #'negate (args expr)) (markup expr)))
+	(t (pcons 'not (list expr)))))
 (defun litvariable (x) (if (consp x) (arg0 x) x))
 (defun negatesp (x y &key (pred #'eq))
   (flet ((check (neg other) 
