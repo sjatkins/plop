@@ -869,3 +869,7 @@ miscelaneous non-numerical utilities |#
   (assert-false (approx= 5.000001 4))
   (assert-false (approx= 5.000001 5 20))
   (assert-true (approx= 70.0 (reduce #'+ (vector 69 0.0f0 1.0f0)))))
+
+;; member-if at least twice, returns 2nd match
+(defun member-if-2 (pred list &key key)
+  (member-if pred (cdr (member-if pred list :key key)) :key key))

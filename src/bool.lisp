@@ -127,13 +127,13 @@ Author: madscience@google.com (Moshe Looks) |#
     (assert-eq expr (remove-bool-duplicates expr))))
 
 ;; (if true x y) -> x, (if false x y) -> y
-;; if pred x y -> if (not pred) y x when shrink-by-negation applies to pred
+;; if pred x y -> if (not pred) y x when (shrink-by-bool-negation-p pred)
 (define-reduction if-identities (expr)
   :condition (eq (fn expr) 'if)
   :action (case (arg0 expr) 
 	    (true (arg1 expr))
 	    (false (arg2 expr))
-	    (t (aif (shrink-by-negation (arg0 expr))
+	    (t (aif (shrink-by-bool-negation (arg0 expr))
 		    (pcons 'if (list it (arg2 expr) (arg1 expr)) (markup expr))
 		    expr)))
   :order downwards)
@@ -338,11 +338,11 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-test invert-bool
   (assert-equal %(and x (not y)) (invert-bool (copy-tree %(or (not x) y))))
   (test-by-truth-tables (lambda (expr) (invert-bool (invert-bool expr)))))
-(defun shrink-by-negation (expr) 
+(defun shrink-by-bool-negation (expr)
   (case (afn expr)
     (not (arg0 expr))
     (or (invert-bool expr))))
-(defun shrinkable-by-negation-p (expr) (matches (afn expr) (not or)))
+(defun shrinkable-by-bool-negation-p (expr) (matches (afn expr) (not or)))
 (defun make-impls (cl subcl cl2 neg)
   (delete-adjacent-duplicates 
    (merge 'list 
@@ -383,7 +383,7 @@ Author: madscience@google.com (Moshe Looks) |#
   (setf core-clauses
 	(delete-if (lambda (cl &aux negations)
 		     (mapc (lambda (subcl)
-			     (aif (shrink-by-negation subcl)
+			     (aif (shrink-by-bool-negation subcl)
 				  (push it negations)
 				  (aif (assoc subcl subs-to-clauses
 					      :test #'pequal)
@@ -401,7 +401,7 @@ Author: madscience@google.com (Moshe Looks) |#
   ;; any non-negated subclauses of other clauses - when a match is found,
   ;; use it to generating implications
   (mapc (lambda (cl)
-	  (mapc (lambda (subcl &aux (neg (shrink-by-negation subcl)))
+	  (mapc (lambda (subcl &aux (neg (shrink-by-bool-negation subcl)))
 		  (awhen (and neg
 			      (cdr (assoc neg subs-to-clauses :test #'pequal)))
 		    (mapc (lambda (cl2)

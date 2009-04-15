@@ -173,28 +173,29 @@ Author: madscience@google.com (Moshe Looks) |#
       #+clisp(system::simple-arithmetic-error ()))
     nan))
 
-(define-reduction maxima-reduce-num (expr)
-  :type num
-  :assumes (maxima-prepare)
-  :obviates (eval-const sort-commutative)
-  :action (let* ((mexpr (to-maxima expr)) (reduced (full-mreduce mexpr)))
-	    (if (pequal mexpr reduced) expr (from-maxima reduced))))  
-(define-test maxima-reduce-num
-  (assert-equal '(sin x) (p2sexpr (maxima-reduce-num %(* 1 (sin (* 1 x))))))
-; the below won't work because maxima doesn't get rid of floats by default -
-; maybe at some point we should make it?
-; (assert-equal %(sin x) (maxima-reduce-num %(* 1.0 (sin (* 1.0 x))))))
-  (assert-equal 4.4 (maxima-reduce-num %(+ 2.0 2.4))))
+;; (define-reduction maxima-reduce-num (expr)
+;;   :type num
+;;   :assumes (maxima-prepare)
+;;   :obviates (eval-const sort-commutative)
+;;   :action (let* ((mexpr (to-maxima expr)) (reduced (full-mreduce mexpr)))
+;; 	    (if (pequal mexpr reduced) expr (from-maxima reduced))))  
+;; (define-test maxima-reduce-num
+;;   (assert-equal '(sin x) (p2sexpr (maxima-reduce-num %(* 1 (sin (* 1 x))))))
+;; ; the below won't work because maxima doesn't get rid of floats by default -
+;; ; maybe at some point we should make it?
+;; ; (assert-equal %(sin x) (maxima-reduce-num %(* 1.0 (sin (* 1.0 x))))))
+;;   (assert-equal 4.4 (maxima-reduce-num %(+ 2.0 2.4))))
 
-(define-reduction maxima-reduce-ineq (expr)
-  :type bool
-  :assumes (maxima-prepare)
-  :condition (eq (fn expr) '0<)
-  :action 
-  (let* ((mexpr (to-maxima expr))
-	 (reduced (maxima::mevalp 
-		   (if (or (atom (arg0 expr))
-			   (simpp (arg0 expr) 'maxima-reduce-num))
-			   mexpr
-			   (full-mreduce mexpr)))))
-    (if (pequal mexpr reduced) expr (from-maxima reduced))))
+;; (define-reduction maxima-reduce-ineq (expr)
+;;   :type bool
+;;   :assumes (maxima-prepare)
+;;   :condition (eq (fn expr) '0<)
+;;   :action 
+;;   (let* ((mexpr (to-maxima expr))
+;; 	 (reduced (maxima::mevalp 
+;; 		   (if (or (atom (arg0 expr))
+;; 			   (simpp (arg0 expr) 'maxima-reduce-num))
+;; 			   mexpr
+;; 			   (full-mreduce mexpr)))))
+;;     (if (pequal mexpr reduced) expr (from-maxima reduced))))
+;;fixme

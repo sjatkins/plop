@@ -121,7 +121,7 @@ Mixed Boolean-real reductions and stuff|#
 		 ((0< (+ (* 3 (impulse x) (impulse y))
 			 (impulse z)))               (or (and x y) z))
 		 ((0< (+ 1 (impulse x) (sin y)))     (or x (0< (+ 1 (sin y)))))
-                 ((and (0< x) (0< (+ x 1)))          (0< (+ x 1)))
+                 ((and (0< x) (0< (+ x 1)))          (0< x))
 		 ((and (0< x) (0< (* -1 x)))         false)
 		 ((or (0< x) (0< (+ x 1)))           (0< x))))
 	(nums  '(((* (impulse x) (impulse x))        (impulse x))
