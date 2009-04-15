@@ -1,0 +1,1644 @@
+This is my (Moshe Looks) messy log of how various versions of plop have done on
+benchmark problems as the coding has progressesed. An fully automated system
+would be nicer, but this gets the job done.
+
+2/27
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 8.499617678628496
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 61.19718861864694
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 60.8699657962784
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 10.171759537263155
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 3.752245422436409
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 11.215947928056174
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 77.24826610464181
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 84.76854817027991
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.38848382949054
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 19.277756177208246
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 12.555715864606878
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 27.4067206392183
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 63.74255511933906
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 28.452746716276778
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 11.520208591819893
+KOZA-POLYNOMIAL-2 passed with cost 118
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 7.8519880177055965
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 28.346653489052155
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 84.33685394583416
+KOZA-POLYNOMIAL-2 passed with cost 12
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 52.327991050573274
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 72.18736129233828
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 84.65439802140395
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 12.272907396944522
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 78.30539702734887
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 33.03861227956263
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 71.17266869747003
+KOZA-POLYNOMIAL-2 passed with cost 97
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 45.62648783098566
+KOZA-POLYNOMIAL-2 passed with cost 179
+Evaluation took:
+  21.124 seconds of real time
+  19.806679 seconds of total run time (18.447485 user, 1.359194 system)
+  [ Run times consist of 2.380 seconds GC time, and 17.427 seconds non-GC time. ]
+  93.77% CPU
+  50,370,894,540 processor cycles
+  909,700,408 bytes consed
+
+;					    (maxima::meval* 
+;					     (list (list 'maxima::$radcan)
+;						   mexpr))
+;						   (maxima::fullratsimp mexpr))
+
+3/1
+
+PLOP> (time (dorepeat 30 (run-benchmark 'easy-bool #'lllsc-benchmarker)))
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 57
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 142
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 469
+EASY-BOOL passed with cost 236
+EASY-BOOL passed with cost 116
+EASY-BOOL passed with cost 70
+EASY-BOOL passed with cost 63
+EASY-BOOL passed with cost 335
+EASY-BOOL passed with cost 124
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 396
+EASY-BOOL passed with cost 459
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 476
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 132
+EASY-BOOL passed with cost 68
+EASY-BOOL passed with cost 116
+EASY-BOOL passed with cost 195
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 244
+EASY-BOOL passed with cost 75
+EASY-BOOL passed with cost 18
+EASY-BOOL passed with cost 40
+Evaluation took:
+  4.356 seconds of real time
+  4.114294 seconds of total run time (3.988068 user, 0.126226 system)
+  [ Run times consist of 0.180 seconds GC time, and 3.935 seconds non-GC time. ]
+  94.44% CPU
+  10,400,702,067 processor cycles
+  315,894,728 bytes consed
+
+after fixing some bugs in reduction
+
+PLOP> (time (dorepeat 30 (run-benchmark 'easy-bool #'lllsc-benchmarker)))
+EASY-BOOL passed with cost 62
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 23
+EASY-BOOL passed with cost 320
+EASY-BOOL passed with cost 268
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 278
+EASY-BOOL passed with cost 337
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 104
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 160
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 33
+EASY-BOOL passed with cost 57
+EASY-BOOL passed with cost 70
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 25
+EASY-BOOL passed with cost 160
+EASY-BOOL passed with cost 97
+EASY-BOOL passed with cost 207
+EASY-BOOL passed with cost 72
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 23
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 231
+EASY-BOOL passed with cost 462
+EASY-BOOL passed with cost 223
+EASY-BOOL passed with cost 284
+Evaluation took:
+  3.896 seconds of real time
+  3.809149 seconds of total run time (3.690424 user, 0.118725 system)
+  [ Run times consist of 0.177 seconds GC time, and 3.633 seconds non-GC time. ]
+  97.77% CPU
+  9,303,893,172 processor cycles
+  298,355,936 bytes consed
+
+3/4 after fixing more bugs and adding new bool rules
+
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 172
+EASY-BOOL passed with cost 153
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 342
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 277
+EASY-BOOL passed with cost 253
+EASY-BOOL passed with cost 251
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 296
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 147
+EASY-BOOL passed with cost 82
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 179
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 368
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 89
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 20
+EASY-BOOL passed with cost 64
+EASY-BOOL failed with cost 500, best score was 3.75.
+EASY-BOOL passed with cost 420
+Evaluation took:
+  3.225 seconds of real time
+  3.164931 seconds of total run time (3.015830 user, 0.149101 system)
+  [ Run times consist of 0.314 seconds GC time, and 2.851 seconds non-GC time. ]
+  98.14% CPU
+  7,701,032,187 processor cycles
+  223,064,520 bytes consed
+
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 6.429378642714958
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 3.911577123021232
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 28.012971356745776
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 7.043313271976012
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 27.05331576479231
+KOZA-POLYNOMIAL-2 passed with cost 65
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 7.54664294857974
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 19.90335672737961
+KOZA-POLYNOMIAL-2 passed with cost 15
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 49.18087992100334
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 37.24426316312382
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 21.593718034153078
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 12.000946998525466
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 23.537482719199243
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 43.5902857146957
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 24.16110080751709
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 16.849557996210972
+KOZA-POLYNOMIAL-2 passed with cost 13
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 40.39226697318874
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 46.93026551670598
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 55.60489828498749
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 33.2856643369666
+KOZA-POLYNOMIAL-2 passed with cost 16
+KOZA-POLYNOMIAL-2 passed with cost 18
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 12.09050993139697
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 23.011689507146492
+KOZA-POLYNOMIAL-2 passed with cost 9
+KOZA-POLYNOMIAL-2 passed with cost 27
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 86.79454927516359
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 41.47462262180588
+Evaluation took:
+  14.311 seconds of real time
+  13.532204 seconds of total run time (12.752010 user, 0.780194 system)
+  [ Run times consist of 2.015 seconds GC time, and 11.518 seconds non-GC time. ]
+  94.56% CPU
+  34,020,287,406 processor cycles
+  723,420,888 bytes consed
+
+PLOP> (time (run-benchmarks #'run-lllsc 5000))
+KOZA-POLYNOMIAL-1 failed with cost 100, best score was 12.376365147001405
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 22.41141114269419
+EASY-BOOL passed with cost 460
+MULTIPLEXER-1 passed with cost 6
+DEJONG-SPHERE-3 passed with cost 289
+DEJONG-SPHERE-4 passed with cost 426
+KOZA-POLYNOMIAL-3 failed with cost 900, best score was 15.271935238370265
+LINEAR-FUNS-1 failed with cost 1000, best score was 5.434241569202136
+DEJONG-SPHERE-5 passed with cost 728
+EVEN-PARITY-2 failed with cost 1064, best score was 3.25
+DEJONG-SPHERE-6 passed with cost 774
+DEJONG-SPHERE-7 passed with cost 1043
+KOZA-POLYNOMIAL-4 failed with cost 1600, best score was 49.529721268538104
+DEJONG-SPHERE-8 passed with cost 1067
+DEJONG-SPHERE-9 passed with cost 1257
+LINEAR-FUNS-2 failed with cost 2000, best score was 8.479625077401863
+DEJONG-SPHERE-10 passed with cost 1274
+KOZA-POLYNOMIAL-5 failed with cost 2500, best score was 63.956463739617405
+LINEAR-FUNS-3 failed with cost 3000, best score was 17.207784795793284
+DEJONG-ROSENBROCK-2 failed with cost 3000, best score was 1.3207434451514677
+EVEN-PARITY-3 failed with cost 3187, best score was 5.75
+KOZA-POLYNOMIAL-6 failed with cost 3600, best score was 63.26637552181788
+ONEMAX-60 passed with cost 657
+LINEAR-FUNS-4 failed with cost 4000, best score was 25.919339535851307
+ONEMAX-120 passed with cost 856
+DEJONG-ROSENBROCK-3 failed with cost 4500, best score was 1.3686054731722268
+ONEMAX-180 passed with cost 1683
+KOZA-POLYNOMIAL-7 failed with cost 4900, best score was 47.69778402751664
+LINEAR-FUNS-5 failed with cost 5000, best score was 29.295231081977988
+DEJONG-STEP-5 passed with cost 19
+DEJONG-FOXHOLES-2 failed with cost 5000, best score was 18.69090731435206
+success rate: 14 / 31
+Evaluation took:
+  111.695 seconds of real time
+  108.886273 seconds of total run time (104.060448 user, 4.825825 system)
+  [ Run times consist of 4.583 seconds GC time, and 104.304 seconds non-GC time. ]
+  97.49% CPU
+  266,738,476,509 processor cycles
+
+3/12 
+with $ratsimp in second fixed-point arg
+
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 4.966754863779778
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 76.90789645410469
+KOZA-POLYNOMIAL-2 passed with cost 9
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 55.90003033081411
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 42.83792038786862
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 79.56134597017869
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 76.90789645410469
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 46.47212865015582
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 78.40688299623349
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 44.91018147579903
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 11.195890189893163
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 14.14567009609964
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 37.18150681533743
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 79.0479998710024
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 45.92437287003401
+KOZA-POLYNOMIAL-2 passed with cost 20
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 77.93633549077501
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 46.08174259389208
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 79.08524388517768
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 13.394535100362306
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 5.901965677591419
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 23.145087519215664
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 61.873183857774855
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 13.848743313964748
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 33.17480179611452
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 76.8891217435667
+KOZA-POLYNOMIAL-2 passed with cost 17
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 77.8695323747111
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 83.24620986698312
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 80.12218267497651
+Evaluation took:
+  30.130 seconds of real time
+  27.569683 seconds of total run time (26.010348 user, 1.559335 system)
+  [ Run times consist of 3.507 seconds GC time, and 24.063 seconds non-GC time. ]
+  91.50% CPU
+  68,578,279,200 processor cycles
+  1,275,820,160 bytes consed
+  
+3/17
+many bugfixes, improved prior
+
+PLOP> (time (run-benchmarks #'run-lllsc 5000))
+KOZA-POLYNOMIAL-1 passed with cost 12
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 40.735151788125535
+EASY-BOOL passed with cost 46
+MULTIPLEXER-1 passed with cost 77
+DEJONG-SPHERE-3 passed with cost 314
+DEJONG-SPHERE-4 passed with cost 524
+KOZA-POLYNOMIAL-3 failed with cost 900, best score was 60.69026969710694
+LINEAR-FUNS-1 failed with cost 1000, best score was 12.972446607794762
+DEJONG-SPHERE-5 passed with cost 464
+EVEN-PARITY-2 failed with cost 1064, best score was 10.0
+DEJONG-SPHERE-6 passed with cost 906
+DEJONG-SPHERE-7 passed with cost 1158
+KOZA-POLYNOMIAL-4 failed with cost 1600, best score was 69.22042925664314
+DEJONG-SPHERE-8 passed with cost 1373
+DEJONG-SPHERE-9 passed with cost 1413
+LINEAR-FUNS-2 failed with cost 2000, best score was 20.40474196205479
+DEJONG-SPHERE-10 passed with cost 1456
+KOZA-POLYNOMIAL-5 failed with cost 2500, best score was 57.32523164028789
+LINEAR-FUNS-3 failed with cost 3000, best score was 23.312316791222877
+DEJONG-ROSENBROCK-2 failed with cost 3000, best score was 15.524110019429711
+EVEN-PARITY-3 failed with cost 3187, best score was 26.584962487220764
+KOZA-POLYNOMIAL-6 failed with cost 3600, best score was 60.92323374696466
+ONEMAX-60 passed with cost 312
+LINEAR-FUNS-4 failed with cost 4000, best score was 25.931341225421768
+ONEMAX-120 passed with cost 1290
+DEJONG-ROSENBROCK-3 failed with cost 4500, best score was 1.104970127917692
+ONEMAX-180 passed with cost 1020
+KOZA-POLYNOMIAL-7 failed with cost 4900, best score was 51.91250871294504
+LINEAR-FUNS-5 failed with cost 5000, best score was 38.0107914529258
+DEJONG-STEP-5 passed with cost 49
+DEJONG-FOXHOLES-2 failed with cost 5000, best score was 19.374406500489222
+success rate: 15 / 31
+Evaluation took:
+  85.468 seconds of real time
+  77.762697 seconds of total run time (73.782196 user, 3.980501 system)
+  [ Run times consist of 4.423 seconds GC time, and 73.340 seconds non-GC time. ]
+  90.98% CPU
+  201,848,244,786 processor cycles
+  4,628,292,672 bytes consed
+  
+PLOP> (time (run-tests))
+TOTAL: 33927 assertions passed, 0 failed, 0 execution errors.
+Evaluation took:
+  10.935 seconds of real time
+  9.898528 seconds of total run time (9.663106 user, 0.235422 system)
+  [ Run times consist of 0.602 seconds GC time, and 9.297 seconds non-GC time. ]
+  90.53% CPU
+  75 forms interpreted
+  3,548 lambdas converted
+  25,584,664,842 processor cycles
+  717,038,184 bytes consed
+
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 54.4982877623543
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 35.58543703956752
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 57.18635293208425
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 31.508086303366113
+KOZA-POLYNOMIAL-2 passed with cost 9
+KOZA-POLYNOMIAL-2 passed with cost 255
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 55.201468762922865
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 40.735151788125535
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 54.371399914253885
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 29.76018372965034
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 54.371399914253885
+KOZA-POLYNOMIAL-2 passed with cost 13
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 36.57026680091618
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.84634213398126
+KOZA-POLYNOMIAL-2 passed with cost 134
+KOZA-POLYNOMIAL-2 passed with cost 9
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 55.92186990069371
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 72.4703030458231
+KOZA-POLYNOMIAL-2 passed with cost 15
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 59.161688206821324
+KOZA-POLYNOMIAL-2 passed with cost 24
+KOZA-POLYNOMIAL-2 passed with cost 15
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 45.15365067696117
+KOZA-POLYNOMIAL-2 passed with cost 13
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 34.77007930580777
+KOZA-POLYNOMIAL-2 passed with cost 28
+KOZA-POLYNOMIAL-2 passed with cost 26
+KOZA-POLYNOMIAL-2 passed with cost 7
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 54.371399914253885
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 45.15365067696117
+Evaluation took:
+  17.628 seconds of real time
+  16.865868 seconds of total run time (16.144798 user, 0.721070 system)
+  [ Run times consist of 0.924 seconds GC time, and 15.942 seconds non-GC time. ]
+  95.68% CPU
+  42,093,982,017 processor cycles
+  891,487,112 bytes consed
+
+PLOP> (time (dorepeat 30 (run-benchmark 'easy-bool #'run-lllsc)))
+EASY-BOOL passed with cost 114
+EASY-BOOL passed with cost 180
+EASY-BOOL passed with cost 79
+EASY-BOOL passed with cost 89
+EASY-BOOL passed with cost 63
+EASY-BOOL passed with cost 81
+EASY-BOOL passed with cost 96
+EASY-BOOL passed with cost 59
+EASY-BOOL passed with cost 123
+EASY-BOOL passed with cost 52
+EASY-BOOL passed with cost 100
+EASY-BOOL passed with cost 97
+EASY-BOOL passed with cost 40
+EASY-BOOL passed with cost 32
+EASY-BOOL passed with cost 34
+EASY-BOOL passed with cost 53
+EASY-BOOL passed with cost 25
+EASY-BOOL passed with cost 19
+EASY-BOOL passed with cost 102
+EASY-BOOL passed with cost 50
+EASY-BOOL passed with cost 39
+EASY-BOOL passed with cost 77
+EASY-BOOL passed with cost 63
+EASY-BOOL passed with cost 73
+EASY-BOOL passed with cost 101
+EASY-BOOL passed with cost 82
+EASY-BOOL passed with cost 106
+EASY-BOOL passed with cost 34
+EASY-BOOL passed with cost 25
+EASY-BOOL passed with cost 79
+Evaluation took:
+  0.879 seconds of real time
+  0.852517 seconds of total run time (0.837245 user, 0.015272 system)
+  [ Run times consist of 0.044 seconds GC time, and 0.809 seconds non-GC time. ]
+  97.04% CPU
+  2,099,490,012 processor cycles
+  69,828,344 bytes consed
+
+with the weight on the prior tuned way down
+PLOP> (time (dorepeat 30 (run-benchmark 'even-parity-3 #'run-lllsc)))
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 3185
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 2601
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 1110
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 2225
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+Evaluation took:
+  188.551 seconds of real time
+  168.396752 seconds of total run time (157.226034 user, 11.170718 system)
+  [ Run times consist of 16.313 seconds GC time, and 152.084 seconds non-GC time. ]
+  89.31% CPU
+  439,501,830,606 processor cycles
+  9,523,534,472 bytes consed
+  
+
+3/18 
+after some profiling and performance tuning
+
+PLOP> (time (dorepeat 30 (run-benchmark 'easy-bool #'run-lllsc)))
+EASY-BOOL passed with cost 74
+EASY-BOOL passed with cost 46
+EASY-BOOL passed with cost 69
+EASY-BOOL passed with cost 42
+EASY-BOOL passed with cost 48
+EASY-BOOL passed with cost 71
+EASY-BOOL passed with cost 149
+EASY-BOOL passed with cost 99
+EASY-BOOL passed with cost 96
+EASY-BOOL passed with cost 50
+EASY-BOOL passed with cost 25
+EASY-BOOL passed with cost 46
+EASY-BOOL passed with cost 17
+EASY-BOOL passed with cost 66
+EASY-BOOL passed with cost 52
+EASY-BOOL passed with cost 114
+EASY-BOOL passed with cost 69
+EASY-BOOL passed with cost 95
+EASY-BOOL passed with cost 101
+EASY-BOOL passed with cost 96
+EASY-BOOL passed with cost 89
+EASY-BOOL passed with cost 145
+EASY-BOOL passed with cost 57
+EASY-BOOL passed with cost 67
+EASY-BOOL passed with cost 47
+EASY-BOOL passed with cost 58
+EASY-BOOL passed with cost 149
+EASY-BOOL passed with cost 88
+EASY-BOOL passed with cost 149
+EASY-BOOL passed with cost 58
+Evaluation took:
+  0.736 seconds of real time
+  0.720532 seconds of total run time (0.706793 user, 0.013739 system)
+  [ Run times consist of 0.052 seconds GC time, and 0.669 seconds non-GC time. ]
+  97.96% CPU
+  1,758,456,072 processor cycles
+  61,233,376 bytes consed
+
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 passed with cost 77
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 35.36164338069637
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 38.08315171116185
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 35.36164338069637
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 35.36164338069637
+KOZA-POLYNOMIAL-2 passed with cost 40
+KOZA-POLYNOMIAL-2 passed with cost 141
+KOZA-POLYNOMIAL-2 passed with cost 27
+KOZA-POLYNOMIAL-2 passed with cost 59
+KOZA-POLYNOMIAL-2 passed with cost 13
+KOZA-POLYNOMIAL-2 passed with cost 17
+KOZA-POLYNOMIAL-2 passed with cost 103
+KOZA-POLYNOMIAL-2 passed with cost 47
+KOZA-POLYNOMIAL-2 passed with cost 398
+KOZA-POLYNOMIAL-2 passed with cost 156
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 35.36164338069637
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 35.36164338069637
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 35.36164338069637
+KOZA-POLYNOMIAL-2 passed with cost 36
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 43.20570304987847
+KOZA-POLYNOMIAL-2 passed with cost 11
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 84.38734657148494
+KOZA-POLYNOMIAL-2 passed with cost 55
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 63.890636025418075
+KOZA-POLYNOMIAL-2 passed with cost 194
+KOZA-POLYNOMIAL-2 passed with cost 47
+KOZA-POLYNOMIAL-2 passed with cost 46
+KOZA-POLYNOMIAL-2 passed with cost 43
+KOZA-POLYNOMIAL-2 passed with cost 45
+KOZA-POLYNOMIAL-2 passed with cost 17
+Evaluation took:
+  8.839 seconds of real time
+  8.541513 seconds of total run time (8.149238 user, 0.392275 system)
+  [ Run times consist of 0.611 seconds GC time, and 7.931 seconds non-GC time. ]
+  96.64% CPU
+  21,055,874,679 processor cycles
+  514,310,264 bytes consed
+
+3/23 sanity check, should be the same as before (new lru, update-freqs)
+or maybe slightly slower
+
+PLOP> (time (dorepeat 30 (run-benchmark 'easy-bool #'run-lllsc)))
+EASY-BOOL passed with cost 56
+EASY-BOOL passed with cost 58
+EASY-BOOL passed with cost 40
+EASY-BOOL passed with cost 61
+EASY-BOOL passed with cost 29
+EASY-BOOL passed with cost 195
+EASY-BOOL passed with cost 64
+EASY-BOOL passed with cost 89
+EASY-BOOL passed with cost 91
+EASY-BOOL passed with cost 39
+EASY-BOOL passed with cost 27
+EASY-BOOL passed with cost 102
+EASY-BOOL passed with cost 241
+EASY-BOOL passed with cost 27
+EASY-BOOL passed with cost 38
+EASY-BOOL passed with cost 137
+EASY-BOOL passed with cost 42
+EASY-BOOL passed with cost 113
+EASY-BOOL passed with cost 22
+EASY-BOOL passed with cost 121
+EASY-BOOL passed with cost 12
+EASY-BOOL passed with cost 45
+EASY-BOOL passed with cost 83
+EASY-BOOL passed with cost 69
+EASY-BOOL passed with cost 60
+EASY-BOOL passed with cost 29
+EASY-BOOL passed with cost 141
+EASY-BOOL passed with cost 67
+EASY-BOOL passed with cost 41
+EASY-BOOL passed with cost 95
+Evaluation took:
+  0.712 seconds of real time
+  0.686922 seconds of total run time (0.647800 user, 0.039122 system)
+  [ Run times consist of 0.085 seconds GC time, and 0.602 seconds non-GC time. ]
+  96.49% CPU
+  1,700,348,958 processor cycles
+  53,165,472 bytes consed
+  
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 passed with cost 42
+KOZA-POLYNOMIAL-2 passed with cost 25
+KOZA-POLYNOMIAL-2 passed with cost 8
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 70.87766591572975
+KOZA-POLYNOMIAL-2 passed with cost 19
+KOZA-POLYNOMIAL-2 passed with cost 53
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 63.226980627166895
+KOZA-POLYNOMIAL-2 passed with cost 20
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 61.41639681398886
+KOZA-POLYNOMIAL-2 passed with cost 11
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 54.29922081185123
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 56.712131042526835
+KOZA-POLYNOMIAL-2 passed with cost 14
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 passed with cost 26
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 73.52131137641408
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 31.19026767228909
+KOZA-POLYNOMIAL-2 passed with cost 19
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 60.148462738261486
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 75.89808098320961
+KOZA-POLYNOMIAL-2 passed with cost 132
+KOZA-POLYNOMIAL-2 passed with cost 78
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 passed with cost 40
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 passed with cost 64
+Evaluation took:
+  12.840 seconds of real time
+  12.378013 seconds of total run time (11.888926 user, 0.489087 system)
+  [ Run times consist of 0.742 seconds GC time, and 11.637 seconds non-GC time. ]
+  96.40% CPU
+  30,610,198,260 processor cycles
+  668,686,104 bytes consed
+
+3/24 added a panic factor
+
+PLOP> (time (dorepeat 30 (run-benchmark 'even-parity-3 #'run-lllsc)))
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 3098
+EVEN-PARITY-3 passed with cost 2827
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 1885
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 2300
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+Evaluation took:
+  125.858 seconds of real time
+  121.849058 seconds of total run time (115.923486 user, 5.925572 system)
+  [ Run times consist of 11.567 seconds GC time, and 110.283 seconds non-GC time. ]
+  96.81% CPU
+  300,557,401,587 processor cycles
+  7,292,978,928 bytes consed
+
+PLOP> (time (run-benchmarks #'run-lllsc 5000))
+KOZA-POLYNOMIAL-1 passed with cost 7
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 58.943257611910674
+EASY-BOOL passed with cost 72
+MULTIPLEXER-1 passed with cost 28
+DEJONG-SPHERE-3 passed with cost 505
+DEJONG-SPHERE-4 passed with cost 662
+KOZA-POLYNOMIAL-3 failed with cost 900, best score was 69.75480106975152
+LINEAR-FUNS-1 failed with cost 1000, best score was 8.887586798671045
+DEJONG-SPHERE-5 passed with cost 491
+EVEN-PARITY-2 passed with cost 69
+DEJONG-SPHERE-6 passed with cost 897
+DEJONG-SPHERE-7 passed with cost 1157
+KOZA-POLYNOMIAL-4 failed with cost 1600, best score was 72.00164826389948
+DEJONG-SPHERE-8 passed with cost 1135
+DEJONG-SPHERE-9 passed with cost 1226
+LINEAR-FUNS-2 failed with cost 2000, best score was 16.322209490792964
+DEJONG-SPHERE-10 passed with cost 1278
+KOZA-POLYNOMIAL-5 failed with cost 2500, best score was 30.109714883837068
+LINEAR-FUNS-3 failed with cost 3000, best score was 22.177453678540765
+DEJONG-ROSENBROCK-2 failed with cost 3000, best score was 11.266403167757607
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+KOZA-POLYNOMIAL-6 failed with cost 3600, best score was 57.878155232582046
+ONEMAX-60 passed with cost 411
+LINEAR-FUNS-4 failed with cost 4000, best score was 25.829262273929746
+ONEMAX-120 passed with cost 1007
+DEJONG-ROSENBROCK-3 failed with cost 4500, best score was 2.101145003065576
+ONEMAX-180 passed with cost 2074
+KOZA-POLYNOMIAL-7 failed with cost 4900, best score was 42.88424515016003
+LINEAR-FUNS-5 failed with cost 5000, best score was 38.30789742438084
+DEJONG-STEP-5 passed with cost 32
+DEJONG-FOXHOLES-2 failed with cost 5000, best score was 20.30430951916727
+success rate: 16 / 31
+Evaluation took:
+  63.869 seconds of real time
+  61.790820 seconds of total run time (58.957305 user, 2.833515 system)
+  [ Run times consist of 3.907 seconds GC time, and 57.884 seconds non-GC time. ]
+  96.75% CPU
+  152,525,247,750 processor cycles
+  3,591,369,560 bytes consed
+
+3/27 implemented and integrated dyads and super-lru
+PLOP> (time (run-tests))
+TOTAL: 33974 assertions passed, 0 failed, 0 execution errors.
+Evaluation took:
+  8.282 seconds of real time
+  7.832231 seconds of total run time (7.674868 user, 0.157363 system)
+  [ Run times consist of 0.584 seconds GC time, and 7.249 seconds non-GC time. ]
+  94.57% CPU
+  78 forms interpreted
+  3,960 lambdas converted
+  19,778,565,159 processor cycles
+  649,683,664 bytes consed
+
+PLOP> (time (dorepeat 30 (run-benchmark 'easy-bool #'run-lllsc)))
+EASY-BOOL passed with cost 43
+EASY-BOOL passed with cost 56
+EASY-BOOL passed with cost 36
+EASY-BOOL passed with cost 69
+EASY-BOOL passed with cost 68
+EASY-BOOL passed with cost 136
+EASY-BOOL passed with cost 92
+EASY-BOOL passed with cost 42
+EASY-BOOL passed with cost 49
+EASY-BOOL passed with cost 51
+EASY-BOOL passed with cost 85
+EASY-BOOL passed with cost 128
+EASY-BOOL passed with cost 48
+EASY-BOOL passed with cost 65
+EASY-BOOL passed with cost 32
+EASY-BOOL passed with cost 145
+EASY-BOOL passed with cost 27
+EASY-BOOL passed with cost 46
+EASY-BOOL passed with cost 80
+EASY-BOOL passed with cost 66
+EASY-BOOL passed with cost 41
+EASY-BOOL passed with cost 58
+EASY-BOOL passed with cost 57
+EASY-BOOL passed with cost 63
+EASY-BOOL passed with cost 59
+EASY-BOOL passed with cost 108
+EASY-BOOL passed with cost 89
+EASY-BOOL passed with cost 37
+EASY-BOOL passed with cost 99
+EASY-BOOL passed with cost 67
+Evaluation took:
+  0.701 seconds of real time
+  0.665429 seconds of total run time (0.630993 user, 0.034436 system)
+  [ Run times consist of 0.053 seconds GC time, and 0.613 seconds non-GC time. ]
+  94.86% CPU
+  1,674,068,535 processor cycles
+  54,206,192 bytes consed
+
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 passed with cost 11
+KOZA-POLYNOMIAL-2 passed with cost 15
+KOZA-POLYNOMIAL-2 passed with cost 31
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 passed with cost 42
+KOZA-POLYNOMIAL-2 passed with cost 25
+KOZA-POLYNOMIAL-2 passed with cost 8
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 70.87766591572975
+KOZA-POLYNOMIAL-2 passed with cost 19
+KOZA-POLYNOMIAL-2 passed with cost 53
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 63.226980627166895
+KOZA-POLYNOMIAL-2 passed with cost 20
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 61.41639681398886
+KOZA-POLYNOMIAL-2 passed with cost 11
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 54.29922081185123
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 56.712131042526835
+KOZA-POLYNOMIAL-2 passed with cost 14
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 passed with cost 26
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 73.52131137641408
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 31.19026767228909
+KOZA-POLYNOMIAL-2 passed with cost 19
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 60.148462738261486
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 75.89808098320961
+KOZA-POLYNOMIAL-2 passed with cost 132
+KOZA-POLYNOMIAL-2 passed with cost 78
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+Evaluation took:
+  12.262 seconds of real time
+  11.878257 seconds of total run time (11.390993 user, 0.487264 system)
+  [ Run times consist of 0.713 seconds GC time, and 11.166 seconds non-GC time. ]
+  96.87% CPU
+  29,281,965,156 processor cycles
+  641,685,136 bytes consed
+  
+
+
+((+ SIMP NIL) 0 0 0 0 0
+ ((* SIMP
+     (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+                     RING-OP-IDENTITIES))
+  1 1 1 1 1 X ((+ SIMP NIL) 0 0 0 0
+	       ((EXP SIMP
+		     (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+				     RING-OP-IDENTITIES))
+		((* SIMP
+		    (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+				    RING-OP-IDENTITIES))
+		 1 1 1
+		 ((+ SIMP
+		     (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+				     RING-OP-IDENTITIES))
+		  1.0f0 ((SIN SIMP
+			      (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+					      RING-OP-IDENTITIES))
+			 ((+ SIMP (FLATTEN-ASSOCIATIVE)) 0
+			  ((* SIMP
+			      (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+					      RING-OP-IDENTITIES))
+			   -0.01 X))))
+		 1
+		 ((+ SIMP
+		     (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+				     RING-OP-IDENTITIES))
+		  0 0 0 0 0 X
+		  ((* SIMP
+		      (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+				      RING-OP-IDENTITIES))
+		   -1.0 1 1 ((+ SIMP (FLATTEN-ASSOCIATIVE)) 0.99 0.0f0) 1
+		   ((+ SIMP NIL) 0 0 0 0
+		    ((EXP SIMP
+			  (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+					  RING-OP-IDENTITIES))
+		     ((+ SIMP NIL) 0 0 0 0 0 ((* SIMP
+						 (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+								 RING-OP-IDENTITIES))
+					      3.5 1 1 1 1
+					      ((EXP SIMP
+						    (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+								    RING-OP-IDENTITIES))
+					       X)
+					      ((+ SIMP NIL) 0 0 0 0 ((LOG SIMP
+									  (MAXIMA-PREPARE IF-IDENTITIES FLATTEN-ASSOCIATIVE
+											  RING-OP-IDENTITIES))
+								     1)))))))))))))
+								     ((+ SIMP NIL) 0 0 0 0 0 ((* SIMP #) 1 1 1 (# 1.0f0 #) X)))))))))))))))
+
+PLOP> (profile '(run-benchmark 'koza-polynomial-2 #'run-lllsc))
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 61.842009782786974
+measuring PROFILE overhead..done
+  seconds  |    consed   |   calls   |  sec/call  |  name  
+-------------------------------------------------------------
+     0.910 |  32,370,112 |     1,364 |   0.000667 | VISIT-ROOT-ONLY
+     0.068 |     396,856 |   105,019 |   0.000001 | SET-MARK
+     0.043 |           0 |       723 |   0.000060 | LRU-LOOKUP
+     0.023 |     159,448 |       185 |   0.000127 | LRU-GET
+     0.018 |       4,096 |    11,524 |   0.000002 | FN-BODY
+     0.018 |   3,602,776 |    21,272 |   0.000001 | CLEAR-SIMP
+     0.017 |   1,346,912 |     7,004 |   0.000002 | ADDR-EQUAL-TWIDDLES
+     0.012 |   1,734,936 |     1,649 |   0.000007 | COUNT-BITS
+     0.012 |   1,048,136 |     5,709 |   0.000002 | FN-ARGS
+     0.011 |   2,484,728 |     4,857 |   0.000002 | ARG-TYPES
+     0.010 |       4,088 |    21,312 |  0.0000004 | ASSOCIATIVEP
+     0.008 |   3,418,088 |     6,640 |   0.000001 | ATOM-PRIOR-PENALTY
+     0.007 |       4,096 |    18,910 |  0.0000004 | IFN
+     0.007 |           0 |     2,598 |   0.000003 | EQFN
+     0.007 |           0 |    14,203 |  0.0000005 | ICAR
+     0.006 |           0 |   105,370 |  0.0000001 | SIMPP
+     0.006 |     257,920 |       723 |   0.000008 | GENERATE
+     0.005 |     114,520 |     2,042 |   0.000002 | MAKE-KNOB
+     0.004 |           0 |     1,488 |   0.000003 | REDUCTIONS
+     0.004 |           0 |     4,857 |   0.000001 | ARITY
+     0.004 |     368,216 |     1,050 |   0.000004 | MAKE-REPLACER-KNOB
+     0.004 |   1,408,208 |       992 |   0.000004 | NUMARG-TERMS
+     0.003 |     122,824 |     2,100 |   0.000002 | SPLIT-BY-COEFFICIENTS
+     0.003 |     380,152 |       723 |   0.000004 | MAKE-SAMPLER
+     0.003 |   1,028,088 |     2,042 |   0.000002 | KNOB-NBITS
+     0.003 |     298,800 |       723 |   0.000004 | TWIDDLES-MAGNITUDE
+     0.003 |           0 |     6,290 |  0.0000004 | EQL-LENGTH-P
+     0.003 |   1,351,088 |     7,561 |  0.0000003 | EPSILON-SIZE
+     0.003 |           0 |     1,401 |   0.000002 | MUNG1S
+     0.002 |           0 |    22,988 |  0.0000001 | SYMBOLS-WITH-TYPE
+     0.002 |           0 |       724 |   0.000003 | TUPLE-VALUE-P
+     0.002 |   1,878,800 |    11,090 |  0.0000002 | UNBIND-SYMBOL
+     0.002 |     226,880 |       504 |   0.000004 | MAKE-ADDR
+     0.002 |      61,408 |       185 |   0.000009 | LRU-IMMORTALIZE
+     0.001 |      20,464 |       212 |   0.000007 | ERF
+     0.001 |      16,376 |     1,455 |   0.000001 | MAKE-LAMBDA-LIST
+     0.001 |     106,448 |       732 |   0.000002 | MKLAMBDA-LIST
+     0.001 |           0 |       681 |   0.000002 | LRU-NODE-IMMORTAL-P
+     0.001 |     356,208 |     2,100 |   0.000001 | DUAL-DECOMPOSE
+     0.001 |           0 |     2,042 |   0.000001 | BIG-EPSILON
+     0.001 |     192,368 |     1,050 |   0.000001 | KEYS
+     0.001 |           0 |     3,376 |  0.0000002 | VALUEDP
+     0.001 |           0 |       110 |   0.000007 | NUM-DUAL
+     0.001 |           0 |       988 |   0.000001 | SET-ARG0
+     0.001 |           0 |       185 |   0.000003 | LRU-FULL-P
+     0.001 |      12,264 |       185 |   0.000003 | MAKE-PNODE
+    0.0003 |     684,032 |    49,527 |  0.0000000 | PCONS
+    0.0003 |           0 |       723 |  0.0000004 | RANDOM-PICK-PROB
+    0.0003 |      16,352 |       723 |  0.0000004 | PROBLEM-LOSER-BOUND
+    0.0002 |           0 |     5,709 |  0.0000000 | LAMBDA-LIST-ARGNAMES
+    0.0001 |           0 |     2,042 |  0.0000000 | LITTLE-EPSILON
+     0.000 |   1,547,528 |     9,313 |   0.000000 | VALUE-TYPE
+     0.000 |           0 |    45,088 |   0.000000 | CANONP
+     0.000 |     135,080 |       212 |   0.000000 | UPDATE-FREQUENCIES-LOSER
+     0.000 |     282,520 |     1,777 |   0.000000 | BIND-TYPE
+     0.000 |     323,424 |     2,100 |   0.000000 | SPLIT-BY-OP
+     0.000 |           0 |         1 |   0.000000 | MAKE-ARG-NAMES
+     0.000 |           0 |     1,441 |   0.000000 | KNOB-SETTING-DISTANCE
+     0.000 |           0 |         1 |   0.000000 | MAKE-PROBLEM-RAW
+     0.000 |           0 |       370 |   0.000000 | LRU-NODE-DISCONNECTED-P
+     0.000 |      32,728 |       212 |   0.000000 | PROBLEM-ERR-MOMENTS
+     0.000 |      28,648 |         3 |   0.000000 | MIN-ELEMENT
+     0.000 |       8,176 |       185 |   0.000000 | MAKE-LRU-NODE
+     0.000 |           0 |         1 |   0.000000 | MAKE-ADDR-ROOT
+     0.000 |  10,888,640 |       723 |   0.000000 | SCORE-EXPR-UNLESS-LOSER
+     0.000 |           0 |     1,511 |   0.000000 | SET-CANON-PARENT
+     0.000 |     786,000 |     2,250 |   0.000000 | COPY-CANON
+     0.000 |      20,480 |         8 |   0.000000 | REP-NBITS
+     0.000 |           0 |    58,479 |   0.000000 | AFN
+     0.000 |           0 |     6,640 |   0.000000 | N-SYMBOLS-WITH-TYPE
+     0.000 |      14,200 |         8 |   0.000000 | COMPUTE-KNOBS
+     0.000 |           0 |       724 |   0.000000 | PUREP
+     0.000 |   3,049,496 |     9,313 |   0.000000 | LOOKUP-VALUE-TYPE
+     0.000 |           0 |    22,716 |   0.000000 | LAMBDAP
+     0.000 |       4,088 |         8 |   0.000000 | CCONS-LAMBDA
+     0.000 |     712,400 |     6,450 |   0.000000 | CONST-ATOM-P
+     0.000 |   4,895,776 |     9,393 |   0.000000 | CUMMULATIVE-FIXED-POINT
+     0.000 |     281,592 |         1 |   0.000000 | MAKE-LRU
+     0.000 |     540,312 |     1,511 |   0.000000 | CCONS
+     0.000 |   4,379,784 |     6,954 |   0.000000 | PRIOR-PENALTY
+     0.000 |      77,768 |       624 |   0.000000 | SPLIT-PRODUCT-OF-SUMS
+     0.000 |           0 |         1 |   0.000000 | SCORE-EXPR
+     0.000 |     122,880 |     4,857 |   0.000000 | NTIMES
+     0.000 |       4,096 |         8 |   0.000000 | LIST-TYPE-P
+     0.000 |           0 |       185 |   0.000000 | DYAD-RESULT
+     0.000 |           0 |         1 |   0.000000 | MAKE-PROBLEM
+     0.000 |       4,096 |     1,050 |   0.000000 | MAPHASH-KEYS
+     0.000 |           0 |         1 |   0.000000 | COMPETITIVE-LEARN
+     0.000 |   4,908,136 |    10,716 |   0.000000 | MUNG
+     0.000 |           0 |    30,715 |   0.000000 | CLOSUREP
+     0.000 |           0 |    20,134 |   0.000000 | UNMARK
+     0.000 |           0 |    19,686 |   0.000000 | SINGLEP
+     0.000 |       4,096 |         8 |   0.000000 | MAKE-REP
+     0.000 |     352,016 |       992 |   0.000000 | MAKE-INSERTER-KNOB
+     0.000 |           0 |         1 |   0.000000 | CURRENT-PROBLEM
+     0.000 |     282,536 |       723 |   0.000000 | RANDOM-PICK
+     0.000 |     171,896 |        27 |   0.000000 | CANONIZE
+     0.000 |      65,512 |       212 |   0.000000 | CONDITIONAL-TAIL-EXPECTATION
+     0.000 |   3,712,848 |    13,590 |   0.000000 | CONST-EXPR-P
+     0.000 |     118,728 |       723 |   0.000000 | UPDATE-FREQUENCIES
+     0.000 |   3,352,528 |    18,891 |   0.000000 | RING-OP-P
+     0.000 |   3,791,048 |    11,090 |   0.000000 | BIND-VALUE
+     0.000 |   3,311,872 |     4,300 |   0.000000 | VISIT-DOWNWARDS
+     0.000 |           0 |       185 |   0.000000 | PNODE-ERR
+     0.000 |  50,725,568 |   100,319 |   0.000000 | MAPARGS
+     0.000 |   1,346,792 |     8,298 |   0.000000 | CONVERT-BOOLS
+     0.000 |       4,088 |    50,189 |   0.000000 | SHORT-CIRCUITS-P
+     0.000 |     184,184 |       723 |   0.000000 | ERR-DIVERGENCE
+     0.000 |     159,680 |       724 |   0.000000 | VALUE-TO-EXPR
+     0.000 |  38,324,632 |   162,467 |   0.000000 | PEVAL-CL
+     0.000 |       4,096 |         8 |   0.000000 | ENUM-KNOBS
+     0.000 |           0 |         1 |   0.000000 | MAKE-MPOP
+     0.000 |           0 |    40,368 |   0.000000 | GETVALUE
+     0.000 |     270,208 |       724 |   0.000000 | FIND-CONST-REDUCIBLE
+     0.000 |   2,885,960 |     2,590 |   0.000000 | KNOBS-AT
+     0.000 |           0 |       724 |   0.000000 | COMMUTATIVEP
+     0.000 |           0 |    28,132 |   0.000000 | IDENTITY-ELEM
+     0.000 |   1,580,072 |     2,598 |   0.000000 | MAP-KNOBS
+     0.000 |     491,088 |     1,050 |   0.000000 | NUMARG-SETTINGS
+     0.000 |           0 |    20,134 |   0.000000 | CANON-PARENT
+     0.000 |     241,608 |       723 |   0.000000 | SAMPLE-PICK
+     0.000 |   5,289,232 |    10,831 |   0.000000 | UNMUNG
+     0.000 |   7,602,432 |     6,986 |   0.000000 | VISIT-UPWARDS
+     0.000 |     577,264 |    11,307 |   0.000000 | PCLONE
+     0.000 |       4,096 |         1 |   0.000000 | RUN-BENCHMARK
+     0.000 |           0 |    43,610 |   0.000000 | CANON-EXPR
+     0.000 |           0 |         1 |   0.000000 | FLATNESS
+     0.000 |     970,448 |     5,689 |   0.000000 | PEQUAL
+     0.000 |           0 |     9,313 |   0.000000 | LOOKUP-ATOM-TYPE
+     0.000 |     245,584 |     1,476 |   0.000000 | SPLIT-SUM-OF-PRODUCTS
+     0.000 |   3,344,656 |    13,381 |   0.000000 | FROM-MAXIMA
+     0.000 |  76,633,112 |   246,006 |   0.000000 | FIXED-POINT
+     0.000 |           0 |         8 |   0.000000 | ACAR
+     0.000 |           0 |         8 |   0.000000 | GET-REP
+     0.000 |           0 |         2 |   0.000000 | DEFAULT-EXPR
+     0.000 |     642,752 |       723 |   0.000000 | MAKE-EXPR-FROM-TWIDDLES
+     0.000 |   3,381,424 |    12,506 |   0.000000 | TO-MAXIMA
+     0.000 |      36,832 |         1 |   0.000000 | RUN-LLLSC
+     0.000 |           0 |         8 |   0.000000 | STUCKNESS-BOUND
+     0.000 |     139,160 |       496 |   0.000000 | MPOP-INSERT
+     0.000 |     648,080 |         1 |   0.000000 | LL-OPTIMIZE
+     0.000 |   2,836,896 |     8,300 |   0.000000 | PEVAL
+     0.000 |           0 |     3,483 |   0.000000 | KNOB-ARITY
+     0.000 |      94,136 |         1 |   0.000000 | COMPETITIVE-INTEGRATE
+     0.000 |  27,194,912 |    45,088 |   0.000000 | CANON-CLEAN
+     0.000 |      81,896 |       723 |   0.000000 | MKLAMBDA
+     0.000 |           0 |         1 |   0.000000 | MAX-UTILITY-ELEM
+     0.000 |       8,184 |        40 |   0.000000 | CANONIZE-ARGS
+     0.000 |  13,177,384 |    72,331 |   0.000000 | MARK-SIMP
+     0.000 |     188,416 |     7,905 |   0.000000 | COPY-RANGE
+     0.000 |   1,055,832 |     4,313 |   0.000000 | REDUCT
+-------------------------------------------------------------
+     1.249 | 344,057,320 | 1,718,086 |            | Total
+
+estimated total profiling overhead: 8.26 seconds
+overhead estimation parameters:
+  1.f-8s/call, 4.81f-6s total profiling, 2.416f-6s internal profiling
+
+These functions were not called:
+ ADDR-EQUAL ADDR-P (SETF ADDR-PREP) ADDR-PREP ADDR-REP ADDR-ROOT-P
+ (SETF ADDR-TWIDDLES) ADDR-TWIDDLES ANCESTORP APPEND-IDENTITIES APPROX=
+ ARG-TYPES-P ARG0 ARG1 ARG2 ARG3 ARG4 ARG5 ARG6 ARG7 ARG8 ARGMAX ARGMIN
+ ARGS ARGS-TOTAL-CMP ARGS-TOTAL-ORDER ATOM-ELSE-FN ATOM-TYPE
+ (SETF BENCHMARK-COST) BENCHMARK-COST (SETF BENCHMARK-NAME) BENCHMARK-NAME
+ BENCHMARK-P (SETF BENCHMARK-SCORERS) BENCHMARK-SCORERS
+ (SETF BENCHMARK-START) BENCHMARK-START (SETF BENCHMARK-TERMINATIONP)
+ BENCHMARK-TERMINATIONP (SETF BENCHMARK-TYPE) BENCHMARK-TYPE BIG-BOOL-TEST
+ BINARY-EXPR-P BOOL-DUAL BOOL-HILLCLIMB-WITH-TARGET-FN
+ BOOL-HILLCLIMB-WITH-TARGET-TRUTH-TABLE CANDIDATES CANONIZE-FROM-TEMPLATE
+ CARTESIAN-PROD CLEAR-ENF CLEAR-REDUCTIONS CLRDAG COLLECT-BENCHMARKS
+ CONST-VALUE-P CONTEXT-EMPTY-P CONTEXT-P (SETF CONTEXT-PROBLEM-STACK)
+ CONTEXT-PROBLEM-STACK (SETF CONTEXT-SYMBOL-BINDINGS)
+ CONTEXT-SYMBOL-BINDINGS (SETF CONTEXT-TYPE-MAP) CONTEXT-TYPE-MAP
+ CONVERT-BOOL-ATOM COPY-ADDR COPY-BENCHMARK COPY-CONTEXT COPY-DYAD
+ COPY-HASH-TABLE COPY-KNOB COPY-LAMBDA-LIST COPY-LRU COPY-LRU-NODE
+ COPY-MPOP COPY-NGRAM-MODEL COPY-NGRAM-RECORD COPY-PNODE
+ COPY-PNODE-DISTANCE-CACHE COPY-PROBLEM COPY-REP COUNT-COST CROSS-PROD
+ DAG-INSERT-EDGE DAG-INSERT-NODE DAG-ORDER-INSERT DAG-SINK-P DAG-SORTED-P
+ DAG-SOURCE-P DELETE-ADJACENT-DUPLICATES DESCENDANTP DFS DOMINANCE
+ DOMINANT-AND-COMMAND DOMINANT-AND-COMMAND-CLEAR-ROOT (SETF DYAD-ARG)
+ DYAD-ARG DYAD-P (SETF DYAD-RESULT) ELIMINATE-DIVISION EMPTYP ENUM-BINDINGS
+ ENUM-EXACT-EXPRS ENUM-EXPRS ENUM-NEIGHBORS ENUM-SUMS EVAL-CONST EVENS
+ EXACT-SIMP-P EXPECTED-UTILITY EXPR-SIZE EXPR-TYPE EXTRACT-LITERAL
+ FIND-TYPE-OF FLATTEN-ASSOCIATIVE FN FREE-VARIABLES FULLY-REDUCED-P
+ FUNCALL-TYPE FUNCTION-TYPE-P GENNAME GETTYPE GROUP-EQUALS HAS-KEY-P
+ HASH-TABLE-EMPTY-P HASHMAPCAN HILLCLIMB HILLCLIMB-BENCHMARKER HIST
+ IDENTITYP IF-IDENTITIES IMPULSE INCF-NGRAM INCLUDESP INCLUSION-GRADES
+ INIT-CONTEXT INSERT-IF INSERT-NGRAM INSERT-WORD INTEGRATE-ASSUMPTIONS
+ INTERLEAVE INTERSECTION-TYPE INVERSE-DISTRIBUTION INVERT-BOOL IOTA ISA
+ JUNCTORP KNOB-P (SETF KNOB-SETTERS) KNOB-SETTERS
+ (SETF KNOB-SETTING-DISTANCE-FN) KNOB-SETTING-DISTANCE-FN LAMBDA-LIST-P
+ LAMBDA-TYPE LITERALP LITVAR LITVARIABLE LLLSC LONGERP LOOKUP-EXPR-TYPE
+ LOOKUP-ID LOOKUP-LAMBDA-TYPE LOOKUP-NGRAM LOOKUP-WORD (SETF LRU-CACHE)
+ LRU-CACHE (SETF LRU-F) LRU-F LRU-MORTALIZE (SETF LRU-N) LRU-N
+ (SETF LRU-NODE-ARG) LRU-NODE-ARG (SETF LRU-NODE-NEXT) LRU-NODE-NEXT
+ LRU-NODE-P (SETF LRU-NODE-PREV) LRU-NODE-PREV (SETF LRU-NODE-RESULT)
+ LRU-NODE-RESULT LRU-P (SETF LRU-Q) LRU-Q MAKE-BENCHMARK MAKE-CONTEXT
+ MAKE-COUNT-OR-SCORE-TERMINATOR MAKE-DAG MAKE-DYAD MAKE-EXPR-FROM-ADDR
+ MAKE-EXPR-FROM-PNODE MAKE-GREEDY-SCORING-ACCEPTOR MAKE-IMPLS
+ MAKE-NGRAM-MODEL MAKE-NGRAM-RECORD MAKE-NUM-ABS-SCORER
+ MAKE-PNODE-DISTANCE-CACHE MAKE-PROBLEM-DESC MAKE-REP-RAW MAKE-TEST-REDUCER
+ MAKE-TRUTH-TABLE-SCORER MAP-ADJACENT MAP-CROSS-PROD MAP-EXPRS
+ MAP-INTERNAL-NODES MAP-KNOB-SETTINGS MAP-LITERALS MAP-NEIGHBORS MAP-NGRAMS
+ MAP-NONIDENTICAL-PAIRS MAP-SUBEXPRS-WITH-TYPE
+ MAP-SUBEXPRS-WITH-TYPE-AND-PARENT MAP-SUBTREES MAP-UPPER-TRIANGLE-PAIRS
+ MAPARGS-WITH-TYPES MAPCAR-NGRAMS MAPHASH-VALUES MAPPEND MARK MARKP MARKUP
+ MAX-ELEMENT MAX-POSITION MAXIMA-PREPARE MAXIMA-REDUCE MESH MKCLAUSE MKLIST
+ (SETF MPOP-ERR-DIVERGENCE-SUM) MPOP-ERR-DIVERGENCE-SUM
+ (SETF MPOP-ERR-DIVERGENCE-WEIGHT-SUM) MPOP-ERR-DIVERGENCE-WEIGHT-SUM
+ (SETF MPOP-NODES) MPOP-NODES (SETF MPOP-NSAMPLES) MPOP-NSAMPLES MPOP-P
+ (SETF MPOP-PROBLEM) MPOP-PROBLEM (SETF MPOP-SIZE) MPOP-SIZE NEGATE
+ NEGATESP NEXT-MOST-GENERAL-TYPES NGRAM-FREQ (SETF NGRAM-MODEL-IDS)
+ NGRAM-MODEL-IDS NGRAM-MODEL-P (SETF NGRAM-MODEL-TABLE) NGRAM-MODEL-TABLE
+ (SETF NGRAM-MODEL-UNIGRAM-COUNT) NGRAM-MODEL-UNIGRAM-COUNT
+ (SETF NGRAM-MODEL-WORDS) NGRAM-MODEL-WORDS (SETF NGRAM-RECORD-BEST-CHILD)
+ NGRAM-RECORD-BEST-CHILD (SETF NGRAM-RECORD-FREQ) NGRAM-RECORD-FREQ
+ NGRAM-RECORD-P (SETF NGRAM-RECORD-PARENT) NGRAM-RECORD-PARENT
+ NGRAM-TO-WORDS NMAPCAR NONDESTRUCTIVE-SORT NORMAL-CDF NSHUFFLE
+ NUM-HILLCLIMB-WITH-TARGET-FN NUM-HILLCLIMB-WITH-TARGET-VALUES NUM-TABLE
+ ODDS P2SEXPR PAD PAPPLY PARTITION-BY-DOMINANCE PFUNCALL PNODE-DISTANCE
+ (SETF PNODE-DISTANCE-CACHE-DIST) PNODE-DISTANCE-CACHE-DIST
+ PNODE-DISTANCE-CACHE-P (SETF PNODE-DISTANCE-CACHE-TMAG)
+ PNODE-DISTANCE-CACHE-TMAG PNODE-EQUAL (SETF PNODE-ERR) PNODE-P
+ (SETF PNODE-PTS) PNODE-PTS (SETF PNODE-REP) PNODE-REP (SETF PNODE-SCORES)
+ PNODE-SCORES (SETF PNODE-WEIGHTED-ERR-SQUARES-SUM)
+ PNODE-WEIGHTED-ERR-SQUARES-SUM (SETF PNODE-WEIGHTED-ERR-SUM)
+ PNODE-WEIGHTED-ERR-SUM PPNODE PPNODES PRINT* PRINT-WHEN-BEST-WRAPPER
+ (SETF PROBLEM-ERR-SQUARES-SUM) PROBLEM-ERR-SQUARES-SUM
+ (SETF PROBLEM-ERR-SUM) PROBLEM-ERR-SUM (SETF PROBLEM-LRU) PROBLEM-LRU
+ PROBLEM-P (SETF PROBLEM-PNODE-COUNT) PROBLEM-PNODE-COUNT
+ (SETF PROBLEM-SCORE-BUFFER) PROBLEM-SCORE-BUFFER (SETF PROBLEM-SCORERS)
+ PROBLEM-SCORERS PROFILE PUSH-NOTS QCANONIZE QREDUCT RANDBOOL RANDOM-NORMAL
+ RANDOM-SAMPLE RANDREMOVE READ-WORD REDUCE-BOOL-BY-CLAUSES REDUCE-CLAUSES
+ REDUCTSP REGISTER-REDUCTION REMOVE-ADJACENT-DUPLICATES
+ REMOVE-BOOL-DUPLICATES (SETF REP-CEXPR) REP-CEXPR (SETF REP-KNOBS)
+ REP-KNOBS REP-P RESTRICTED-TOURNAMENT-SELECT RING-OP-IDENTITIES RPLAC
+ RUN-BENCHMARKS RUN-EXPENSIVE-TESTS SAME-LENGTH-P SCORE-SMOOTHER SET-ARG1
+ SET-ARG2 SET-ARG3 SET-ARG4 SET-ARG5 SET-ARG6 SET-ARG7 SET-ARG8 SET-ARGS
+ SET-CANON-EXPR SET-FN SET-MARKUP SETVALUE SEXPR2P SHRINK-BY-NEGATION
+ SHRINK-NGRAM SHRINK-NGRAM-BACKWARDS SHRINKABLE-BY-NEGATION-P SHUFFLE
+ SORT-COMMUTATIVE SORT-COPY SORTEDP SPLIT SPLIT-IDENTITIES STALKP
+ STRICT-INCLUDES-P STRIP-MARKUP STRUCTURE-LIST STUPID-BACKOFF
+ SUBTRACT-SUPERVENING-CONSTRAINTS TABULATE TO-MODEL TOKENIZE TOTAL-CMP
+ TOTAL-ORDER TOUCH-HASH TRAIN-MODEL TREE-DIFF TREE-MATCHES TRUTH-TABLE
+ TRUTH-TABLE-HAMMING-DISTANCE TUPLE-TYPE-P TWIDDLES-DISTANCE TYPEDP
+ UNARY-EXPR-P UNION-TYPE UNIQ UPDATE-STRUCTURE VALIDATE-NODES WEAK-KICK
+ WEAK-KICK-UNTIL WHITESPACEP WORDS-TO-NGRAM XOR
+NIL
+PLOP> 
+
+two bugs:
+maxima
+closed networks of semantically stale points (e.g. linear-funs-2 or rosenbrock)
+
+the must be distinct because rosenbrock doesn't do an maxima reduction and is afflicted by #2
+
+can't compute cte due to numerical instability; (erf 5.436816906914561) = 0.9999999999999851
+   [Condition of type SIMPLE-ERROR]
+
+Backtrace:
+  0: (SB-KERNEL:ASSERT-ERROR (<= ERF 0.9999999999974404) NIL "can't compute cte due to numerical instability; (erf ~S) = ~S")[:EXTERNAL]
+  1: (CONDITIONAL-TAIL-EXPECTATION #<unavailable argument> #<unavailable argument> #<unavailable argument>)
+  2: (EXPECTED-UTILITY 2.437317006533549 1.454243511479095 -4432.218602079905 8105458.792017507 -609.0)
+  3: ((LAMBDA (X &AUX (Y (FUNCALL KEY X)))) ..)
+  4: (SB-IMPL::%MAP-FOR-EFFECT-ARITY-1 ..)
+  5: (MAX-ELEMENT ..)[:EXTERNAL]
+  6: (COMPETITIVE-LEARN ..)
+  7: (RUN-LLLSC ..)
+  8: (RUN-BENCHMARK EASY-BOOL #<FUNCTION RUN-LLLSC>)[:EXTERNAL]
+  9: ((LAMBDA ()))
+ 10: (SB-INT:SIMPLE-EVAL-IN-LEXENV (WHILE T (RUN-BENCHMARK 'EASY-BOOL #'RUN-LLLSC)) #<NULL-LEXENV>)
+ --more--
+
+3/30 - after bugfixing, note that another benchmark was simultaneously running
+
+PLOP> (time (dorepeat 300 (run-benchmark 'even-parity-3 #'run-lllsc)))
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 2034
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 1861
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 2145
+EVEN-PARITY-3 passed with cost 859
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 1136
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 2936
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 2436
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 2893
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 772
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 2579
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 2860
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 2667
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 1647
+EVEN-PARITY-3 passed with cost 3000
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 1614
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 2435
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 3047
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 1530
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 2514
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 2961
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 2965
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 2447
+EVEN-PARITY-3 passed with cost 2541
+EVEN-PARITY-3 passed with cost 2239
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 3161
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 1675
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 1360
+EVEN-PARITY-3 passed with cost 1412
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 2063
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 1462
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 1090
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 passed with cost 702
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 passed with cost 2061
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 1214.5849624872208
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+EVEN-PARITY-3 failed with cost 3187, best score was 621.1699249744415
+Evaluation took:
+  1436.383 seconds of real time
+  1130.496377 seconds of total run time (1020.509792 user, 109.986585 system)
+  [ Run times consist of 51.037 seconds GC time, and 1079.460 seconds non-GC time. ]
+  78.70% CPU
+  3,426,412,100,220 processor cycles
+  71,786,424,608 bytes consed
+  
+PLOP> (time (dorepeat 30 (run-benchmark 'easy-bool #'run-lllsc)))        
+EASY-BOOL passed with cost 138
+EASY-BOOL passed with cost 41
+EASY-BOOL passed with cost 105
+EASY-BOOL passed with cost 103
+EASY-BOOL passed with cost 54
+EASY-BOOL passed with cost 127
+EASY-BOOL passed with cost 42
+EASY-BOOL passed with cost 14
+EASY-BOOL passed with cost 58
+EASY-BOOL passed with cost 19
+EASY-BOOL passed with cost 135
+EASY-BOOL passed with cost 100
+EASY-BOOL passed with cost 82
+EASY-BOOL passed with cost 50
+EASY-BOOL passed with cost 57
+EASY-BOOL passed with cost 41
+EASY-BOOL passed with cost 26
+EASY-BOOL passed with cost 37
+EASY-BOOL passed with cost 105
+EASY-BOOL passed with cost 60
+EASY-BOOL passed with cost 47
+EASY-BOOL passed with cost 65
+EASY-BOOL passed with cost 27
+EASY-BOOL passed with cost 50
+EASY-BOOL passed with cost 32
+EASY-BOOL passed with cost 80
+EASY-BOOL passed with cost 54
+EASY-BOOL passed with cost 101
+EASY-BOOL passed with cost 37
+EASY-BOOL passed with cost 105
+Evaluation took:
+  0.686 seconds of real time
+  0.669884 seconds of total run time (0.634630 user, 0.035254 system)
+  [ Run times consist of 0.052 seconds GC time, and 0.618 seconds non-GC time. ]
+  97.67% CPU
+  1,636,441,902 processor cycles
+  55,942,024 bytes consed
+  
+NIL
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 passed with cost 37
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 47.65649862675417
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 39.86467763866053
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 55.63722933714742
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 44.27821881476119
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 63.464238511333235
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 54.05622159599094
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 51.05173527089874
+KOZA-POLYNOMIAL-2 passed with cost 35
+KOZA-POLYNOMIAL-2 passed with cost 23
+KOZA-POLYNOMIAL-2 passed with cost 36
+KOZA-POLYNOMIAL-2 passed with cost 18
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 51.7617977211892
+KOZA-POLYNOMIAL-2 passed with cost 28
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 63.3105802955228
+KOZA-POLYNOMIAL-2 passed with cost 30
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 47.51780689800811
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 54.91907825588376
+KOZA-POLYNOMIAL-2 passed with cost 11
+KOZA-POLYNOMIAL-2 passed with cost 125
+KOZA-POLYNOMIAL-2 passed with cost 18
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 63.09903442844203
+KOZA-POLYNOMIAL-2 passed with cost 26
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 38.57686600792552
+KOZA-POLYNOMIAL-2 passed with cost 5
+KOZA-POLYNOMIAL-2 passed with cost 47
+KOZA-POLYNOMIAL-2 passed with cost 105
+KOZA-POLYNOMIAL-2 passed with cost 28
+KOZA-POLYNOMIAL-2 failed with cost 400, best score was 63.3071660622445
+Evaluation took:
+  13.973 seconds of real time
+  13.569123 seconds of total run time (12.997512 user, 0.571611 system)
+  [ Run times consist of 0.737 seconds GC time, and 12.833 seconds non-GC time. ]
+  97.11% CPU
+  33,336,021,438 processor cycles
+  837,223,520 bytes consed
+
+3/7 added info for oversampling, various fiddlings as usual, selection+utility
+
+PLOP> (time (dorepeat 30 (run-benchmark 'easy-bool #'run-lllsc)))
+EASY-BOOL passed with cost 84 (50)
+EASY-BOOL passed with cost 98 (131)
+EASY-BOOL passed with cost 38 (24)
+EASY-BOOL passed with cost 88 (83)
+EASY-BOOL passed with cost 41 (18)
+EASY-BOOL passed with cost 181 (213)
+EASY-BOOL passed with cost 89 (36)
+EASY-BOOL passed with cost 117 (173)
+EASY-BOOL passed with cost 15 (8)
+EASY-BOOL passed with cost 46 (30)
+EASY-BOOL passed with cost 32 (29)
+EASY-BOOL passed with cost 49 (25)
+EASY-BOOL passed with cost 37 (26)
+EASY-BOOL passed with cost 40 (33)
+EASY-BOOL passed with cost 113 (131)
+EASY-BOOL passed with cost 73 (86)
+EASY-BOOL passed with cost 27 (16)
+EASY-BOOL passed with cost 62 (73)
+EASY-BOOL passed with cost 76 (44)
+EASY-BOOL passed with cost 110 (171)
+EASY-BOOL passed with cost 191 (223)
+EASY-BOOL passed with cost 40 (21)
+EASY-BOOL passed with cost 56 (89)
+EASY-BOOL passed with cost 58 (20)
+EASY-BOOL passed with cost 63 (67)
+EASY-BOOL passed with cost 48 (57)
+EASY-BOOL passed with cost 200 (256)
+EASY-BOOL passed with cost 63 (50)
+EASY-BOOL passed with cost 146 (175)
+EASY-BOOL passed with cost 146 (147)
+Evaluation took:
+  1.965 seconds of real time
+  1.887968 seconds of total run time (1.750986 user, 0.136982 system)
+  [ Run times consist of 0.330 seconds GC time, and 1.558 seconds non-GC time. ]
+  96.08% CPU
+  4,693,125,564 processor cycles
+  139,887,488 bytes consed
+  
+NIL
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 passed with cost 23 (24)
+KOZA-POLYNOMIAL-2 passed with cost 371 (350)
+KOZA-POLYNOMIAL-2 passed with cost 14 (27)
+KOZA-POLYNOMIAL-2 passed with cost 27 (29)
+KOZA-POLYNOMIAL-2 failed with cost 400 (1328), best score was 93.46684533150538
+KOZA-POLYNOMIAL-2 failed with cost 400 (474), best score was 34.78768246781465
+KOZA-POLYNOMIAL-2 failed with cost 400 (1288), best score was 91.07060333636453
+KOZA-POLYNOMIAL-2 failed with cost 400 (457), best score was 40.86467763866051
+KOZA-POLYNOMIAL-2 passed with cost 5 (7)
+KOZA-POLYNOMIAL-2 failed with cost 400 (370), best score was 79.56699806790402
+KOZA-POLYNOMIAL-2 failed with cost 400 (440), best score was 45.80827434227602
+KOZA-POLYNOMIAL-2 failed with cost 400 (538), best score was 48.88368799275578
+KOZA-POLYNOMIAL-2 failed with cost 400 (429), best score was 37.283040978881715
+KOZA-POLYNOMIAL-2 failed with cost 400 (324), best score was 43.02452556036111
+KOZA-POLYNOMIAL-2 failed with cost 400 (750), best score was 59.3474368292355
+KOZA-POLYNOMIAL-2 failed with cost 400 (631), best score was 51.683340112625515
+KOZA-POLYNOMIAL-2 passed with cost 61 (111)
+KOZA-POLYNOMIAL-2 passed with cost 99 (172)
+KOZA-POLYNOMIAL-2 passed with cost 39 (43)
+KOZA-POLYNOMIAL-2 failed with cost 400 (400), best score was 40.86467763866051
+KOZA-POLYNOMIAL-2 failed with cost 400 (463), best score was 61.83488937991595
+KOZA-POLYNOMIAL-2 failed with cost 400 (479), best score was 38.04043556547605
+KOZA-POLYNOMIAL-2 passed with cost 398 (537)
+KOZA-POLYNOMIAL-2 failed with cost 400 (600), best score was 81.52700598574889
+KOZA-POLYNOMIAL-2 passed with cost 13 (38)
+KOZA-POLYNOMIAL-2 failed with cost 400 (794), best score was 98.21814369684692
+KOZA-POLYNOMIAL-2 passed with cost 99 (126)
+KOZA-POLYNOMIAL-2 failed with cost 400 (612), best score was 60.146469724868666
+KOZA-POLYNOMIAL-2 failed with cost 400 (464), best score was 56.7879025647969
+KOZA-POLYNOMIAL-2 passed with cost 29 (68)
+Evaluation took:
+  20.937 seconds of real time
+  19.964686 seconds of total run time (18.816642 user, 1.148044 system)
+  [ Run times consist of 1.677 seconds GC time, and 18.288 seconds non-GC time. ]
+  95.36% CPU
+  49,942,119,015 processor cycles
+  1,589,597,776 bytes consed
+  
+NIL
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 failed with cost 400 (475), best score was 31.60678360114794
+KOZA-POLYNOMIAL-2 failed with cost 400 (470), best score was 73.63203638055545
+KOZA-POLYNOMIAL-2 passed with cost 139 (182)
+KOZA-POLYNOMIAL-2 passed with cost 13 (27)
+KOZA-POLYNOMIAL-2 failed with cost 400 (454), best score was 60.958387185746496
+KOZA-POLYNOMIAL-2 passed with cost 396 (551)
+KOZA-POLYNOMIAL-2 failed with cost 400 (1302), best score was 93.48359641936138
+KOZA-POLYNOMIAL-2 failed with cost 400 (446), best score was 28.498506854650344
+KOZA-POLYNOMIAL-2 passed with cost 5 (7)
+KOZA-POLYNOMIAL-2 failed with cost 400 (355), best score was 59.69833666587191
+KOZA-POLYNOMIAL-2 passed with cost 80 (65)
+KOZA-POLYNOMIAL-2 passed with cost 11 (31)
+KOZA-POLYNOMIAL-2 failed with cost 400 (365), best score was 62.7236903062361
+KOZA-POLYNOMIAL-2 failed with cost 400 (439), best score was 36.729924455758955
+KOZA-POLYNOMIAL-2 failed with cost 400 (637), best score was 76.74796423024921
+KOZA-POLYNOMIAL-2 failed with cost 400 (310), best score was 41.30042700851757
+KOZA-POLYNOMIAL-2 failed with cost 400 (446), best score was 15.474364013746587
+KOZA-POLYNOMIAL-2 failed with cost 400 (485), best score was 51.50344301400708
+KOZA-POLYNOMIAL-2 passed with cost 217 (245)
+KOZA-POLYNOMIAL-2 passed with cost 12 (24)
+KOZA-POLYNOMIAL-2 failed with cost 400 (540), best score was 11.648335461369799
+KOZA-POLYNOMIAL-2 failed with cost 400 (307), best score was 55.969628262849334
+KOZA-POLYNOMIAL-2 failed with cost 400 (430), best score was 75.700486100418
+KOZA-POLYNOMIAL-2 failed with cost 400 (511), best score was 48.56388696861914
+KOZA-POLYNOMIAL-2 passed with cost 13 (44)
+KOZA-POLYNOMIAL-2 failed with cost 400 (352), best score was 75.02996514447739
+KOZA-POLYNOMIAL-2 passed with cost 46 (78)
+KOZA-POLYNOMIAL-2 failed with cost 400 (511), best score was 11.615882154611027
+KOZA-POLYNOMIAL-2 failed with cost 400 (609), best score was 48.73759853493074
+KOZA-POLYNOMIAL-2 passed with cost 18 (15)
+Evaluation took:
+  17.914 seconds of real time
+  17.355594 seconds of total run time (16.526723 user, 0.828871 system)
+  [ Run times consist of 1.363 seconds GC time, and 15.993 seconds non-GC time. ]
+  96.89% CPU
+  42,778,822,788 processor cycles
+  1,082,710,336 bytes consed
+  
+note: we are taking a tremendous ammount of overhead for computing distances
+- how many calls come from utility vs. selection?
