@@ -157,6 +157,9 @@ numerical functions |#
 		       (if (>= x 3) 1 (elt table (floor (* x 300))))))))))
   (defun erf (x) (funcall fn x)))
 
+(define-constant two-pi (* pi 2))
+(define-constant half-pi (/ pi 2))
+
 ;;; E(X|X>x) for gaussian var X with mean m and variance v
 (let* ((sqrt2 (sqrt 2.0L0))
        (sqrt2-over-pi (sqrt (/ 2.0L0 pi)))

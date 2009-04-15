@@ -54,26 +54,54 @@ Author: madscience@google.com (Moshe Looks) |#
 		    (p2sexpr expr)
 		    target expr)))
 
+;; (defcanonizer bool (expr context &aux 
+;; 		    (has-nums (not (hash-table-empty-p (symbols-with-type 
+;; 							num context)))))
+;;   (labels ((ccons (op args expr)
+;; 	     (if (and has-nums (not (eq op 'not)))
+;; 		 (let ((leq (pcons '0< (list 0))))
+;; 		   (aprog1 (cons (canonize-args leq context bool) args)
+;; 		     (when (eq op 'and)
+;; 		       (setf (car it) (pcons 'not (list (car it)))))))
+;; 		 args))
+;; 	   (substructure (op expr dual)
+;; 	     (ccons 
+;; 	      op (add-leq (decompose-bool expr
+;; 			    (literal (list (if (atom expr) expr
+;; 					       (ccons 'not (list (arg0 expr))
+;; 						      expr))))
+;; 			    (const nil)
+;; 			    (junctor (structure dual (args expr)))
+;; 			    (t (list (canonize-args expr context 'bool)))))
+;; 	      expr))
+;; 	   (structure (op args &aux (dual (bool-dual op)))
+;; 	     (cons (ccons op (add-leq) (identity-elem dual))
+;; 		   (mapcar (bind #'substructure op /1 dual) args))))
+;;     (let* ((op (if (matches (ifn expr) (true or)) 'or 'and))
+;; 	   (dual (bool-dual op)))
+;;       (ccons dual (add-leq (list (ccons op (add-leq) (identity-elem dual))
+;; 				 (substructure op expr dual)))
+;; 	     expr)))) fixme - handle leq *and* impulse in num
 (defcanonizer bool (expr context)
   (labels ((substructure (op expr dual)
-	     (ccons op
-		    (decompose-bool expr
-		      (literal (list (if (atom expr) expr
-					 (ccons 'not (list (arg0 expr))
-						expr))))
-		      (const nil)
-		      (junctor (structure dual (args expr)))
-		      (t (list (canonize-args expr context 'bool))))
-		    expr))
-	   (structure (op args &aux (dual (bool-dual op)))
-	     (cons (ccons op nil (identity-elem dual))
-		   (mapcar (bind #'substructure op /1 dual) args))))
+             (ccons op
+                    (decompose-bool expr
+                      (literal (list (if (atom expr) expr
+                                         (ccons 'not (list (arg0 expr))
+                                                expr))))
+                      (const nil)
+                      (junctor (structure dual (args expr)))
+                      (t (list (canonize-args expr context 'bool))))
+                    expr))
+           (structure (op args &aux (dual (bool-dual op)))
+             (cons (ccons op nil (identity-elem dual))
+                   (mapcar (bind #'substructure op /1 dual) args))))
     (let* ((op (if (matches (ifn expr) (true or)) 'or 'and))
-	   (dual (bool-dual op)))
+           (dual (bool-dual op)))
       (ccons dual 
-	     (list (ccons op nil (identity-elem dual)) 
-		   (substructure op expr dual))
-	     expr))))
+             (list (ccons op nil (identity-elem dual)) 
+                   (substructure op expr dual))
+             expr))))
 (define-test canonize-bool
   (validate-canonize %(or (and) (and)) (qcanonize false))
   (validate-canonize %(and (or) (or)) (qcanonize true))
@@ -196,11 +224,8 @@ numerical constants. So the full canonical form for (+ c x y) is:
 			   (* 4 ,@*s ,*block (+ 0 ,@+s x)))
 		       (qcanonize %(* 4 x)))
     (let (src dst)
-      (if (has-maxima-p) ; maxima ordering is different
-	  (setf src %(+ 1 (* 2 x) y) dst `((* 2 ,@*s ,*block (+ 0 ,@+s x))
-					   (* 1 ,@*s y)))
-	  (setf src %(+ 1 y (* 2 x)) dst `((* 1 ,@*s y)
-					   (* 2 ,@*s ,*block (+ 0 ,@+s x)))))
+      (setf src %(+ 1 y (* 2 x)) 
+	    dst `((* 1 ,@*s y) (* 2 ,@*s ,*block (+ 0 ,@+s x))))
       (validate-canonize `(* 1 ,@*s ,*block (+ 1 ,@+s ,+block ,@dst))
 			 (qcanonize src)))
     (let ((lhs `(+ 0 ,@+s ,+block

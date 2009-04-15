@@ -106,6 +106,8 @@ represent evolved programs. |#
   t)
 (defun closurep (x) ; gp closure - all args are of same type as the output
   (matches x (and or not + * - / exp log sin append)))
+(defun anti-symmetric-p (x)
+  (matches x (sin)))
 
 ;;; properties of expressions
 (defun junctorp (expr) (matches (afn expr) (and or)))
