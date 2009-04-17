@@ -174,13 +174,18 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun multiply-term (term c)
   (cond
     ((numberp term) (* c term))
-    ((eqfn term '+) (pcons '+ (mapcar (bind #'multiply-term /1 c) (args term))
-			   (markup term)))
-    ((eqfn term '*) (pcons '* (if (numberp (arg0 term))
-				  (cons (* c (arg0 term))
-					(cdr (args term)))
-				  (cons c (args term)))
-			   (markup term)))
+    ((eqfn term '+) (aprog1
+			(pcons '+ (mapcar (bind #'multiply-term /1 c) 
+					  (args term))
+			       (markup term))
+		      (clear-simp it)))
+    ((eqfn term '*) (aprog1
+			(pcons '* (if (numberp (arg0 term))
+				      (cons (* c (arg0 term))
+					    (cdr (args term)))
+				      (cons c (args term)))
+			       (markup term))
+		      (clear-simp it)))
     (t (pcons '* (list c term)))))
 (defun group-likes (expr &aux (size-to-terms (make-hash-table))
 		    (max-gain 0) best)
@@ -327,17 +332,25 @@ Author: madscience@google.com (Moshe Looks) |#
 	((eqfn expr '+)
 	 (pcons (fn expr) (mapcar #'num-negate (args expr)) (markup expr)))
 	(t (pcons '* (list -1 expr)))))
+(define-test num-negate
+  (map-exprs
+   (lambda (expr &aux (r (qreduct (sexpr2p (p2sexpr expr))))) 
+     (assert-equalp (p2sexpr r) (p2sexpr (num-negate (num-negate r))) 
+		    r expr (num-negate r)))
+   '((+ . 2) (* . 2) (sin . 1) (log . 1) (x . 0) (2 . 0) (-1 . 0)) 3))
+
 (define-reduction flip-sin (expr)
   :type num
   :assumes (rotate-exp-log-sin fold-num-junctors log-exp-group 
-	    log-exp-identities eliminate-sin-products );fixme factor)
-  :condition (and nil (eqfn expr 'sin));fixme - and infinite loop...
+	    log-exp-identities eliminate-sin-products factor)
+  :condition (eqfn expr 'sin)
   :action 
-  (let ((negated (num-negate expr)))
-    (if (total-order expr negated)
+  (let* ((negated (num-negate (arg0 expr)))
+	 (sz (expr-size (arg0 expr))) (sz1 (expr-size negated)))
+    (if (or (< sz sz1) (and (eql sz sz1) (total-order (arg0 expr) negated)))
 	expr
-	(pcons '* (list -1 negated)))))
-
+	(pcons '* (list -1 (pcons 'sin (list negated))))))
+  :order upwards)
 
 (define-test num-reduct
   (let ((x '((* x x)                            (exp (* 2 (log x)))
