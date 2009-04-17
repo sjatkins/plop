@@ -39,7 +39,8 @@ Author: madscience@google.com (Moshe Looks) |#
 ;; can't be dumped into fasl files." error...
 (defmacro validate-canonize (target expr &optional (type `(expr-type expr))
 			     (context *empty-context*))
-  `(let* ((target ,target) (expr ,expr) (type ,type) (context ,context))
+  `(let* ((target (sexpr2p (p2sexpr ,target)))
+	  (expr ,expr) (type ,type) (context ,context))
     (map-subexprs-with-type-and-parent 
      (lambda (cexpr type parent)
 	(assert-true (consp cexpr))
