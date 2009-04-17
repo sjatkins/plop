@@ -304,19 +304,30 @@ Author: madscience@google.com (Moshe Looks) |#
 	  (t (car matches))))
   :order upwards)
 
-(define-reduction eliminate-sin-products (fn args markup)
-  :type num
-  :assumes (sort-commutative flatten-associative)
-  :condition (and (eq fn '*) (member-if-2 (bind #'eqfn /1 'sin) args)
-		  nil) ;fixme
-  :action
-  (let* (rest 
-	 (matches (collecting (setf rest (remove-if (lambda (x)
-						      (when (eqfn x 'sin)
-							(collect x) t))
-						    args))))
-	 (sum nil))))
-;fixme(pcons '+ (list (pcons (num-dual fn) (mapcar #'arg0 matches))))))
+;;   (setf c (* c (expt 2 (- 1 (length matches)))))
+;; (defun sin-sum (terms c)
+;;   (if (singlep terms)
+;;       (list (pcons '* (list c (pcons 'sin (list (car terms))))))
+;;       (nconc (sin-sum (cons (
+
+  
+
+;; ;;; sin(x)*sin(y) ->  -0.5*(sin(-pi/2 + -x + y) + 0.5*sin(-pi/2 + x + y)
+;; (define-reduction eliminate-sin-products (fn args markup)
+;;   :type num
+;;   :assumes (sort-commutative flatten-associative)
+;;   :condition (and (eq fn '*) (member-if-2 (bind #'eqfn /1 'sin) args))
+;;   :action
+;;   (let* (rest 
+;; 	 (matches (collecting (setf rest (remove-if (lambda (x)
+;; 						      (when (eqfn x 'sin)
+;; 							(collect (arg0 x)) t))
+;; 						    args))))
+;; 	 (c (if (numberp (car rest)) (pop rest) 1))
+;; 	 (sin-sum (pcons '+ (sin-product-to-sum-terms matches c))))
+;;   (if rest
+;;       (pcons '* (cons sin-sum rest) markup)
+;;       sin-sum)))
 
 (defun num-negate (expr)
   (cond ((numberp expr) (* -1 expr))
@@ -342,15 +353,27 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-reduction flip-sin (expr)
   :type num
   :assumes (rotate-exp-log-sin fold-num-junctors log-exp-group 
-	    log-exp-identities eliminate-sin-products factor)
+	    log-exp-identities factor);eliminate-sin-products
   :condition (eqfn expr 'sin)
   :action 
   (let* ((negated (num-negate (arg0 expr)))
 	 (sz (expr-size (arg0 expr))) (sz1 (expr-size negated)))
     (if (or (< sz sz1) (and (eql sz sz1) (total-order (arg0 expr) negated)))
 	expr
-	(pcons '* (list -1 (pcons 'sin (list negated))))))
+	(labels ((resort (x) 
+		   (mapc (lambda (arg) (when (consp arg) (resort arg)))
+			 (args x))
+		   (unless (sortedp (args x) #'total-order)
+		     (setf (args x) (sort (args x) #'total-order)))))
+	  (unless (atom negated) (resort negated))
+	  (pcons '* (list -1 (pcons 'sin (list negated)))))))
   :order upwards)
+(define-test flip-sin
+  (assert-equalp '(+ (* -0.5 (sin (+ -1.6 y (* -1.0 x))))
+		     (* 0.5 (sin (+ -1.5 x y))))
+		 (p2sexpr (qreduct (sexpr2p 
+				    '(+ (* 0.5 (sin (+ x y -1.5)))
+				        (* 0.5 (sin (+ x (* -1 y) 1.6)))))))))
 
 (define-test num-reduct
   (let ((x '((* x x)                            (exp (* 2 (log x)))
