@@ -171,6 +171,18 @@ Author: madscience@google.com (Moshe Looks) |#
 	      rest)
      markup)))
 
+(defun sum-terms (&rest terms &aux (offset 0))
+  (aprog1 (pcons '+ nil)
+    (mapc
+     (lambda (term)
+       (cond ((numberp term) (incf offset term))
+	     ((eqfn term '+) (when (numberp (arg0 term))
+			       (incf offset (arg0 term))
+			       (setf (args term) (cdr (args term))))
+	                     (setf (args it) (append (args term) (args it))))
+	   (t (push term (args it)))))
+     terms)
+    (push offset (args it))))
 (defun multiply-term (term c)
   (cond
     ((numberp term) (* c term))
@@ -304,30 +316,33 @@ Author: madscience@google.com (Moshe Looks) |#
 	  (t (car matches))))
   :order upwards)
 
-;;   (setf c (* c (expt 2 (- 1 (length matches)))))
-;; (defun sin-sum (terms c)
-;;   (if (singlep terms)
-;;       (list (pcons '* (list c (pcons 'sin (list (car terms))))))
-;;       (nconc (sin-sum (cons (
+(defun sin-sum (terms c)
+  (flet ((rec-call (t1 t2 c) (sin-sum (cons (sum-terms (- half-pi) t1 t2)
+					    (cddr terms))
+				      c)))
+    (if (singlep terms)
+	(list (pcons '* (list c (pcons 'sin (list (pclone (car terms)))))))
+	(nconc (rec-call (multiply-term (car terms) -1) 
+			 (cadr terms) (* c -0.5))
+	       (rec-call (car terms) (cadr terms) (* c 0.5))))))
 
-  
-
-;; ;;; sin(x)*sin(y) ->  -0.5*(sin(-pi/2 + -x + y) + 0.5*sin(-pi/2 + x + y)
-;; (define-reduction eliminate-sin-products (fn args markup)
-;;   :type num
-;;   :assumes (sort-commutative flatten-associative)
-;;   :condition (and (eq fn '*) (member-if-2 (bind #'eqfn /1 'sin) args))
-;;   :action
-;;   (let* (rest 
-;; 	 (matches (collecting (setf rest (remove-if (lambda (x)
-;; 						      (when (eqfn x 'sin)
-;; 							(collect (arg0 x)) t))
-;; 						    args))))
-;; 	 (c (if (numberp (car rest)) (pop rest) 1))
-;; 	 (sin-sum (pcons '+ (sin-product-to-sum-terms matches c))))
-;;   (if rest
-;;       (pcons '* (cons sin-sum rest) markup)
-;;       sin-sum)))
+;;; sin(x)*sin(y) ->  -0.5*(sin(-pi/2 + -x + y) + 0.5*sin(-pi/2 + x + y)
+(define-reduction eliminate-sin-products (fn args markup)
+  :type num
+  :assumes (sort-commutative flatten-associative)
+  :condition (and (eq fn '*) (member-if-2 (bind #'eqfn /1 'sin) args))
+  :action
+  (let* (rest 
+	 (matches (collecting (setf rest (remove-if (lambda (x)
+						      (when (eqfn x 'sin)
+							(collect (arg0 x)) t))
+						    args))))
+	 (c (if (numberp (car rest)) (pop rest) 1))
+	 (sin-sum (pcons '+ (sin-sum matches c))))
+  (if rest
+      (pcons '* (cons sin-sum rest) markup)
+      sin-sum))
+  :order upwards)
 
 (defun num-negate (expr)
   (cond ((numberp expr) (* -1 expr))
@@ -353,7 +368,7 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-reduction flip-sin (expr)
   :type num
   :assumes (rotate-exp-log-sin fold-num-junctors log-exp-group 
-	    log-exp-identities factor);eliminate-sin-products
+	    log-exp-identities factor eliminate-sin-products)
   :condition (eqfn expr 'sin)
   :action 
   (let* ((negated (num-negate (arg0 expr)))
@@ -377,7 +392,7 @@ Author: madscience@google.com (Moshe Looks) |#
 				        (* 0.5 (sin (+ x (* -1 y) 1.6)))))))))
 
 (define-test num-reduct
-  (let ((x '((* x x)                            (exp (* 2 (log x)))
+  (let ((x `((* x x)                            (exp (* 2 (log x)))
 	     (* x x y)                          (* y (exp (* 2 (log x))))
 	     (* x x y y)                        (exp (+ (* 2 (log x))
 						        (* 2 (log y))))
@@ -394,10 +409,13 @@ Author: madscience@google.com (Moshe Looks) |#
 	     (exp (+ (log x) (log y)))          (* x y)
 	     (exp (+ (log x) (* 2 (log y))))    (* x (exp (* 2 (log y))))
 	     (log (* 2.7182819f0 x (+ 1 y)))    (+ 1 (log (* x (+ 1 y))))
-	     (* 3 (sin (+ x 5)) (sin (* 2 y)))  (+ (* 1.5 
-						      (sin (+ 5 x (* 2 y))))
-						   (* 1.5 
-						      (sin (+ 5 x (* -2 y)))))
+	     (* (sin x) (sin y))               (+ (* -0.5 (sin (+ ,(- half-pi)
+								  y (* -1 x))))
+						  (* 0.5 (sin (+ ,(- half-pi)
+								 x y))))
+	     (* 3 (sin (+ x 5)) (sin (* 2 y)))  
+	     (+ (* -1.5 (sin (+ -2.853981633974483 x (* -2 y))))
+		(* 1.5 (sin (+ -2.853981633974483 x (* 2 y)))))
 	     (sin (+ 42 x))                    (sin (+ -1.9822971502571 x))
 	     (sin (+ -5 x y))                  (sin (+ 1.2831853071795862 x y))
 	     (* -1 (sin (* -1 x)))             (sin x)

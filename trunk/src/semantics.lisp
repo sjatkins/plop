@@ -318,7 +318,7 @@ represent evolved programs. |#
 (defun pclone (expr)
   (assert (not (canonp expr)))
   (if (consp expr)
-      (pcons (fn expr) (mapcar #'pclone (args expr)) (markup expr))
+      (pcons (fn expr) (mapcar #'pclone (args expr)) (copy-list (markup expr)))
       (etypecase expr 
 	(vector (map 'vector #'pclone expr))
 	(lambda-list (make-lambda-list 
