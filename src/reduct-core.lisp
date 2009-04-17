@@ -214,7 +214,7 @@ Author: madscience@google.com (Moshe Looks) |#
   (assert-equal 'x (reduct (copy-tree %(and x (or y x))) *empty-context* bool))
   (with-bound-types *empty-context* '(f g) 
       '((function (num num) bool) (function (bool) num))
-    (let* ((expr (copy-tree %(and (f 42 (+ (g (or a b)) m)) (or x y))))
+    (let* ((expr (copy-tree %(and (f 42 (+ m (g (or a b)))) (or x y))))
 	   (r (reduct expr *empty-context* bool))
 	   (bool-exprs (list r (arg0 r) (arg1 r)
 			     (arg0 (arg1 (arg1 (arg0 r))))))
@@ -232,9 +232,10 @@ Author: madscience@google.com (Moshe Looks) |#
 		       bool-exprs)
 
       (assert-for-none (bind #'exact-simp-p /1 'push-nots) num-exprs)
-      (assert-for-none (bind #'exact-simp-p /1 'sort-commutative) num-exprs)
+      (assert-for-none 
+       (bind #'exact-simp-p /1 'dominant-and-command-clear-root) num-exprs)
       (assert-for-all (bind #'exact-simp-p /1 'factor)
-		      num-exprs)))))
+		      num-exprs))))
 
 ;; for convenience
 (defun qreduct (expr) 
