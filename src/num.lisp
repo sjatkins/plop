@@ -114,6 +114,11 @@ Author: madscience@google.com (Moshe Looks) |#
 		raw-nodiv-sexprs exprs))
 	nil))))
 
+(defun make-prod (expr n)
+  (case n
+    (0 0)
+    (1 expr)
+    (t (pcons '* (list n expr)))))
 (defun make-expt (expr n)
   (case n 
     (0 1)
@@ -123,24 +128,30 @@ Author: madscience@google.com (Moshe Looks) |#
   (assert-equalp 1 (make-expt %(+ 1 x) 0))
   (assert-equalp %(+ 1 x) (make-expt %(+ 1 x) 1))
   (assert-equalp %(exp (* 2 (log (+ 1 x)))) (make-expt %(+ 1 x) 2)))
+
 	   
 ;;; x*x*x -> exp(3*log(x))
-(define-reduction times-to-expt (fn args markup)
+;;; x+x+x -> 3*x
+(define-reduction fold-num-junctors (fn args markup)
   :type num
-  :assumes (sort-commutative flatten-associative)
-  :condition (and (eq fn '*) (some #'pequal args (cdr args)))
+  :assumes (sort-commutative flatten-associative eval-const)
+  :condition (and (num-junctor-p fn) (some #'pequal args (cdr args)))
   :action 
-  (let* ((prev (car args)) (n 0)
+  (let* ((prev (car args)) (n 0) (f (ecase fn (* #'make-expt) (+ #'make-prod)))
 	 (new-args (collecting
 		     (mapc (lambda (x)
 			     (incf n)
 			     (unless (pequal x prev)
-			       (collect (make-expt prev n))
+			       (collect (funcall f prev n))
 			       (setf prev x n 0)))
 			   (cdr args))
-		     (collect (make-expt prev (1+ n))))))
-    (pcons fn new-args markup))
+		     (collect (funcall f prev (1+ n))))))
+    (if (singlep new-args)
+	(car new-args)
+	(pcons fn new-args markup)))
   :order upwards)
+(define-test fold-num-junctors
+  (assert-equalp '(* 3 x) (p2sexpr (fold-num-junctors (sexpr2p '(+ x x x))))))
 
 ;;; log(x) + log(y) -> log(x*y)
 ;;; exp(x) * exp(y) -> exp(x+y)
@@ -160,10 +171,77 @@ Author: madscience@google.com (Moshe Looks) |#
 	      rest)
      markup)))
 
-;;; (* 3 (+ (* 3 X) 4)) -> (+ 12 (* 9 X))
-;;; (+ 3 (* (+ 3 X) 4)) -> (+ 15 (* 4 X))
-;;; (+ (* X Y) (* X Z)) -> (* X (+ Y Z))
-;(define-reduction factor 
+(defun multiply-term (term c)
+  (cond
+    ((numberp term) (* c term))
+    ((eqfn term '+) (pcons '+ (mapcar (bind #'multiply-term /1 c) (args term))
+			   (markup term)))
+    ((eqfn term '*) (pcons '* (if (numberp (arg0 term))
+				  (cons (* c (arg0 term))
+					(cdr (args term)))
+				  (cons c (args term)))
+			   (markup term)))
+    (t (pcons '* (list c term)))))
+(defun group-likes (expr &aux (size-to-terms (make-hash-table))
+		    (max-gain 0) best)
+  (flet ((add-term (term subexpr &aux (l (if (eqfn term '+)
+					     (length (args term))
+					     1)))
+	   (when (not (numberp term))
+	     (aif (assoc term (gethash l size-to-terms) :test #'pequal)
+		  (let ((gain (* (incf (cddr it)) l)))
+		    (push subexpr (cadr it))
+		    (when (or (> gain max-gain) 
+			      (and (eql gain max-gain)
+				   (total-cmp term (car best))))
+		      (setf max-gain gain best it)))
+		  (push (cons term (cons (list subexpr) 0))
+			(gethash l size-to-terms))))))
+    (assert (eq (fn expr) '+))
+    (mapc (lambda (subexpr)
+	    (if (eqfn subexpr '*)
+		(mapc (bind #'add-term /1 subexpr) (args subexpr))
+		(add-term subexpr subexpr)))
+	  (args expr)))
+  (when (eql max-gain 0)
+    (return-from group-likes expr))
+  (let ((term (car best)) (subexprs (cadr best)))
+    (pcons 
+     '+ (cons (pcons 
+	       '* (list term 
+			(pcons
+			 '+ (mappend (lambda (subexpr)
+				       (if (eqfn subexpr '*)
+					   (remove term (args subexpr)
+						   :test #'pequal)
+					   (list 1)))
+				     subexprs))))
+	      (remove-if (bind #'find /1 subexprs :test #'pequal) (args expr)))
+     (markup expr))))
+(define-test group-likes
+  (assert-equalp '(+ z (* (+ q z) (+ x y)))
+		 (p2sexpr (qreduct (sexpr2p '(+ (* (+ x y) z) (* (+ x y) q)
+					        z)))))
+  (assert-equalp '(+ (* q (+ x y)) (* z (+ 1 a b x y)))
+		 (p2sexpr (qreduct (sexpr2p '(+ (* (+ x y) z) (* (+ x y) q)
+					        (* a z) (* b z) z))))))
+
+;;; (* (+ x 1) -1)      -> (+ -1 (* -1 x))
+;;; (* 3 (+ (* 3 x) 4)) -> (+ 12 (* 9 x))
+;;; (+ 3 (* (+ 3 x) 4)) -> (+ 15 (* 4 x))
+;;; (+ (* x y) (* x z)) -> (* x (+ y z))
+(define-reduction factor (expr)
+  :type num
+  :assumes (fold-num-junctors)
+  :condition (num-junctor-p expr)
+  :action 
+  (cond
+    ((eq (fn expr) '+) (fixed-point #'group-likes expr)) ; xy+xz -> x(y+z)
+    ((and (numberp (arg0 expr)) (every #'num-junctor-p (cdr (args expr))))
+     (pcons '* (mapcar (bind #'multiply-term /1 (arg0 expr)) (cdr (args expr)))
+	    (markup expr)))
+    (t expr))
+  :order upwards)
 
 (defun rotation-op (fn)
   (case fn ((sin exp) '+) (log '*)))
@@ -193,10 +271,10 @@ Author: madscience@google.com (Moshe Looks) |#
 			    markup)))))
   :order upwards)
 
-;;; (EXP (+ (LOG X) (LOG Y))) -> (EXP (+ (LOG X) (LOG Y)))
-;;; (EXP (+ (LOG X) (* 2 (LOG Y)))) -> (* X (EXP (* 2 (LOG Y))))
-;;; (EXP (+ (LOG X) Y)) -> (* X (EXP Y))
-;;; (LOG (* (EXP X) Y)) -> (+ X (LOG Y))
+;;; (exp (+ (log x) (log y))) -> (exp (+ (log x) (log y)))
+;;; (exp (+ (log x) (* 2 (log y)))) -> (* x (exp (* 2 (log y))))
+;;; (exp (+ (log x) y)) -> (* x (exp y))
+;;; (log (* (exp x) y)) -> (+ x (log y))
 (define-reduction log-exp-identities (fn args markup)
   :type num
   :assumes (sort-commutative flatten-associative eval-const)
@@ -232,7 +310,8 @@ Author: madscience@google.com (Moshe Looks) |#
 						      (when (eqfn x 'sin)
 							(collect x) t))
 						    args))))
-	 (sum nil));fixme(pcons '+ (list (pcons (num-dual fn) (mapcar #'arg0 matches))))))
+	 (sum nil))))
+;fixme(pcons '+ (list (pcons (num-dual fn) (mapcar #'arg0 matches))))))
 
 (defun num-negate (expr)
   (cond ((numberp expr) (* -1 expr))
@@ -250,8 +329,8 @@ Author: madscience@google.com (Moshe Looks) |#
 	(t (pcons '* (list -1 expr)))))
 (define-reduction flip-sin (expr)
   :type num
-  :assumes (rotate-exp-log-sin times-to-expt log-exp-group log-exp-identities 
-	    eliminate-sin-products );fixme factor)
+  :assumes (rotate-exp-log-sin fold-num-junctors log-exp-group 
+	    log-exp-identities eliminate-sin-products );fixme factor)
   :condition (and nil (eqfn expr 'sin));fixme - and infinite loop...
   :action 
   (let ((negated (num-negate expr)))
@@ -265,7 +344,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	     (* x x y)                          (* y (exp (* 2 (log x))))
 	     (* x x y y)                        (exp (+ (* 2 (log x))
 						        (* 2 (log y))))
-	     
+	     (* (+ x 1) -1)                     (+ -1 (* -1 x))
 	     (* 3 (+ (* 3 x) 4))                (+ 12 (* 9 x))
 	     (+ 3 (* (+ 3 x) 4))                (+ 15 (* 4 x))
 	     (+ 0 x)                            x

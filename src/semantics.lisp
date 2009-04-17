@@ -110,7 +110,8 @@ represent evolved programs. |#
   (matches x (sin)))
 
 ;;; properties of expressions
-(defun junctorp (expr) (matches (afn expr) (and or)))
+(defun num-junctor-p (expr) (matches (ifn expr) (* +)))
+(defun junctorp (expr) (matches (ifn expr) (and or)))
 (defun ring-op-p (expr) ;true if rooted in + or * or and or or
   (matches (ifn expr) (+ * and or)))
 ;(declaim (inline literalp))fixme
