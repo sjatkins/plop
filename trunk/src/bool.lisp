@@ -140,7 +140,7 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-test if-identities 
   (assert-equal 
    '(if x z y)
-   (p2sexpr (reduct (copy-tree %(if (not x) y z)) *empty-context* num))))
+  (p2sexpr (reduct (copy-tree %(if (not x) y z)) *empty-context* num))))
 
 ;;; below are reductions for Holman's ENF (elegant normal form)
 ;;; probably not all of them will be needed - some are implied by reductions
