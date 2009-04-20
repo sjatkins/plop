@@ -477,9 +477,6 @@ miscelaneous non-numerical utilities |#
     (when hasroot (visit root))
     (when hasroots (mapc #'visit roots))))
 
-(defun nmapcar (fn list) 
-  (mapl (lambda (subl) (rplaca subl (funcall fn (car subl)))) list))
-
 (defun mesh (dims mins maxes)
   (if dims
       (let ((offset (car mins))
@@ -873,3 +870,10 @@ miscelaneous non-numerical utilities |#
 ;; member-if at least twice, returns 2nd match
 (defun member-if-2 (pred list &key key)
   (member-if pred (cdr (member-if pred list :key key)) :key key))
+
+(defun split-list (pred list &aux rest)
+  (let ((matches (collecting (setf rest (remove-if (lambda (x)
+						     (when (funcall pred x)
+						       (collect x) t))
+						   list)))))
+    (values matches rest)))

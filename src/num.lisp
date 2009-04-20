@@ -162,14 +162,12 @@ Author: madscience@google.com (Moshe Looks) |#
 	       (or (and (eq fn '*) (hasp 'exp) 'exp)
 		   (and (eq fn '+) (hasp 'log) 'log)))
   :action
-  (let* (rest (matches (collecting (setf rest (remove-if (lambda (x)
-							   (when (eqfn x it)
-							     (collect x) t))
-							 args)))))
+  (mvbind (matches rest) (split-list (bind #'eqfn /1 it) args)
     (pcons 
      fn (cons (pcons it (list (pcons (num-dual fn) (mapcar #'arg0 matches))))
 	      rest)
-     markup)))
+     markup))
+  :order upwards)
 
 (defun sum-terms (&rest terms &aux (offset 0))
   (aprog1 (pcons '+ nil)
@@ -302,12 +300,9 @@ Author: madscience@google.com (Moshe Looks) |#
 				      (args (car args)))
 			   (args (car args)))))
   :action
-  (let* ((dual (num-dual fn)) rest 
-	 (matches (mapcar #'arg0 (collecting 
-				   (setf rest (remove-if (lambda (x)
-							   (when (eqfn x dual)
-							     (collect x) t))
-							 it))))))
+  (mvbind (matches rest) 
+      (split-list (let ((dual (num-dual fn))) (bind #'eqfn /1 dual)) it)
+    (map-into matches #'arg0 matches)
     (cond (rest
 	   (pcons (num-dual (rotation-op fn))
 		  (cons (pcons fn (reconstruct-args fn rest nil) markup)
@@ -332,16 +327,13 @@ Author: madscience@google.com (Moshe Looks) |#
   :assumes (sort-commutative flatten-associative)
   :condition (and (eq fn '*) (member-if-2 (bind #'eqfn /1 'sin) args))
   :action
-  (let* (rest 
-	 (matches (collecting (setf rest (remove-if (lambda (x)
-						      (when (eqfn x 'sin)
-							(collect (arg0 x)) t))
-						    args))))
-	 (c (if (numberp (car rest)) (pop rest) 1))
-	 (sin-sum (pcons '+ (sin-sum matches c))))
-  (if rest
-      (pcons '* (cons sin-sum rest) markup)
-      sin-sum))
+  (mvbind (matches rest) (split-list (bind #'eqfn /1 'sin) args)
+    (map-into matches #'arg0 matches)
+    (let* ((c (if (numberp (car rest)) (pop rest) 1))
+	   (sin-sum (pcons '+ (sin-sum matches c))))
+      (if rest
+	  (pcons '* (cons sin-sum rest) markup)
+	  sin-sum)))
   :order upwards)
 
 (defun num-negate (expr)

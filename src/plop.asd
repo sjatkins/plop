@@ -30,6 +30,7 @@ Author: madscience@google.com (Moshe Looks) |#
                (:file "util")        ; generic stuff
 	       (:file "numerical")
 	       (:file "dag")
+	       (:file "affine")
 
 	       (:file "syntax")      ; the p language core
 	       (:file "markup")
@@ -47,7 +48,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	       (:file "bool")
 	       (:file "num")
 	       (:file "maxima")
-;	       (:file "mixed")
+	       (:file "mixed")
 	       (:file "list")
 
 	       (:file "knobs")       ; representation-building
