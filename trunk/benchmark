@@ -1642,3 +1642,145 @@ Evaluation took:
   
 note: we are taking a tremendous ammount of overhead for computing distances
 - how many calls come from utility vs. selection?
+
+4/17 overhauled mixed reductions (taken out at the moment) and numerical,
+got rid of maxima (mostly)
+
+EASY-BOOL passed with cost 82 (132)
+EASY-BOOL passed with cost 61 (63)
+EASY-BOOL passed with cost 115 (218)
+EASY-BOOL passed with cost 119 (89)
+EASY-BOOL passed with cost 70 (33)
+EASY-BOOL passed with cost 33 (31)
+EASY-BOOL passed with cost 34 (25)
+EASY-BOOL passed with cost 36 (32)
+EASY-BOOL passed with cost 44 (23)
+EASY-BOOL passed with cost 111 (213)
+EASY-BOOL passed with cost 40 (45)
+EASY-BOOL passed with cost 79 (112)
+EASY-BOOL passed with cost 110 (98)
+EASY-BOOL passed with cost 82 (48)
+EASY-BOOL passed with cost 82 (66)
+EASY-BOOL passed with cost 68 (123)
+EASY-BOOL passed with cost 98 (222)
+EASY-BOOL passed with cost 105 (159)
+EASY-BOOL passed with cost 8 (1)
+EASY-BOOL passed with cost 117 (105)
+EASY-BOOL passed with cost 102 (98)
+EASY-BOOL passed with cost 37 (19)
+EASY-BOOL passed with cost 51 (25)
+EASY-BOOL passed with cost 74 (123)
+EASY-BOOL passed with cost 27 (26)
+EASY-BOOL passed with cost 45 (42)
+EASY-BOOL passed with cost 68 (95)
+EASY-BOOL passed with cost 20 (8)
+EASY-BOOL passed with cost 60 (16)
+EASY-BOOL passed with cost 76 (97)
+Evaluation took:
+  1.441 seconds of real time
+  1.317303 seconds of total run time (1.231845 user, 0.085458 system)
+  [ Run times consist of 0.164 seconds GC time, and 1.154 seconds non-GC time. ]
+  91.39% CPU
+  3,442,017,069 processor cycles
+  109,164,936 bytes consed
+  
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 failed with cost 400 (486), best score was 52.743753016744144
+KOZA-POLYNOMIAL-2 failed with cost 400 (379), best score was 40.86467763866051
+KOZA-POLYNOMIAL-2 failed with cost 400 (397), best score was 40.86467763866051
+KOZA-POLYNOMIAL-2 passed with cost 14 (21)
+KOZA-POLYNOMIAL-2 failed with cost 400 (416), best score was 69.58836965084927
+KOZA-POLYNOMIAL-2 failed with cost 400 (449), best score was 32.8374183406094
+KOZA-POLYNOMIAL-2 passed with cost 20 (34)
+KOZA-POLYNOMIAL-2 failed with cost 400 (464), best score was 70.46362877227745
+KOZA-POLYNOMIAL-2 failed with cost 400 (298), best score was 66.05615642688647
+KOZA-POLYNOMIAL-2 failed with cost 400 (900), best score was 93.3859137706426
+KOZA-POLYNOMIAL-2 failed with cost 400 (381), best score was 58.04235247590792
+KOZA-POLYNOMIAL-2 passed with cost 13 (8)
+KOZA-POLYNOMIAL-2 failed with cost 400 (282), best score was 74.07666075617468
+KOZA-POLYNOMIAL-2 failed with cost 400 (357), best score was 18.271588624739156
+KOZA-POLYNOMIAL-2 passed with cost 61 (125)
+KOZA-POLYNOMIAL-2 failed with cost 400 (596), best score was 82.32546129377386
+KOZA-POLYNOMIAL-2 failed with cost 400 (514), best score was 82.83989796727491
+KOZA-POLYNOMIAL-2 failed with cost 400 (373), best score was 97.197557887992
+KOZA-POLYNOMIAL-2 passed with cost 15 (16)
+KOZA-POLYNOMIAL-2 failed with cost 400 (442), best score was 28.392088094342938
+KOZA-POLYNOMIAL-2 failed with cost 400 (572), best score was 58.95241371449178
+KOZA-POLYNOMIAL-2 passed with cost 17 (35)
+KOZA-POLYNOMIAL-2 failed with cost 400 (453), best score was 58.84424704587877
+KOZA-POLYNOMIAL-2 failed with cost 400 (593), best score was 40.86467763866051
+KOZA-POLYNOMIAL-2 passed with cost 14 (53)
+KOZA-POLYNOMIAL-2 passed with cost 31 (32)
+KOZA-POLYNOMIAL-2 failed with cost 400 (720), best score was 32.8374183406094
+KOZA-POLYNOMIAL-2 failed with cost 400 (1111), best score was 93.26279149784229
+KOZA-POLYNOMIAL-2 passed with cost 9 (14)
+KOZA-POLYNOMIAL-2 failed with cost 400 (416), best score was 73.03091666556524
+Evaluation took:
+  13.021 seconds of real time
+  12.157662 seconds of total run time (11.258346 user, 0.899316 system)
+  [ Run times consist of 1.373 seconds GC time, and 10.785 seconds non-GC time. ]
+  93.37% CPU
+  31,095,933,660 processor cycles
+  1,078,164,576 bytes consed
+
+PLOP> (time (run-tests))
+TOTAL: 41920 assertions passed, 0 failed, 0 execution errors.
+Evaluation took:
+  10.172 seconds of real time
+  9.734016 seconds of total run time (9.223181 user, 0.510835 system)
+  [ Run times consist of 1.187 seconds GC time, and 8.548 seconds non-GC time. ]
+  95.69% CPU
+  85 forms interpreted
+  4,401 lambdas converted
+  24,293,339,289 processor cycles
+  727,103,112 bytes consed
+
+PLOP> (time (dorepeat 30 (run-benchmark 'multiplexer-2 #'run-lllsc)))
+MULTIPLEXER-2 passed with cost 542 (120)
+MULTIPLEXER-2 passed with cost 582 (122)
+MULTIPLEXER-2 passed with cost 1941 (355)
+MULTIPLEXER-2 passed with cost 1226 (214)
+MULTIPLEXER-2 passed with cost 2981 (364)
+MULTIPLEXER-2 passed with cost 1474 (273)
+MULTIPLEXER-2 passed with cost 1137 (213)
+MULTIPLEXER-2 passed with cost 920 (172)
+MULTIPLEXER-2 passed with cost 798 (185)
+MULTIPLEXER-2 passed with cost 1535 (273)
+MULTIPLEXER-2 passed with cost 1512 (305)
+MULTIPLEXER-2 passed with cost 1032 (214)
+MULTIPLEXER-2 passed with cost 1111 (215)
+MULTIPLEXER-2 passed with cost 561 (137)
+MULTIPLEXER-2 passed with cost 1796 (416)
+MULTIPLEXER-2 passed with cost 896 (182)
+MULTIPLEXER-2 passed with cost 976 (210)
+MULTIPLEXER-2 passed with cost 1579 (279)
+MULTIPLEXER-2 passed with cost 2519 (551)
+MULTIPLEXER-2 passed with cost 1976 (360)
+MULTIPLEXER-2 passed with cost 1338 (215)
+MULTIPLEXER-2 passed with cost 635 (154)
+MULTIPLEXER-2 passed with cost 1953 (325)
+MULTIPLEXER-2 passed with cost 880 (220)
+MULTIPLEXER-2 passed with cost 1142 (251)
+MULTIPLEXER-2 passed with cost 883 (147)
+MULTIPLEXER-2 passed with cost 896 (254)
+MULTIPLEXER-2 passed with cost 616 (92)
+MULTIPLEXER-2 passed with cost 1271 (368)
+MULTIPLEXER-2 passed with cost 828 (249)
+Evaluation took:
+  229.933 seconds of real time
+  206.938901 seconds of total run time (160.577587 user, 46.361314 system)
+  [ Run times consist of 39.014 seconds GC time, and 167.925 seconds non-GC time. ]
+  90.00% CPU
+  549,102,881,331 processor cycles
+  16,085,307,352 bytes consed
+
+PLOP> (dorepeat 30 (run-benchmark 'dejong-sphere-3 #'run-lllsc))
+DEJONG-SPHERE-3 passed with cost 548 (46)
+DEJONG-SPHERE-3 failed with cost 600 (48), best score was 1.035092629083414
+DEJONG-SPHERE-3 failed with cost 600 (45), best score was 1.0609857188375555
+DEJONG-SPHERE-3 failed with cost 600 (64), best score was 1.0408814875501173
+DEJONG-SPHERE-3 failed with cost 600 (63), best score was 1.0192892671214453
+DEJONG-SPHERE-3 failed with cost 600 (59), best score was 1.0484888673415063
+DEJONG-SPHERE-3 ; Evaluation aborted.
+
+wtf is this going so badly for? its also real slow

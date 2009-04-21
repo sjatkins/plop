@@ -88,6 +88,14 @@ return nondominated U restricted-tournament-select(n - |nondominated|,
 			(t (concatenate 'vector (rts (- n m) dominated) 
 					nondominated)))))))))
 
+;; for testing purposes - a trivial integration that just takes the n best
+(defun competitive-integrate-dummy (mpop nodes &aux (n (mpop-total-size mpop)))
+  (setf (mpop-nodes mpop) 
+	(remove-if #'identity 
+		   (sort (concatenate 'vector (mpop-nodes mpop) nodes)
+			 #'< :key (compose #'pnode-err #'dyad-result))
+		   :start n)))
+
 #|
 This is not exactly restricted tournament selection - we have a pool of
 unique nodes and we want to select a sampling n of the best:

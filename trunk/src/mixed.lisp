@@ -70,15 +70,98 @@ Mixed Boolean-real reductions and stuff|#
 	   markup))
   :order upwards)
 
-(define-reduction reduce-impulse (fn args markup)
+;; find some subexpr or atom in the sub of products where pred is true
+(defun find-in-sum-of-products (pred expr)
+  (if (funcall pred expr)
+      expr
+      (and (consp expr)
+	   (case (fn expr)
+	     (* (member pred (args expr)))
+	     (+ (some (lambda (term)
+			(or (funcall pred term)
+			    (and (eqfn term '*)
+				 (member pred (args term)))))
+		      (args expr)))))))
+
+
+
+;; (or (eqfn (car args) 'impulse)
+;; 	     (mvbind (o 
+;; 	     (and (eqfn (car args) '*)
+;; 		  (member-if (bind #'eqfn /1 'impulse) (args (car args))))
+;; 	     (
+
+;; ))
+;;     (exp (or (eqfn (car args) 'impulse)
+;; 	     (and (eqfn (car args) '*)
+;; 		  (member-if (bind #'eqfn /1 'impulse) (args (car args))))
+;; 	     (and (eqfn (car args) '+)
+;; 		  (some (lambda (term)
+;; 			  (or (eqfn term 'impulse)
+;; 			      (and (eqfn term '*)
+;; 				   (member-if (bind #'eqfn /1 'impulse)
+;; 					      (args term)))))
+;; 			(args (car args))))))
+
+
+;; impulse(not(x))       -> (1 - impulse(x)) when shrinkable
+;; impulse(x)*impulse(y) -> impulse(x && y)
+;; sin(c+f*impulse(x))   -> impulse(x)*[sin(c+f)-sin(c)]+sin(c)
+;; exp(f+c*impulse(x))   -> exp(f)*[1+impulse(x)*(exp(c)-1)]
+;; note: c must be a constant, f may be any functional form
+(define-reduction reduce-impulse (expr)
   :type num
   :assumes (factor)
-  :condition (and (eq fn '*) (member-if-2 (bind #'eqfn /1 'impulse) args))
+  :condition (case (fn expr)
+	       (impulse (shrink-by-bool-negation (arg0 expr)))
+	       (* (member-if-2 (bind #'eqfn /1 'impulse) (args expr)))
+	       ((sin exp) (find-in-sum-of-products (bind #'eqfn /1 'impulse)
+						   (arg0 expr))))
   :action 
-  (mvbind (matches rest) (split-list (bind #'eqfn /1 'impulse) args)
-    (map-into matches #'arg0 matches)
-    (pcons '* (cons (pcons 'impulse (list (pcons 'and matches))) rest) markup))
+  (ecase (fn expr)
+    (impulse (pcons 'impulse (list it) (markup expr)))
+    (* (mvbind (matches rest)
+	   (split-list (bind #'eqfn /1 'impulse) (args expr))
+	 (map-into matches #'arg0 matches)
+	 (pcons '* (cons (plist 'impulse (pcons 'and matches)) rest) 
+		(markup expr))))
+    (sin (if (longerp (args expr) (if (numberp (arg0 expr)) 2 1))
+	     expr ; too many non-const terms
+	     (mvbind (c ws ts) (split-sum-of-products (arg0 expr))
+	       (let ((f (some (lambda (weight term) 
+				(cond 
+				  ((eqfn term 'impulse) weight)
+				  ((and (eqfn term '*) (find it (args term)))
+				   (pcons '* (cons weight 
+						   (remove it (args term)))))))
+			      ws ts)))
+		 (plist 
+		  '+ (sin c) (plist
+			      '* it (plist
+				     '+ (* -1 c) (plist
+						  'sin (plist 
+							'+ c f)))))))))
+;    (exp (mvbind (matches rest
+
+    (exp expr))
   :order upwards)
+
+;; (let ((c (some (lambda (term)
+;; 			  (cond ((eqfn term 'impulse) weight)
+;; 				      ((and (eqfn term '*)
+;; 					    (find it (args term)))
+;; 				       (remove it (args term)))))
+;; 			      (args expr)) find-if
+;; (mterm (pcons '* (list it (if (eql c 0)
+;; 						 (p
+	     
+	       
+;; 	     let* ((c (if (numberp (arg0 expr)) (sin (arg0 expr)) 0))
+;; 		   (term (cond ((eql c 0) (arg0 expr))
+;; 			       (
+;; 		   (sterm (pcons 'sin (if (eql c 0)
+					  
+;;   :order upwards)
 
 (define-reduction reduce-impulse-in-ineq (fn args markup)
   :type bool
@@ -151,58 +234,52 @@ Mixed Boolean-real reductions and stuff|#
 ;;   :assumes (reduce-nested-ifs)
 ;;   :conditions (mark 'assumptions expr)
 
-(define-test mixed-reduct
-  (let ((bools '(((0< (* 42 x))                      (0< x))
-		 ((0< (* -3 x))                      (0< (* -1 x)))
-		 ((0< (+ -6 (* 3 x) (* -12 y)))      (0< (+ -1 (* 0.5 x)
-							    (* -2 y))))
-		 ((0< (+ -5 (* -10 x) z))            (0< (+ -1 (* 0.2 z)
-							    (* -2 x))))
-		 ((0< (* -1 x x))                    false)
-		 ((0< (log x))                       (0< (+ -1 x)))
-		 ((0< (exp (* 3 (log x))))           (0< x))
-		 ((0< (exp x))                       true)
-		 ((0< (+ 1 (* -1 
-			      (exp (* 2 (log x)))))) false)
-		 ((0< (+ 42 (exp (sin x))))          true)
-		 ((0< (+ -1 (* -1 (exp (sin x)))))   false)
-		 ((0< (+ 1.2 (sin x)))               true)
-		 ((0< (+ -1.2 (sin x)))              false)
-		 ((0< (+ 0.1 (impulse x)))           true)
-		 ((0< (+ (* 3 (impulse x) (impulse y))
-			 (* 2 (impulse z))))         (or z (and x y)))
-		 ((0< (+ 1 (impulse x) (sin y)))     (or x (0< (+ 1 (sin y)))))
-                 ((and (0< x) (0< (+ x 1)))          (0< x))
-		 ((and (0< x) (0< (* -1 x)))         false)
-		 ((or (0< x) (0< (+ x 1)))           (0< x))))
-	(nums  '(((* (impulse x) (impulse x))        (impulse x))
-		 ((* (impulse x) (impulse y))        (impulse (and x y)))
-		 ((exp (impulse x))                  (* 2.718281828459045 
-						        (impulse x)))
-		 ((exp (impulse (+ .1 (impulse x)))) 2.718281828459045)
-		 ((log (impulse x))                  nan)
-;;		 ((if x (log (impulse x)) y)         (if x 0 y))
-		 ((log (impulse (+ 1.5 (sin x))))    0)
-		 ((sin (impulse x))                  (* 0.8414709848078965
-						        (impulse x))))))
-;; 		 ((if (or x y) 42 3)                 (+ 3 (* 39 (impulse 
-;; 								 (or x y))))))
-;; 	(conds '(((if (not x) y z)                    (if x z y))
-;; 		 ((if (or (not x) (not q)) y z)       (if (and q x) z y))
-;; 		 ((if (or (not x) (not q)) y z)       (if (and q x) z y))
-;; 		 ((if x (if x y q) z)                 (if x y z))
-;; 		 ((if x (if (or x p) y q) z)          (if x y z))
-;; 		 ((if x (if (and (not x) p) y q) z)   (if x q z))
-;; 		 ((if x y (if x y z))                 (if x y z)))))
-    (flet 
-	((check (list type)
-	   (mapcar (lambda (pair &aux (source (car pair)) (target (cadr pair))
-			    (result (p2sexpr (reduct (sexpr2p source)
-						     *empty-context* type))))
-		     (assert-equalp target result source))
-		   list)))
-      (check bools bool)
-;;       (check conds num)
-;;       (check conds t)
-      (check nums  num))))
+(defmacro define-mixed-test (name bools &optional nums)
+  `(define-test ,name
+     (flet 
+	 ((check (list type)
+	    (mapcar (lambda (pair &aux (source (car pair)) (target (cadr pair))
+			     (result (p2sexpr (reduct (sexpr2p source)
+						      *empty-context* type))))
+		      (assert-equalp target result source))
+		    list)))
+       (let ((bools ',bools) (nums ',nums))
+	 (check bools bool)
+	 (check nums  num)))))
 
+(define-mixed-test mixed-reduct
+  (((0< (* 42 x))                      (0< x))
+   ((0< (* -3 x))                      (0< (* -1 x)))
+   ((0< (+ -6 (* 3 x) (* -12 y)))      (0< (+ -1 (* 0.5 x)
+					      (* -2 y))))
+   ((0< (+ -5 (* -10 x) z))            (0< (+ -1 (* 0.2 z)
+					      (* -2 x))))
+   ((0< (+ (* 3 (impulse x) (impulse y))
+	   (* 2 (impulse z))))         (or z (and x y)))
+   ((0< (+ 1 (impulse x) (sin y)))     (or x (0< (+ 1 (sin y)))))
+   ((0< (log x))                       (0< (+ -1 x))))
+  (((* (impulse x) (impulse x))        (impulse x))
+   ((* (impulse x) (impulse y))        (impulse (and x y)))
+   ((exp (impulse x))                  (* 2.718281828459045 
+					  (impulse x)))
+   ((exp (impulse (+ .1 (impulse x)))) 2.718281828459045)
+   ((sin (impulse x))                  (* 0.84147096f0
+					  (impulse x)))))
+(define-mixed-test mixed-reduct-interval
+  (((0< (* -1 x x))                    false)
+   ((0< (exp x))                       true)
+   ((0< (+ 1 (* -1 
+		(exp (* 2 (log x)))))) false)
+   ((0< (+ 42 (exp (sin x))))          true)
+   ((0< (+ -1 (* -1 (exp (sin x)))))   false)
+   ((0< (+ 1.2 (sin x)))               true)
+   ((0< (+ -1.2 (sin x)))              false)
+   ((0< (+ 0.1 (impulse x)))           true)
+   ((and (0< x) (0< (* -1 x)))         false)
+   ((0< (exp (* 3 (log x))))           (0< x)))
+  (((log (impulse x))                  nan)
+   ((log (impulse (+ 1.5 (sin x))))    0)))
+
+(define-mixed-test mixed-reduct-implications
+    (((and (0< x) (0< (+ x 1)))          (0< x))
+     ((or (0< x) (0< (+ x 1)))           (0< x))))

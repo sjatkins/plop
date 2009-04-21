@@ -102,6 +102,7 @@ args and markup must be proper lists. |#
 ;;; input and output in the language
 (defun pcons (fn args &optional markup) 
   (cons (cons fn markup) args))
+(defun plist (fn &rest args) (cons (cons fn nil) args))
 (defun p2sexpr (expr)
   (cond ((or (atom expr) (atom (car expr))) expr)
 	((eq (fn expr) 'lambda)
