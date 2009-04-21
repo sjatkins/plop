@@ -121,7 +121,7 @@ Mixed discrete-continuous optimization problems
 
 (defstruct benchmark
   (name nil :type symbol) (cost 0 :type integer)
-  (type) (scorers) (terminationp) (start))
+  type scorers terminationp-gen start)
 
 (defparameter *benchmarks* (make-hash-table))
 
@@ -135,15 +135,17 @@ Mixed discrete-continuous optimization problems
 	#'< :key #'benchmark-cost))
 
 (defmacro defbenchmark (name &key cost type target start)
-  `(mvbind (scorers terminationp) (make-problem-desc ,target ,cost ,type)
+  `(mvbind (scorers terminationp-gen) (make-problem-desc ,target ,cost ,type)
      (setf (gethash ',name *benchmarks*)
 	   (make-benchmark :name ',name :cost ,cost :type ,type 
-			   :scorers scorers :terminationp 
-			   (lambda (err &optional scores)
-			     (when scores
-			       (dorange (i (length scorers) (length scores))
-				 (decf err (elt scores i))))
-			     (funcall terminationp err))
+			   :scorers scorers :terminationp-gen
+			   (lambda 
+			       (&aux (terminationp (funcall terminationp-gen)))
+			     (lambda (err &optional scores)
+			       (when scores
+				 (dorange (i (length scorers) (length scores))
+				   (decf err (elt scores i))))
+			       (funcall terminationp err)))
 			   :start (or ,start 
 				      (lambda () (default-expr ,type)))))))
 (defmacro defbenchmark-seq (name (range) &key cases cost type target start)
@@ -166,7 +168,8 @@ Mixed discrete-continuous optimization problems
   (when verbose (format t "seed: ~S " *random-state*))
   (setf +count-with-duplicates+ 0)
   (mvbind (termination-result scored-solutions)
-      (funcall fn (benchmark-scorers b) (benchmark-terminationp b)
+      (funcall fn (benchmark-scorers b) 
+	       (funcall (benchmark-terminationp-gen b))
 	       (funcall (benchmark-start b)) *empty-context* 
 	       (benchmark-type b))
     (aprog1 (numberp termination-result)
@@ -242,7 +245,7 @@ abstaction should be far easier. |#
   :target (lambda (&rest args)
 	    (reduce (lambda (x y) (not (eq x y))) args :initial-value t)))
 (defbenchmark-seq multiplexer (n)
-  :cases (4 :start 1) :cost (ecase n (1 500) (2 20000) (3 350000) (4 10000000))
+  :cases (5 :start 1) :cost (ecase n (1 500) (2 20000) (3 350000) (4 10000000))
   :type `(function ,(ntimes (+ n (expt 2 n))  'bool) bool)
   :target (lambda (&rest args &aux (addr 0) (pow 1))
 	    (dorepeat n

@@ -47,20 +47,21 @@ type. It returns three values - a boolean indicating if the
 
 ;;; wraps scorer and terminationp to keep track of costs, has
 ;;; terminationp return cost if success, t if timeout
-(defparameter +count-with-duplicates+ 0)
-(defun count-cost (scorers terminationp cost &aux (counter 0))
-  (setf (car scorers)
-	(let ((first (car scorers)))
-	  (lambda (expr) (incf counter) (funcall first expr))))
-  (let ((last-counter 0) (panic 0))
-    (values scorers (lambda (err)
-		      (if (eql counter last-counter)
-			  (progn (incf panic) (incf +count-with-duplicates+))
-			  (setf last-counter counter panic 0))
-		      (aprog1 (or (>= (max counter panic) cost)
-				  (when  (funcall terminationp err)
-				    counter))
-			(when it (setf counter 0)))))))
+(defparameter +count-with-duplicates+ 0) ; a hack
+(defun count-cost (scorers terminationp cost &aux counter last-counter panic)
+  (setf scorers (cons (let ((first (car scorers)))
+			(lambda (expr) (incf counter) (funcall first expr)))
+		      (cdr scorers)))
+  (values scorers 
+	  (lambda () 
+	    (setf counter 0 last-counter 0 panic 0) ;reset
+	    (lambda (err)
+	      (print counter)
+	      (if (eql counter last-counter)
+		  (progn (incf panic) (incf +count-with-duplicates+))
+		  (setf last-counter counter panic 0))
+	      (or (>= (max counter panic) cost)
+		  (and (funcall terminationp err) counter))))))
 
 ;; examples is a list of (result ,@args) lists
 (defun make-scorers-from-examples (examples result-scorer arg-names result-type
