@@ -76,11 +76,13 @@ expected utility calculations |#
 			 (var (/ (- (/ v v1) (* mean mean))
 				 (- 1.0L0 (/ v2 (* v1 v1))))))
   (declare (long-float best v1 v2 m v mean var))
+;;  (print* mean var (* (- 1.0L0 (normal-cdf mean var best))
+;;     (conditional-tail-expectation mean var best)))
   (assert (>= best mean))
   (* (- 1.0L0 (normal-cdf mean var best))
      (conditional-tail-expectation mean var best)))
 
-(defun max-utility-elem (candidates nodes flatness &aux
+(defun max-utility-elem (candidates nodes flatness candidates-contains-p &aux
 			 (worst (reduce #'max candidates :key 
 					(compose #'pnode-err 
 						 #'dyad-result)))
@@ -88,6 +90,8 @@ expected utility calculations |#
 						(compose #'pnode-err 
 							 #'dyad-result))))
 			 (cache (make-pnode-distance-cache)))
+;  (setf flatness 0.05)
+  ;(print* 'flat flatness)
 ;;   (map nil (lambda (dyad) (setf (gethash (dyad-result dyad) 
 ;; 					 (make-hash-table :test 'eq))))
 		   
@@ -100,7 +104,7 @@ expected utility calculations |#
 ;;     (map nil #'insert candidates)
 ;;     (map nil #'insert nodes))
   (max-element 
-   candidates #'< :key ;(compose #'- #'pnode-err #'dyad-result)))
+   candidates #'< :key
    (lambda (dyad &aux (x (dyad-result dyad)) (v1 0.0) (v2 0.0) (m 0.0) (v 0.0))
      (flet ((update (y &aux (u (- worst (pnode-err y))) ; bigger u is better
 		     (w (expt flatness (pnode-distance x y cache))))
@@ -109,9 +113,10 @@ expected utility calculations |#
 	      (incf m (* w u))
 	      (incf v (* w u u))))
        (map nil (compose #'update #'dyad-result) candidates)
-       (map nil (lambda (node) (unless (lru-node-immortal-p node)
+       (map nil (lambda (node) (unless (funcall candidates-contains-p node)
 				 (update (dyad-result node))))
 	    nodes)
+;       (print* m v (expected-utility v1 v2 m v best))
        (expected-utility v1 v2 m v best)))))
   
 ;;   (max-element 
@@ -129,3 +134,8 @@ expected utility calculations |#
 ;; 				 (update (dyad-result node))))
 ;; 	    nodes)
 ;;        (expected-utility v1 v2 m v best)))))
+
+(defun max-utility-elem-dummy (candidates nodes flatness 
+			       candidates-contains-p)
+  (declare (ignore nodes flatness candidates-contains-p))
+  (max-element candidates #'< :key (compose #'- #'pnode-err #'dyad-result)))

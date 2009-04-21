@@ -19,15 +19,15 @@ mpop = metapopulation |#
 
 (defstruct (mpop (:constructor make-mpop 
 		  (problem &key (size 1000) &aux 
-		   (nodes (make-array size :fill-pointer 0
-                                      :element-type 'lru-node)))))
-  (nodes nil :type (vector lru-node))
+		   (--nodes (make-array size :fill-pointer 0
+					:element-type 'lru-node)))))
+  (--nodes nil :type (vector lru-node)) ; don't edit this directly
   (problem nil :type problem)
   (nsamples 0 :type (integer 0))
   (err-divergence-sum 0.0 :type (float 0))
   (err-divergence-weight-sum 0.0 :type (float 0)))
-(defun mpop-size (mpop) (length (mpop-nodes mpop)))
-(defun mpop-total-size (mpop) (array-total-size (mpop-nodes mpop)))
+(defun mpop-size (mpop) (length (mpop---nodes mpop)))
+(defun mpop-total-size (mpop) (array-total-size (mpop---nodes mpop)))
 (defun mpop-contains-node-p (mpop node)
   (declare (ignore mpop))
   (lru-node-immortal-p node))
@@ -41,6 +41,12 @@ mpop = metapopulation |#
        (vector-push node (mpop-nodes mpop))
        (lru-immortalize lru node)
        node)))
+(defun mpop-nodes (mpop) (mpop---nodes mpop))
+(defun set-mpop-nodes (mpop nodes &aux (lru (problem-lru (mpop-problem mpop))))
+  (map nil (bind #'lru-mortalize lru /1) (mpop---nodes mpop))
+  (map nil (bind #'lru-immortalize lru /1) nodes)
+  (setf (mpop---nodes mpop) nodes))
+(defsetf mpop-nodes set-mpop-nodes)
 
 (defun err-divergence (err parent-err twiddles &aux 
 		       (weight (/ 1.0 (1+ (twiddles-magnitude twiddles)))))

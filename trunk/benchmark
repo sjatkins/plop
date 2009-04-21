@@ -1784,3 +1784,140 @@ DEJONG-SPHERE-3 failed with cost 600 (59), best score was 1.0484888673415063
 DEJONG-SPHERE-3 ; Evaluation aborted.
 
 wtf is this going so badly for? its also real slow
+
+4/20 fixed the benchmarking bug
+
+notes: with just a trivial hillclimber (size 1) we do just fine on
+multiplexer-2, but sometimes never succeed multiplexer-3 it appears that a
+popsize of 100 (!!) is sufficient to alleviate this, however would be
+interesting to try on even-parity-4 and 5 - I should run these overnight on my
+box sometime soon...
+
+its suprising that cpp-moses was not better at multiplexer-2 all I can suppose
+is that the population-based sampling was really inefficient, and that the gain
+of structure learning here was either (1) to prevent premature convergence; or
+(2) insignificant in comparison . we will see when non-sucky structure learning is implemented if it improves performance on such easy problems
+
+question: will parity-4,5,6 fail without large steps?
+
+PLOP> (time (dorepeat 30 (run-benchmark 'easy-bool #'run-lllsc)))
+EASY-BOOL passed with cost 53 (53)
+EASY-BOOL passed with cost 90 (47)
+EASY-BOOL passed with cost 71 (44)
+EASY-BOOL passed with cost 52 (52)
+EASY-BOOL passed with cost 52 (43)
+EASY-BOOL passed with cost 50 (39)
+EASY-BOOL passed with cost 42 (45)
+EASY-BOOL passed with cost 43 (41)
+EASY-BOOL passed with cost 32 (15)
+EASY-BOOL passed with cost 82 (149)
+EASY-BOOL passed with cost 18 (4)
+EASY-BOOL passed with cost 25 (16)
+EASY-BOOL passed with cost 27 (26)
+EASY-BOOL passed with cost 42 (39)
+EASY-BOOL passed with cost 98 (149)
+EASY-BOOL passed with cost 33 (13)
+EASY-BOOL passed with cost 42 (16)
+EASY-BOOL passed with cost 25 (7)
+EASY-BOOL passed with cost 42 (33)
+EASY-BOOL passed with cost 21 (5)
+EASY-BOOL passed with cost 50 (31)
+EASY-BOOL passed with cost 59 (57)
+EASY-BOOL passed with cost 59 (31)
+EASY-BOOL passed with cost 54 (49)
+EASY-BOOL passed with cost 48 (50)
+EASY-BOOL passed with cost 76 (87)
+EASY-BOOL passed with cost 22 (9)
+EASY-BOOL passed with cost 107 (108)
+EASY-BOOL passed with cost 32 (28)
+EASY-BOOL passed with cost 80 (92)
+Evaluation took:
+  0.834 seconds of real time
+  0.789694 seconds of total run time (0.714661 user, 0.075033 system)
+  [ Run times consist of 0.180 seconds GC time, and 0.610 seconds non-GC time. ]
+  94.72% CPU
+  1,990,579,446 processor cycles
+  59,482,448 bytes consed
+
+PLOP> (time (dorepeat 30 (run-benchmark 'multiplexer-2 #'run-lllsc)))
+MULTIPLEXER-2 passed with cost 2294 (348)
+MULTIPLEXER-2 passed with cost 404 (66)
+MULTIPLEXER-2 passed with cost 3662 (548)
+MULTIPLEXER-2 passed with cost 1453 (402)
+MULTIPLEXER-2 passed with cost 418 (94)
+MULTIPLEXER-2 passed with cost 966 (159)
+MULTIPLEXER-2 passed with cost 574 (97)
+MULTIPLEXER-2 passed with cost 1141 (180)
+MULTIPLEXER-2 passed with cost 636 (145)
+MULTIPLEXER-2 passed with cost 650 (153)
+MULTIPLEXER-2 passed with cost 536 (106)
+MULTIPLEXER-2 passed with cost 1154 (201)
+MULTIPLEXER-2 passed with cost 968 (237)
+MULTIPLEXER-2 passed with cost 1354 (246)
+MULTIPLEXER-2 passed with cost 1185 (286)
+MULTIPLEXER-2 passed with cost 1361 (264)
+MULTIPLEXER-2 passed with cost 1060 (295)
+MULTIPLEXER-2 passed with cost 1180 (260)
+MULTIPLEXER-2 passed with cost 4763 (188)
+MULTIPLEXER-2 passed with cost 808 (214)
+MULTIPLEXER-2 passed with cost 1621 (228)
+MULTIPLEXER-2 passed with cost 386 (67)
+MULTIPLEXER-2 passed with cost 936 (216)
+MULTIPLEXER-2 passed with cost 1412 (298)
+MULTIPLEXER-2 passed with cost 1043 (337)
+MULTIPLEXER-2 passed with cost 404 (49)
+MULTIPLEXER-2 passed with cost 727 (128)
+MULTIPLEXER-2 passed with cost 1407 (338)
+MULTIPLEXER-2 passed with cost 1366 (393)
+MULTIPLEXER-2 passed with cost 1088 (252)
+Evaluation took:
+  270.358 seconds of real time
+  241.656551 seconds of total run time (181.069664 user, 60.586887 system)
+  [ Run times consist of 55.003 seconds GC time, and 186.654 seconds non-GC time. ]
+  89.38% CPU
+  634,058,895,159 processor cycles
+  17,374,773,672 bytes consed
+
+PLOP> (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
+KOZA-POLYNOMIAL-2 failed with cost 400 (343), best score was 65.94282449105951
+KOZA-POLYNOMIAL-2 failed with cost 400 (608), best score was 47.481935210404444
+KOZA-POLYNOMIAL-2 failed with cost 400 (504), best score was 47.72963878795728
+KOZA-POLYNOMIAL-2 failed with cost 400 (469), best score was 81.24828206806336
+KOZA-POLYNOMIAL-2 failed with cost 400 (688), best score was 80.87250971644406
+KOZA-POLYNOMIAL-2 failed with cost 400 (561), best score was 49.55135195626521
+KOZA-POLYNOMIAL-2 failed with cost 400 (370), best score was 48.56388696861914
+KOZA-POLYNOMIAL-2 failed with cost 400 (473), best score was 47.882441295502815
+KOZA-POLYNOMIAL-2 passed with cost 19 (44)
+KOZA-POLYNOMIAL-2 failed with cost 400 (645), best score was 76.73049257853616
+KOZA-POLYNOMIAL-2 failed with cost 400 (391), best score was 45.98793226538524
+KOZA-POLYNOMIAL-2 failed with cost 400 (377), best score was 55.154710984261044
+KOZA-POLYNOMIAL-2 passed with cost 160 (162)
+KOZA-POLYNOMIAL-2 failed with cost 400 (1254), best score was 93.47239863383953
+KOZA-POLYNOMIAL-2 failed with cost 400 (475), best score was 40.86467763866051
+KOZA-POLYNOMIAL-2 passed with cost 18 (7)
+KOZA-POLYNOMIAL-2 passed with cost 15 (20)
+KOZA-POLYNOMIAL-2 failed with cost 400 (367), best score was 73.06908720617844
+KOZA-POLYNOMIAL-2 failed with cost 400 (542), best score was 10.198678983786099
+KOZA-POLYNOMIAL-2 passed with cost 7 (10)
+KOZA-POLYNOMIAL-2 failed with cost 400 (425), best score was 32.8374183406094
+KOZA-POLYNOMIAL-2 failed with cost 400 (410), best score was 68.40218562120447
+KOZA-POLYNOMIAL-2 passed with cost 69 (39)
+KOZA-POLYNOMIAL-2 failed with cost 400 (740), best score was 40.86467763866051
+KOZA-POLYNOMIAL-2 passed with cost 38 (78)
+KOZA-POLYNOMIAL-2 passed with cost 22 (55)
+KOZA-POLYNOMIAL-2 passed with cost 9 (16)
+KOZA-POLYNOMIAL-2 failed with cost 400 (1115), best score was 93.33663823806849
+KOZA-POLYNOMIAL-2 failed with cost 400 (527), best score was 56.31215906669131
+KOZA-POLYNOMIAL-2 passed with cost 4 (3)
+Evaluation took:
+  21.454 seconds of real time
+  20.360918 seconds of total run time (18.421799 user, 1.939119 system)
+  [ Run times consist of 2.531 seconds GC time, and 17.830 seconds non-GC time. ]
+  94.91% CPU
+  51,207,698,673 processor cycles
+  1,758,700,840 bytes consed
+
+we have a problem with dejong sphere and max-utility-elem computation,
+due to noise from undersampling and bad distance data overwhelming fitness (?)
+it might be that if we reduced the computation to only look within n reps,
+and add a hack to compute distance properly, it will solve itself...

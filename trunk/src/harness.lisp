@@ -56,7 +56,6 @@ type. It returns three values - a boolean indicating if the
 	  (lambda () 
 	    (setf counter 0 last-counter 0 panic 0) ;reset
 	    (lambda (err)
-	      (print counter)
 	      (if (eql counter last-counter)
 		  (progn (incf panic) (incf +count-with-duplicates+))
 		  (setf last-counter counter panic 0))

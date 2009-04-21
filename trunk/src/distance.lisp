@@ -58,6 +58,12 @@ code for computing distances between addrs |#
 			       (+ ym (dist x yrp))
 			       (+ xm ym (dist xrp yrp))))))))))))
     (dist x y)))
+;;     (let ((xn (make-expr-from-pnode x)) (yn (make-expr-from-pnode y)) (d 0))
+;; 	(map nil (lambda (a b) (incf d (abs (- a b)))) xn yn)
+;; 	d)))
+	;(* d 10))))
+;; 	(print* xn)
+;; 	(print* yn it d)))))
 (define-test pnode-distance
   (flet ((make-pnode () (aprog1 (make-pnode '(0) 0)
 			  (setf (pnode-rep it) (make-rep-raw)))))

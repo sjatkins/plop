@@ -71,43 +71,21 @@ Mixed Boolean-real reductions and stuff|#
   :order upwards)
 
 ;; find some subexpr or atom in the sub of products where pred is true
-(defun find-in-sum-of-products (pred expr)
+(defun find-in-product-if (pred term)
+  (or (funcall pred term)
+      (and (eqfn term '*) (member pred (args term)))))
+(defun find-in-sum-of-products-if (pred expr)
   (if (funcall pred expr)
       expr
       (and (consp expr)
 	   (case (fn expr)
 	     (* (member pred (args expr)))
-	     (+ (some (lambda (term)
-			(or (funcall pred term)
-			    (and (eqfn term '*)
-				 (member pred (args term)))))
-		      (args expr)))))))
-
-
-
-;; (or (eqfn (car args) 'impulse)
-;; 	     (mvbind (o 
-;; 	     (and (eqfn (car args) '*)
-;; 		  (member-if (bind #'eqfn /1 'impulse) (args (car args))))
-;; 	     (
-
-;; ))
-;;     (exp (or (eqfn (car args) 'impulse)
-;; 	     (and (eqfn (car args) '*)
-;; 		  (member-if (bind #'eqfn /1 'impulse) (args (car args))))
-;; 	     (and (eqfn (car args) '+)
-;; 		  (some (lambda (term)
-;; 			  (or (eqfn term 'impulse)
-;; 			      (and (eqfn term '*)
-;; 				   (member-if (bind #'eqfn /1 'impulse)
-;; 					      (args term)))))
-;; 			(args (car args))))))
-
+	     (+ (some (bind #'find-in-product-if pred /1) (args expr)))))))
 
 ;; impulse(not(x))       -> (1 - impulse(x)) when shrinkable
 ;; impulse(x)*impulse(y) -> impulse(x && y)
 ;; sin(c+f*impulse(x))   -> impulse(x)*[sin(c+f)-sin(c)]+sin(c)
-;; exp(f+c*impulse(x))   -> exp(f)*[1+impulse(x)*(exp(c)-1)]
+;; exp(f+c*impulse(x))   -> exp(f)*[1+(exp(c)-1)*impulse(x)]
 ;; note: c must be a constant, f may be any functional form
 (define-reduction reduce-impulse (expr)
   :type num
@@ -115,8 +93,8 @@ Mixed Boolean-real reductions and stuff|#
   :condition (case (fn expr)
 	       (impulse (shrink-by-bool-negation (arg0 expr)))
 	       (* (member-if-2 (bind #'eqfn /1 'impulse) (args expr)))
-	       ((sin exp) (find-in-sum-of-products (bind #'eqfn /1 'impulse)
-						   (arg0 expr))))
+	       ((sin exp) (find-in-sum-of-products-if (bind #'eqfn /1 'impulse)
+						      (arg0 expr))))
   :action 
   (ecase (fn expr)
     (impulse (pcons 'impulse (list it) (markup expr)))
@@ -141,27 +119,31 @@ Mixed Boolean-real reductions and stuff|#
 				     '+ (* -1 c) (plist
 						  'sin (plist 
 							'+ c f)))))))))
-;    (exp (mvbind (matches rest
 
-    (exp expr))
+    (exp 
+     (labels ((build (c impulse)
+		(plist '+ 1 (plist '* (- (exp c) 1) impulse)))
+	      (mkterm (term)
+		(assert (matches (afn term) (* impulse)) ()
+			"malformed expr ~S" expr)
+		(cond ((eqfn term 'impulse) (build 1 term))
+		      ((or (not (numberp (arg0 expr))) (longerp (args expr) 2))
+		       expr)
+		      (t (build (arg0 (arg0 expr)) (arg1 (arg0 expr)))))))
+       (if (eqfn (arg0 expr) '+)
+	   (let* ((term (find-if (lambda (term)
+				   (find-in-product-if
+				    (bind #'eqfn /1 'impulse) term))
+				 (args (arg0 expr))))
+		  (term2 (mkterm term)))
+	     (if (eq term2 term)
+		 expr
+		 (plist 
+		  '* term2 (plist 
+			    'exp (pcons '+ (remove term (args (arg0 expr)))
+					(markup (arg0 expr)))))))
+	     (or (mkterm (arg0 expr)) expr)))))
   :order upwards)
-
-;; (let ((c (some (lambda (term)
-;; 			  (cond ((eqfn term 'impulse) weight)
-;; 				      ((and (eqfn term '*)
-;; 					    (find it (args term)))
-;; 				       (remove it (args term)))))
-;; 			      (args expr)) find-if
-;; (mterm (pcons '* (list it (if (eql c 0)
-;; 						 (p
-	     
-	       
-;; 	     let* ((c (if (numberp (arg0 expr)) (sin (arg0 expr)) 0))
-;; 		   (term (cond ((eql c 0) (arg0 expr))
-;; 			       (
-;; 		   (sterm (pcons 'sin (if (eql c 0)
-					  
-;;   :order upwards)
 
 (define-reduction reduce-impulse-in-ineq (fn args markup)
   :type bool
@@ -185,6 +167,76 @@ Mixed Boolean-real reductions and stuff|#
 	     (map-into matches #'arg0 matches)
 	     (pcons 'or (cons (pcons '0< (list (pcons '+ rest))) matches)))))
   :order upwards)
+
+;; 0< c1*log(x)+c2 -> 0< exp(c2/c1)*x   - 1  (c1>0)
+;;                    0< -exp(-c2/c1)*x + 1  (c1<0)
+;; 0< 
+(define-reduction reduce-log-exp-ineq (expr)
+  :type bool    
+  :assumes (scale-ineq)
+  :condition (flet ((valid-clause-p (x) 
+		      (or (matches (afn x) (log exp))
+			  (and (eqfn x '*)
+			       (numberp (arg0 x))
+			       (eql-length-p (args x) 2)
+			       (matches (afn (arg1 x)) (log exp))))))
+	       (and (eqfn expr '0<)
+		    (or (valid-clause-p (arg0 expr))
+			(and (eqfn (arg0 expr) '+)
+			     (numberp (arg0 (arg0 expr)))
+			     (eql-length-p (args (arg0 expr)) 2)
+			     (valid-clause-p (arg1 (arg0 expr)))))))
+  :action
+  (mvbind (o ws ts) (split-sum-of-products (arg0 expr))
+    (case (fn (car ts))
+      (log (pcons '0< (list (pcons
+			     '+ (if (< 0 (car ws))
+				    (list -1 (plist 
+					      '* (exp (/ o (car ws))) 
+					      (arg0 (car ts))))
+				    (list  1 (plist 
+					      '* (- (exp (- (/ o (car ws)))))
+					      (arg0 (car ts)))))))
+		  (markup expr)))
+      (exp expr))))
+
+;; (or (eqfn (car args) 'impulse)
+;; 	     (mvbind (o 
+;; 	     (and (eqfn (car args) '*)
+;; 		  (member-if (bind #'eqfn /1 'impulse) (args (car args))))
+;; 	     (
+
+;; ))
+;;     (exp (or (eqfn (car args) 'impulse)
+;; 	     (and (eqfn (car args) '*)
+;; 		  (member-if (bind #'eqfn /1 'impulse) (args (car args))))
+;; 	     (and (eqfn (car args) '+)
+;; 		  (some (lambda (term)
+;; 			  (or (eqfn term 'impulse)
+;; 			      (and (eqfn term '*)
+;; 				   (member-if (bind #'eqfn /1 'impulse)
+;; 					      (args term)))))
+;; 			(args (car args))))))
+
+
+
+;; (let ((c (some (lambda (term)
+;; 			  (cond ((eqfn term 'impulse) weight)
+;; 				      ((and (eqfn term '*)
+;; 					    (find it (args term)))
+;; 				       (remove it (args term)))))
+;; 			      (args expr)) find-if
+;; (mterm (pcons '* (list it (if (eql c 0)
+;; 						 (p
+	     
+	       
+;; 	     let* ((c (if (numberp (arg0 expr)) (sin (arg0 expr)) 0))
+;; 		   (term (cond ((eql c 0) (arg0 expr))
+;; 			       (
+;; 		   (sterm (pcons 'sin (if (eql c 0)
+					  
+;;   :order upwards)
+
 
 ;; (defun reduce-assuming (ass expr)
 ;;   (cond 
@@ -257,12 +309,11 @@ Mixed Boolean-real reductions and stuff|#
    ((0< (+ (* 3 (impulse x) (impulse y))
 	   (* 2 (impulse z))))         (or z (and x y)))
    ((0< (+ 1 (impulse x) (sin y)))     (or x (0< (+ 1 (sin y)))))
-   ((0< (log x))                       (0< (+ -1 x))))
+   ((0< (log x))                       (0< (+ -1 x)))
+   ((0< (+ 3 (* -2 (log x))))          (0< (+ 1 (* -4.481689070338065 x)))))
   (((* (impulse x) (impulse x))        (impulse x))
    ((* (impulse x) (impulse y))        (impulse (and x y)))
-   ((exp (impulse x))                  (* 2.718281828459045 
-					  (impulse x)))
-   ((exp (impulse (+ .1 (impulse x)))) 2.718281828459045)
+   ((exp (impulse x))                  (+ 1 (* 1.7182817f0 (impulse x))))
    ((sin (impulse x))                  (* 0.84147096f0
 					  (impulse x)))))
 (define-mixed-test mixed-reduct-interval
@@ -278,6 +329,7 @@ Mixed Boolean-real reductions and stuff|#
    ((and (0< x) (0< (* -1 x)))         false)
    ((0< (exp (* 3 (log x))))           (0< x)))
   (((log (impulse x))                  nan)
+   ((exp (impulse (+ .1 (impulse x)))) 2.718281828459045)
    ((log (impulse (+ 1.5 (sin x))))    0)))
 
 (define-mixed-test mixed-reduct-implications
