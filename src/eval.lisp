@@ -135,5 +135,4 @@ for speed have an all-positive marker? |#
 	  (list 4 (list %(+ 1 1 1 1) 
 			%(* 2 2)))))
 
-(defun pfuncall (fn &rest args)
-  (papply fn args))
+(defun pfuncall (fn &rest args) (papply fn args))

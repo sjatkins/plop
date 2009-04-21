@@ -67,7 +67,7 @@ if |nondominated|>=n
 return nondominated U restricted-tournament-select(n - |nondominated|, 
                                                    dominated)
 |#
-
+;; nodes is assumes to be completely disjoint from mpop-nodes
 (defun competitive-integrate (mpop nodes &aux (n (mpop-total-size mpop))
 			      (cache (make-pnode-distance-cache)))
   (flet ((rts (n nodes)
@@ -80,7 +80,7 @@ return nondominated U restricted-tournament-select(n - |nondominated|,
     (if (<= (+ (mpop-size mpop) (length nodes)) n)
 	(map nil (bind #'mpop-insert mpop /1) nodes)
         (mvbind (dominated nondominated)
-	    (partition-by-dominance (mpop-nodes mpop) nodes)
+	    (partition-by-dominance (copy-seq (mpop-nodes mpop)) nodes)
 	  (let ((m (length nondominated)))
 	    (setf (mpop-nodes mpop) 
 		  (cond ((= m n) nondominated)
@@ -90,11 +90,13 @@ return nondominated U restricted-tournament-select(n - |nondominated|,
 
 ;; for testing purposes - a trivial integration that just takes the n best
 (defun competitive-integrate-dummy (mpop nodes &aux (n (mpop-total-size mpop)))
-  (setf (mpop-nodes mpop) 
-	(remove-if #'identity 
-		   (sort (concatenate 'vector (mpop-nodes mpop) nodes)
-			 #'< :key (compose #'pnode-err #'dyad-result))
-		   :start n)))
+  (let ((all (concatenate 'vector (mpop-nodes mpop) nodes)))
+    (setf (mpop-nodes mpop) 
+	  (if (> (length all) n)
+	      (remove-if #'identity (sort all #'< :key 
+					  (compose #'pnode-err #'dyad-result))
+			 :start n)
+	      all))))
 
 #|
 This is not exactly restricted tournament selection - we have a pool of
