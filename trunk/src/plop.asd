@@ -30,7 +30,7 @@ Author: madscience@google.com (Moshe Looks) |#
                (:file "util")        ; generic stuff
 	       (:file "numerical")
 	       (:file "dag")
-;	       (:file "affine")
+	       (:file "affine")
 
 	       (:file "syntax")      ; the p language core
 	       (:file "markup")
