@@ -173,7 +173,7 @@ Author: madscience@google.com (Moshe Looks) |#
        (register-reduction ',name ',type (lambda (,expr) ,(order-call expr))
 			   ',assumes ',obviates)
        (setf (gethash ',name *reduction-fns*)
-	     (lambda (,expr) 
+	     (lambda (,expr)
 	       ,(order-call `(cummulative-fixed-point ,assumes-fns ,expr)))))))
 (defmacro generate-reduction (name &rest rest)
   `(progn
@@ -190,7 +190,9 @@ Author: madscience@google.com (Moshe Looks) |#
 		      (funcall (gethash ',name *reduction-fns*) expr))
 		    (generate-reduction ,name ,@rest)))))
 
+(defparameter *reduction-context* *empty-context*)
 (defun reduct (expr context type)
+  (setf *reduction-context* context)
   (assert (not (canonp expr)) () "can't reduct canonized expr ~S" expr)
   (labels ((reduce-subtypes (expr)
 	     (cond 

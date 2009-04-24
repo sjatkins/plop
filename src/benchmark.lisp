@@ -166,7 +166,7 @@ Mixed discrete-continuous optimization problems
 			     (gethash name *benchmarks*))))
   (format t "~S " (benchmark-name b))
   (when verbose (format t "seed: ~S " *random-state*))
-  (setf +count-with-duplicates+ 0)
+  (setf *count-with-duplicates* 0)
   (mvbind (termination-result scored-solutions)
       (funcall fn (benchmark-scorers b) 
 	       (funcall (benchmark-terminationp-gen b))
@@ -177,7 +177,7 @@ Mixed discrete-continuous optimization problems
 	  (if it 
 	      (progn 
 		(format t "passed with cost ~S (~S)" termination-result
-			+count-with-duplicates+)
+			*count-with-duplicates*)
 		(if verbose
 		    (let ((best (min-element scored-solutions #'< :key #'car)))
 		      (format t ", best was ~S with a score of ~S.~%" 
@@ -185,7 +185,7 @@ Mixed discrete-continuous optimization problems
 		    (format t "~%")))
 	      (let ((best (min-element scored-solutions #'< :key #'car)))
 		(format t "failed with cost ~S (~S), best " (benchmark-cost b)
-			+count-with-duplicates+)
+			*count-with-duplicates*)
 		(if verbose 
 		    (format t "was ~S with a score of ~S.~%" 
 			    (p2sexpr (cdr best)) (car best))
@@ -193,11 +193,11 @@ Mixed discrete-continuous optimization problems
 	  (progn
 	    (if it
 		(format t "passed with cost ~S (~S)~%" termination-result
-			+count-with-duplicates+)
+			*count-with-duplicates*)
 		(let ((best (min-element scored-solutions #'< 
 					 :key #'pnode-err)))
 		  (format t "failed with cost ~S (~S), best score was ~S~%"
-			  (benchmark-cost b) +count-with-duplicates+
+			  (benchmark-cost b) *count-with-duplicates*
 			  (pnode-err best))))
 	    (when verbose 
 	      (ppnodes scored-solutions)))))))

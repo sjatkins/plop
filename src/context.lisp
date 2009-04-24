@@ -28,7 +28,8 @@ be passed between subprocesses. |#
 (defstruct context
   (symbol-bindings (make-hash-table) :type hash-table)
   (type-map (make-hash-table) :type hash-table)
-  (problem-stack nil :type list))
+  (problem-stack nil :type list)
+  (num-aa-map (make-hash-table) :type hash-table))
 
 (defconstant +no-value+ 
   (if (boundp '+no-value+) (symbol-value '+no-value+) (gensym)))
@@ -58,6 +59,21 @@ be passed between subprocesses. |#
   (aif (gethash type (context-type-map context))
        (hash-table-count it)
        0))
+
+;; aa insertion:
+;; (setf (getaa 'x context) aa) or (setf (getaa 'x context) '(min max))
+(defun make-default-aa (name) (make-aa 0 0 (list (cons name 1.0))))
+(defun getaa (name context)
+  (or (gethash name (context-num-aa-map context)) 
+      (setf (gethash name (context-num-aa-map context))
+	    (make-default-aa (if (symbolp name) name (gensym)))))) ;fixme
+(defun setaa (name context value)
+  (setf (gethash name (context-num-aa-map context))
+	(if (aa-p value)
+	    value
+	    (make-aa-term name (car value) (cadr value)))))
+(defsetf getaa setaa)
+
 
 ;;; when binding a symbol, value must be already evaled
 (defun bind-value (name context value &optional (type (value-type value)) &aux

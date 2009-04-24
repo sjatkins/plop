@@ -294,9 +294,11 @@ miscelaneous non-numerical utilities |#
 (defun strict-includes-p (l1 l2 cmp)
   (and (includesp l1 l2 cmp) (not (eql (length l1) (length l2)))))
 
-(defun sortedp (l pred) 
+(defun sortedp (l pred &key (key #'identity))
   (labels ((rec-sorted (x xs)
-	     (or (null xs) (and (not (funcall pred (car xs) x))
+	     (or (null xs) (and (not (funcall pred 
+					      (funcall key (car xs))
+					      (funcall key x)))
 				(rec-sorted (car xs) (cdr xs))))))
     (or (null l) (rec-sorted (car l) (cdr l)))))
 (define-test sortedp

@@ -17,6 +17,99 @@ Author: madscience@google.com (Moshe Looks)
 Mixed Boolean-real reductions and stuff|#
 (in-package :plop)
 
+;; 0< (* -1 x x)                       -> false
+;; 0< (exp x)                          -> true
+;; 0< (+ 1 (* -1 (exp (* 2 (log x))))) -> false
+;; 0< (+ 42 (exp (sin x)))             -> true
+;; 0< (+ -1 (* -1 (exp (sin x))))      -> false
+;; 0< (+ 1.2 (sin x))                  -> true
+;; 0< (+ -1.2 (sin x))                 -> false
+;; 0< (+ 0.1 (impulse x))              -> true
+;; (and (0< x) (0< (* -1 x)))          -> false
+;; 0< (exp (* 3 (log x)))              -> 0< x
+;; (log (impulse x))                   -> nan
+;; (impulse (+ .1 (impulse x)))  -> 2.718281828459045
+;; (log (impulse (+ 1.5 (sin x))))     -> 0
+(defparameter aa 'aa)
+(defun atom-aa (x &optional (context *reduction-context*))
+  (if (numberp x) (make-aa x) (getaa x context)))
+(defun expr-aa (x &optional (context *reduction-context*))
+  (if (consp x) (or (mark aa x) (getaa x context)) (atom-aa x context)))
+(defun expr-compute-aa (expr)
+  (blockn
+    (when (eq (fn expr) 'impulse)
+      (return (make-aa 0.5 0.5)))
+    (let* ((aas (mapcar #'expr-aa (args expr))) (aa0 (car aas)))
+      (ecase (afn expr)
+	(* (aif (find-if #'aa-unreal-p aas)
+		(let (n unreal-arg imp)
+		  (mapc (lambda (arg aa)
+			  (cond ((eq aa it) (setf unreal-arg arg))
+				((numberp arg) (if (= arg (floor arg))
+						   (setf n (floor arg))
+						   (return)))
+				((eqfn arg 'impulse) (setf imp t))
+				(t (return))))
+			(args expr) aas)
+		  (when n 
+		    ;; 1/x^n is ok only if x doesn't cross 0
+		    (when (and (< n 0) (>= (aa-max it) 0))
+		      (return))
+		    (setf it (aa-expt it n)))
+		  (when imp 
+		    (setf it (aa-widen it 1.0)))
+		  (setf (aa-unreal-p it) t)
+		  it)
+		(reduce #'aa-* aas)))
+	(+ (if (some #'aa-unreal-p aas)
+	       (aprog1 (reduce #'aa-* aas 
+			       :key (lambda (aa)
+				      (if (aa-unreal-p aa)
+					  aa
+					  (aa-exp aa))))
+		 (setf (aa-unreal-p it) t))
+	       (reduce #'aa-+ aas)))
+	(sin (if (aa-unreal-p aa0)
+		 (return)
+		 (aa-sin aa0)))
+	(exp (if (aa-unreal-p aa0) (make-real-aa aa0) (aa-exp aa0)))
+	(log (cond ((aa-unreal-p aa0) (return))
+		   ((>= 0 (aa-min aa0)) (make-unreal-aa aa0))
+		   (t (aa-log aa0))))
+	(if (aa-or (cadr aas) (caddr aas)))
+	(t (getaa expr *reduction-context*))))))
+(define-reduction reduce-by-aa (expr)
+  :type (or num bool)
+  :assumes (factor)
+  ;fixme get rid of this condition after the reduction system is fixed
+  :condition (or (matches (fn expr) (if impulse log exp sin + *))
+		 (eq (fn expr) '0<))
+  :action 
+  (if (eq (fn expr) '0<)
+      (let ((aa (expr-aa (arg0 expr))))
+	(if (aa-unreal-p aa)
+	    nan
+	    (let ((c (aa-central aa)) (r (aa-rad aa)))
+	      (cond ((> (- c r) 0) true)
+		    ((< (+ c r) 0) false)
+		    (t expr)))))
+      (aif (expr-compute-aa expr)
+	   (progn (setf (mark aa expr) it) expr)
+	   nan))
+  :order upwards)
+(define-test reduce-by-aa
+  (let ((c (make-context)))
+    (setf (getaa 'x c) '(-2 4) (getaa 'y c) '(0 3) (getaa 'z c) '(1 2))
+    (assert-equalp (make-aa 4 0 '((x . -3) (y . 3)))
+		   (mark aa (reduct (pclone %(+ 2 (* -1 x) (* y 2))) c num)))
+    (assert-equal true (reduct (pclone %(0< (+ 0.1 z))) c bool))
+    (assert-equal false (reduct (pclone %(0< (log (* 0.1 z)))) c bool))
+    (assert-equal nan (reduct (pclone %(0< (log y))) c bool))
+    (assert-equal nan (reduct (pclone %(0< (log x))) c bool))
+    (assert-equalp '(0< x) (p2sexpr (reduct (pclone %(0< x)) c bool)))
+    (assert-equalp '(0< x) (p2sexpr (reduct (pclone %(0< (* x x x))) c bool)))
+    (assert-equal true (p2sexpr (reduct (pclone %(0< (* x x z))) c bool)))))
+
 (defun clause-weight (clause &aux (w (arg0 clause)))
   (if (numberp w) w (ecase (fn clause) (+ 0) (* 1))))
 (defun clause-remove-weight (clause)
@@ -40,8 +133,7 @@ Mixed Boolean-real reductions and stuff|#
 ;; if a=0 then scale by the multiplier of smallest magnitude
 (define-reduction scale-ineq (fn args markup)
   :type bool
-  :assumes (sort-commutative flatten-associative ring-op-identities factor
-			     );fixme reduce-by-intervals)
+  :assumes (factor reduce-by-aa)
   :condition (and (eq fn '0<) (num-junctor-p (car args))
 		  (cond ((numberp (arg0 (car args)))
 			 (not (= (abs (arg0 (car args))) 1)))
@@ -69,6 +161,20 @@ Mixed Boolean-real reductions and stuff|#
 			      (markup arg0)))))
 	   markup))
   :order upwards)
+
+;; (define-reduction remove-positive-from-ineqs
+;;   :type num
+;;   :assumes (scale-
+;;   :condition (and (eq fn '0<) (num-junctor-p (car args))
+;; 		  (cond ((numberp (arg0 (car args)))
+;; 			 (not (= (abs (arg0 (car args))) 1)))
+;; 			((eqfn (arg0 (car args)) '*)
+;; 			 (and (numberp (arg0 (arg0 (car args))))
+;; 			      (< 1 (abs (arg0 (arg0 (car args)))))))))
+;;   :action 
+
+;;   :order downwards)
+
 
 ;; find some subexpr or atom in the sub of products where pred is true
 (defun find-in-product-if (pred term)
@@ -198,7 +304,8 @@ Mixed Boolean-real reductions and stuff|#
 					      '* (- (exp (- (/ o (car ws)))))
 					      (arg0 (car ts)))))))
 		  (markup expr)))
-      (exp expr))))
+      (exp expr)))
+  :order upwards)
 
 ;; (or (eqfn (car args) 'impulse)
 ;; 	     (mvbind (o 
@@ -288,6 +395,7 @@ Mixed Boolean-real reductions and stuff|#
 
 (defmacro define-mixed-test (name bools &optional nums)
   `(define-test ,name
+     (setf (getaa 'x2 *empty-context*) '(1 3))
      (flet 
 	 ((check (list type)
 	    (mapcar (lambda (pair &aux (source (car pair)) (target (cadr pair))
@@ -309,14 +417,14 @@ Mixed Boolean-real reductions and stuff|#
    ((0< (+ (* 3 (impulse x) (impulse y))
 	   (* 2 (impulse z))))         (or z (and x y)))
    ((0< (+ 1 (impulse x) (sin y)))     (or x (0< (+ 1 (sin y)))))
-   ((0< (log x))                       (0< (+ -1 x)))
-   ((0< (+ 3 (* -2 (log x))))          (0< (+ 1 (* -4.481689070338065 x)))))
+   ((0< (log x2))                       (0< (+ -1 x2)))
+   ((0< (+ 3 (* -2 (log x2))))          (0< (+ 1 (* -4.481689070338065 x2)))))
   (((* (impulse x) (impulse x))        (impulse x))
    ((* (impulse x) (impulse y))        (impulse (and x y)))
    ((exp (impulse x))                  (+ 1 (* 1.7182817f0 (impulse x))))
    ((sin (impulse x))                  (* 0.84147096f0
 					  (impulse x)))))
-(define-mixed-test mixed-reduct-interval
+(define-mixed-test mixed-reduct-aa
   (((0< (* -1 x x))                    false)
    ((0< (exp x))                       true)
    ((0< (+ 1 (* -1 
