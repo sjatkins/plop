@@ -34,6 +34,10 @@ http://www.dcc.unicamp.br/~stolfi/EXPORT/projects/affine-arith/
   (terms nil :type list)
   unreal-p)
 
+(defun aa-finitep (aa) 
+  (and (finitep (aa-central aa)) (finitep (aa-r aa))
+       (every (compose #'finitep #'cdr) (aa-terms aa))))
+
 (defun make-unreal-aa (aa) (aprog1 (copy-aa aa) (setf (aa-unreal-p it) t)))
 (defun make-real-aa (aa) (aprog1 (copy-aa aa) (setf (aa-unreal-p it) nil)))
 
