@@ -93,9 +93,10 @@ Mixed Boolean-real reductions and stuff|#
 	      (cond ((> (- c r) 0) true)
 		    ((< (+ c r) 0) false)
 		    (t expr)))))
-      (aif (expr-compute-aa expr)
-	   (progn (setf (mark aa expr) it) expr)
-	   nan))
+      (let ((aa (expr-compute-aa expr)))
+	(if (and aa (finitep aa))
+	    (progn (setf (mark aa expr) it) expr)
+	   nan)))
   :order upwards)
 (define-test reduce-by-aa
   (let ((c (make-context)))
