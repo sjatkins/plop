@@ -591,6 +591,12 @@ miscelaneous non-numerical utilities |#
 
 (defun impulse (x) (if x 1 0))
 
+(define-constant +infinities+
+    #+sbcl(list sb-ext:single-float-negative-infinity
+		sb-ext:single-float-positive-infinity
+		sb-ext:double-float-negative-infinity
+		sb-ext:double-float-positive-infinity))
+(defun finitep (x) (and (numberp x) (not (find x +infinities+ :test #'=))))
 (defstruct dyad arg result)
 
 ;;; least-recently-used cache for memoizing the last n calls to the function f
