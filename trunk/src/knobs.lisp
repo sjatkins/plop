@@ -15,6 +15,25 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) |#
 (in-package :plop)
 
+(defun little-epsilon (x) 
+  (let* ((x (if (numberp x) x 0))
+	 (y (abs x))
+	 (v 0.01))
+    (if (and (not (= y 0)) (< y (/ v 2))) (/ y 2) v)))
+(defun big-epsilon (x)
+  (let* ((x (if (numberp x) x 0)))
+    (if (eql x 0) 1 (/ (+ 1 (abs x)) 2))))
+(defun numarg-settings (expr context &aux (x (arg0 expr))
+			(e1 (big-epsilon x)) (e2 (little-epsilon x)))
+  (declare (ignore context))
+  (list (+ x e1) (- x e1) (- x e2) (+ x e2)))
+(defun numarg-terms (expr var context &aux 
+		     (e1 (big-epsilon var)) (e2 (little-epsilon var)))
+  (declare (ignore context))
+  (flet ((builder (c &aux (term (pcons '* (list c var))))
+	   (ecase (fn expr) (* (pcons '+ (list 1 term))) (+ term))))
+    (mapcar #'builder (list e1 (- e1) (- e2) e2))))
+
 (defun mung (expr) ; must be canonized
   (unless (mark mung expr)
     (setf (mark mung expr) t)

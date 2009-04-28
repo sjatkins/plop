@@ -62,7 +62,8 @@ be passed between subprocesses. |#
 
 ;; aa insertion:
 ;; (setf (getaa 'x context) aa) or (setf (getaa 'x context) '(min max))
-(defun make-default-aa (name) (make-aa 0 0 (list (cons name 1.0))))
+;;fixme, these should be stacks, not individual entries
+(defun make-default-aa (name) (make-aa 0 0 (list (cons name two-pi))))
 (defun getaa (name context)
   (or (gethash name (context-num-aa-map context)) 
       (setf (gethash name (context-num-aa-map context))
@@ -73,6 +74,7 @@ be passed between subprocesses. |#
 	    value
 	    (make-aa-term name (car value) (cadr value)))))
 (defsetf getaa setaa)
+(defun remaa (name context) (remhash name (context-num-aa-map context)))
 
 
 ;;; when binding a symbol, value must be already evaled
@@ -123,10 +125,10 @@ be passed between subprocesses. |#
   (hash-table-empty-p (context-symbol-bindings context)))
 
 (flet ((make-binder-body (context symbols body &rest mapargs &aux
-			  (sname (gensym)))
-	   `(let ((,sname ,symbols))
+			  (cname (gensym)) (sname (gensym)))
+	   `(let ((,cname ,context) (,sname ,symbols))
 	      (unwind-protect (progn (mapc ,@mapargs) ,@body)
-		(mapc (bind #'unbind-symbol /1 ,context) ,sname)))))
+		(mapc (bind #'unbind-symbol /1 ,cname) ,sname)))))
   (defmacro with-bound-values (context symbols values &body body)
     (make-binder-body context symbols body
       `(bind #'bind-value /1 ,context /2) symbols values))
@@ -154,6 +156,15 @@ be passed between subprocesses. |#
 	  (assert-false (context-empty-p c))))
       (assert-true (context-empty-p c)))))
 
+(defmacro with-bound-intervals (context symbols intervals &body body &aux
+				(cname (gensym)) (sname (gensym)) 
+				(iname (gensym)))
+  `(let ((,cname ,context) (,sname ,symbols) (,iname ,intervals))
+     (unwind-protect (progn (mapc (lambda (symbol interval)
+				    (setf (getaa symbol ,cname) interval))
+				  ,sname ,iname)
+			    ,@body)
+       (mapc (bind #'remaa /1 ,cname) ,sname))))
 
 (defun current-problem (context) (car (context-problem-stack context)))
 

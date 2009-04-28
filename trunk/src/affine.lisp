@@ -20,34 +20,47 @@ http://www.dcc.unicamp.br/~stolfi/EXPORT/projects/affine-arith/
  |#
 (in-package :plop)
 
+(defun term-rad (terms)
+  (reduce #'+ terms :key (compose #'abs #'cdr)  :initial-value 0.0))
+
 (defstruct (aa (:constructor make-aa ; an affine form
-		(central0 &optional (r0 0.0) terms0 &aux
+		(central0 &optional (r0 0.0) terms0 min0 max0 &aux
 		 (central (coerce central0 'float)) (r (coerce r0 'float))
 		 (terms (if (sortedp terms0 #'string< :key #'car)
 			    terms0
-			    (sort (copy-seq terms0) #'string< :key #'car)))))
+			    (sort (copy-seq terms0) #'string< :key #'car)))
+		 (rad (+ r (term-rad terms)))
+		 (min (if min0 (max (coerce min0 'float) (- central rad))
+			  (- central rad)))
+		 (max (if max0 (min (coerce max0 'float) (+ central rad))
+			  (+ central rad)))))
 	       (:constructor make-aa-term 
-		(x min max &aux (central (/ (+ max min) 2.0))
-		 (terms (list (cons x (/ (- max min) 2.0)))))))
+		(x min0 max0 &aux (central (/ (+ max0 min0) 2.0))
+		 (terms (list (cons x (/ (- max0 min0) 2.0))))
+		 (min (coerce min0 'float))
+		 (max (coerce max0 'float)))))
   (central 0.0 :type float)
   (r 0.0 :type (float 0.0)) ; "anonymous" uncertainty term
   (terms nil :type list)
-  unreal-p)
+  unreal-p (min 0.0 :type float) (max 0.0 :type float))
+
+(defun aa-empty-p (aa) (= (aa-min aa) (aa-max aa)))
 
 (defun aa-finitep (aa) 
   (and (finitep (aa-central aa)) (finitep (aa-r aa))
        (every (compose #'finitep #'cdr) (aa-terms aa))))
 
+(defun aa-strictly-positive-p (aa) (< 0 (aa-min aa)))
+(defun aa-strictly-negative-p (aa) (> 0 (aa-max aa)))
+
+(defun aa-weakly-positive-p (aa) (<= 0 (aa-min aa)))
+(defun aa-weakly-negative-p (aa) (>= 0 (aa-max aa)))
+
+
 (defun make-unreal-aa (aa) (aprog1 (copy-aa aa) (setf (aa-unreal-p it) t)))
 (defun make-real-aa (aa) (aprog1 (copy-aa aa) (setf (aa-unreal-p it) nil)))
 
-(defun aa-terms-rad (terms)
-  (reduce #'+ terms :key (compose #'abs #'cdr) :initial-value 0))
-(defun aa-rad (aa) (+ (aa-r aa) (aa-terms-rad (aa-terms aa))))
-(defun aa-width (aa) (* (aa-rad aa) 2.0))
-
-(defun aa-min (aa) (- (aa-central aa) (aa-rad aa)))
-(defun aa-max (aa) (+ (aa-central aa) (aa-rad aa)))
+(defun aa-rad (aa) (+ (aa-r aa) (term-rad (aa-terms aa))))
 
 (defun map-aa-terms (xfn yfn xyfn x y) ; x and y are term lists
   (collecting
@@ -65,19 +78,15 @@ http://www.dcc.unicamp.br/~stolfi/EXPORT/projects/affine-arith/
       (mapc (lambda (p) (mk (car p) (funcall xfn (cdr p)))) x)
       (mapc (lambda (p) (mk (car p) (funcall yfn (cdr p)))) y))))
 
-(defparameter *affine-ops* (make-hash-table))
-(defmacro define-affine-op (op (&rest args) &body body &aux 
-			    (name (read-from-string 
-				   (concatenate 'string "aa-"
-						(write-to-string op)))))
-  `(progn (defun ,name ,args
-	    (declare (aa ,@(copy-range args (member '&aux args))))
-	    ,@body)
-	  (setf (gethash ',op *affine-ops*) (symbol-function ',name))))
+;; is c contained in [central-r, central+r]?
+(defun range-contains-p (central r c) 
+  (and (<= (- central r) c) (>= (+ central r) c)))
 
-(defun affine-op (fn &aux (op (gethash fn *affine-ops*)))
-  (assert op () "no affine op for ~S" fn)
-  op)
+;; idea based on fateman's code
+;; http://www.cs.berkeley.edu/~fateman/generic/interval.lisp
+(defun ia-* (l1 r1 l2 r2 &aux
+	     (l (sort (list (* l1 l2) (* l1 r2) (* r1 l2) (* r1 r2)) #'<)))
+  (values (first l) (fourth l)))
 
 ;; note that we ignore roundoff here - there are bigger fish to fry
 ;; nomenclature follows "Self-Validated Numerical Methods and Applications", by
@@ -90,27 +99,27 @@ http://www.dcc.unicamp.br/~stolfi/EXPORT/projects/affine-arith/
 	     (mapcar (lambda (p) (cons (car p) (* alpha (cdr p))))
 		     (aa-terms x)))))
 
-(define-affine-op + (x y)
+(defun aa-+ (x y)
   (make-aa (+ (aa-central x) (aa-central y)) (+ (aa-r x) (aa-r y))
 	   (map-aa-terms #'identity #'identity #'+ (aa-terms x) (aa-terms y))))
-(define-affine-op * (x y &aux (x0 (aa-central x)) (y0 (aa-central y)))
-  (make-aa (* x0 y0) (+ (* (abs y0) (aa-r x)) (* (abs x0) (aa-r y))
-			(* (aa-rad x) (aa-rad y)))
-	   (map-aa-terms (bind #'* y0 /1) (bind #'* x0 /1)
-			 (lambda (xi yi) (+ (* y0 xi) (* x0 yi)))
-			 (aa-terms x) (aa-terms y))))
-(define-affine-op exp (x &aux (rad (aa-rad x)) 
-		       (min (- (aa-central x) rad)) 
-		       (max (+ (aa-central x) rad))
-		       (lower (exp min)) (upper (exp max)))
+(defun aa-* (x y &aux (x0 (aa-central x)) (y0 (aa-central y)))
+  (mvbind (l r) (ia-* (aa-min x) (aa-max x) (aa-min y) (aa-max y))
+    (make-aa (* x0 y0) (+ (* (abs y0) (aa-r x)) (* (abs x0) (aa-r y))
+			  (* (aa-rad x) (aa-rad y)))
+	     (map-aa-terms (bind #'* y0 /1) (bind #'* x0 /1)
+			   (lambda (xi yi) (+ (* y0 xi) (* x0 yi)))
+			   (aa-terms x) (aa-terms y))
+	     l r)))
+(defun aa-exp (x &aux (min (aa-min x)) (max (aa-max x))
+	       (lower (exp min)) (upper (exp max)))
   (general-aa x lower 
 	      (/ (+ upper (* lower (- 1.0 min max))) 2.0)
 	      (/ (+ upper (* lower (- min max 1.0))) 2.0)))
-(define-affine-op log (x &aux (rad (aa-rad x)) (a (- (aa-central x) rad)))
+(defun aa-log (x &aux (a (aa-min x)))
   (if (>= 0 a)
       nil
-      (let* ((b (+ (aa-central x) rad)) (lower (log a)) (upper (log b))
-	     (alpha (/ (- upper lower) (* 2 rad))) (xs (/ alpha))
+      (let* ((b (aa-max x)) (lower (log a)) (upper (log b))
+	     (alpha (/ (- upper lower) (- b a))) (xs (/ alpha))
 	     (ys (+ (* alpha (- xs a)) lower)) (log-xs (log xs)))
 	(general-aa x alpha (- (/ (+ log-xs ys) 2) (* alpha xs)) ; zeta
 		    (/ (- log-xs ys) 2))))) ; delta 
@@ -123,11 +132,10 @@ http://www.dcc.unicamp.br/~stolfi/EXPORT/projects/affine-arith/
 		      :element-type 'float))
       (npts +affine-least-squares-npts+)
       (npts-1 (1- +affine-least-squares-npts+)))
-  (define-affine-op sin (x &aux (rad (aa-rad x)))
-    (if (>= rad pi)
+  (defun aa-sin (x &aux (a (aa-min x)) (b (aa-max x)))
+    (if (>= (- b a) two-pi)
 	(make-aa 0 1)
-	(let* ((a (- (aa-central x) rad)) (b (+ (aa-central x) rad))
-	       (pas (/ (* 2 rad) npts-1)) (xm 0.0) (ym 0.0)
+	(let* ((pas (/ (- b a) npts-1)) (xm 0.0) (ym 0.0)
 	       (sum-squares 0.0) (alpha 0.0) (zeta 0.0))
 	  (dotimes (i npts-1)
 	    (incf xm (setf (elt xs i) a))
@@ -147,44 +155,27 @@ http://www.dcc.unicamp.br/~stolfi/EXPORT/projects/affine-arith/
 ;; fixme - can be made tigher for conditionals via assumptions
 ;; also, averaging to compute c is probably dumb, but too much of a hurry
 ;; to figure out what's better
-(define-affine-op or (x y &aux (c (/ (+ (aa-central x) (aa-central y)) 2))
+(defun aa-or (x y &aux (c (/ (+ (aa-central x) (aa-central y)) 2))
 		      (d1 (abs (- (aa-central x) c))) 
 		      (d2 (abs (- (aa-central y) c))))
   (make-aa c (+ d1 (aa-r x) d2 (aa-r y))
 	   (map-aa-terms (bind #'+ d1 /1) (bind #'+ d2 /1)
 			 (lambda (xi yi) (max (+ d1 xi) (+ d2 yi)))
 			 (aa-terms x) (aa-terms y))))
-(define-affine-op abs (x &aux (c (aa-central x)) (rad (aa-rad x))
-			 (min (- c rad)) (max (+ c rad)))
-  (cond ((=< 0 min) x)
-	((>= 0 max) (aa-* x (make-aa -1.0)))
-	(t (when (> 0 c) (setf x (aa-* x (make-aa -1.0))))
-	   
-
-(let (d (min-eleme
-
-(make-aa (/ (aa-central x) 2)/
-  
-(define-affine-op square (x)
+(defun aa-square (x)
   (aprog1 (aa-* x x)
     (let ((d (- (aa-r it) (aa-central it))))
       (when (< 0 d)
 	(setf d (/ d 2))
 	(decf (aa-r it) d)
-	(incf (aa-central it) d)))))
-(define-affine-op inv (x &aux (rad (aa-rad x))
-		       (a (abs (- (aa-central x) rad)))
-		       (b (abs (+ (aa-central x) rad))))
+	(incf (aa-central it) d)))
+    (when (and (< 0 (aa-max x)) (< (aa-min x) 0))
+      (setf (aa-min it) 0.0 (aa-max it) (max (aa-max it) (- (aa-min it)))))))
+(defun aa-inv (x &aux (a (abs (aa-min x))) (b (abs (aa-max x))))
   (when (> a b) (rotatef a b)) 
   (let* ((alpha (/ -1 (* b b))) (lower (/ 2 b)) (upper (- (/ a) (* alpha a))))
     (general-aa x alpha (/ (+ lower upper) (if (< (aa-central x) 0) -2 2))
 		(/ (- upper lower) 2))))
-
-(defun compute-aa (fn args &key (key #'identity) &aux (op (affine-op fn)))
-  (if (longerp args 1)
-      (reduce op args :key key)
-      (funcall op (funcall key (car args)))))
-
 (defun aa-expt (x y)
   (declare (aa x) (integer y))
   (cond ((eql y 0) (make-aa 1))
@@ -192,13 +183,8 @@ http://www.dcc.unicamp.br/~stolfi/EXPORT/projects/affine-arith/
 	((plusp y) (let ((tmp (aa-square (aa-expt x (ash y -1)))))
 		     (if (evenp y) tmp (aa-* tmp x))))
 	(t (aa-inv (aa-expt x (- y))))))
-
-;; is c contained in [central-r, central+r]?
-(defun range-contains-p (central r c) 
-  (and (<= (- central r) c) (>= (+ central r) c)))
-
 (defun aa-widen (x c &aux (central (aa-central x)) (r (aa-r x)))
-  (when (range-contains-p central r c)
+  (when (range-contains-p central r c);fixme
     (return-from aa-widen x))
   (unless (aa-terms x)
     (setf central (/ (+ central (if (< (+ central r) c) (- r) r) c) 2)))
@@ -207,16 +193,15 @@ http://www.dcc.unicamp.br/~stolfi/EXPORT/projects/affine-arith/
 ;; example from p. 72 of Stolfi et al.
 (define-test aa-mult
   (let ((target (make-aa 100 9 '((y . 10) (z . 10))))
-	(result (compute-aa '* (list (make-aa 10 0 '((x . 2) (y . 1)))
-				     (make-aa 10 0 '((x . -2) (z . 1)))))))
+	(result (aa-* (make-aa 10 0 '((x . 2) (y . 1)))
+		      (make-aa 10 0 '((x . -2) (z . 1))))))
     (assert-equalp target result)
     (assert-equalp 71  (aa-min result))
     (assert-equalp 129 (aa-max result))
-    (assert-equalp 58  (aa-width result))
     (assert-equalp 29  (aa-rad result))))
 (define-test aa-sin 
-  (let ((result (make-aa 0.09972862f0 0.06976098f0)))
-    (assert-equalp result (compute-aa 'sin (list (make-aa 0.1 0.07))))))
+  (assert-equalp 0.09972863f0 (aa-central (aa-sin (make-aa 0.1 0.07))))
+  (assert-equalp 0.06976098f0 (aa-rad (aa-sin (make-aa 0.1 0.07)))))
 ;;(define-test
 
 ;; fixme can efficiently compute range queries by iterating over terms like 
