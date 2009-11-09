@@ -21,49 +21,56 @@ Author: madscience@google.com (Moshe Looks) |#
 (assert 
  (find-package :lisp-unit) nil
  "LISP-UNIT not found. Try (load \"plop-dir/thirdparty/lisp-unit.lisp\")")
+(assert 
+ (find-package :numrecip) nil
+ "NUMRECIP not found. Try (load \"plop-dir/thirdparty/numrecip.lisp\")")
 
 (in-package :plop-asd)
-(asdf:defsystem "plop"
+(asdf:defsystem "os-plop"
   :description "Plop: Probabilistic Learning Of Programs"
   :serial t
   :components ((:file "packages")
-               (:file "util")        ; generic stuff
+               (:file "util")         ; generic stuff
+	       (:file "io")
 	       (:file "numerical")
 	       (:file "dag")
 	       (:file "affine")
+	       (:file "es")
+   	       (:file "selection")
 
-	       (:file "syntax")      ; the p language core
-	       (:file "markup")
-	       (:file "problem")
+ 	       (:file "syntax")       ; the p language core
+ 	       (:file "markup")
+ 	       (:file "problem")
 
-	       (:file "context")     ; p language support and meta
-	       (:file "semantics")
-	       (:file "type")
-	       (:file "enum")
+ 	       (:file "context")      ; p language support and meta
+ 	       (:file "semantics")
+ 	       (:file "type")
+ 	       (:file "enum")
 
-	       (:file "eval")        ; p language evaluator
+ 	       (:file "eval")         ; p language evaluator
 
-	       (:file "reduct-core") ; reduct
-	       (:file "reductions")
+	       (:file "reduct-core")  ; simplification &
+	       (:file "reductions")   ; general transformation of programs
 	       (:file "bool")
 	       (:file "num")
-	       (:file "maxima")
 	       (:file "mixed")
-	       (:file "list")
 
-	       (:file "knobs")       ; representation-building
-	       (:file "canonize")
- 	       (:file "represent")
+	       (:file "gp")           ; basic genetic programming system
 
-  	       (:file "distance")    ; optimization
-  	       (:file "mpop")	       
-	       (:file "utility")
-  	       (:file "selection")
-  	       (:file "lllsc")
+;; 	       (:file "list")
+;; 	       (:file "action")
+;; 	       (:file "abstraction")
 
- 	       (:file "hillclimb")   ; comparison/benchmarking
- 	       (:file "harness")
- 	       (:file "benchmark")
+;; 	       (:file "canonize")     ; representation-building
+;; 	       (:file "knobs")
 
-	       ;(:file "nlp")         ; applications
+;; 	       (:file "prior")        ; prior over programs
+;; 	       (:file "sample")       ; random sampling
+
+
+;;   	       (:file "moses")        ; optimization
+;; 	       (:file "tune")
+
+;;  	       (:file "harness")      ; comparison/benchmarking
+;;  	       (:file "benchmark")
 	       ))

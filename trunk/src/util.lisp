@@ -16,11 +16,26 @@ Author: madscience@google.com (Moshe Looks)
 
 miscelaneous non-numerical utilities |#
 (in-package :plop)
+(defmacro define-constant (name value &optional doc) ;; for sbcl
+  `(defconstant ,name 
+     (if (and (boundp ',name) (equalp (symbol-value ',name) ,value))
+	 (symbol-value ',name)
+	 ,value)
+     ,@(when doc (list doc))))
+(define-constant +plop-declaim-optimize-p+ nil)
+(defmacro plop-opt-set ()
+  (if +plop-declaim-optimize-p+
+      `(declaim (optimize (speed 3) (safety 0) (debug 0)))
+      `(declaim (optimize (speed 0) (safety 3) (debug 3)))))
+(when +plop-declaim-optimize-p+
+  #+sbcl(sb-ext:without-package-locks
+	  (defmacro assert (&rest args) (declare (ignore args)) nil)))
+(plop-opt-set)
 
-(declaim (optimize (speed 0) (safety 3) (debug 3)))
-;; (declaim (optimize (speed 3) (safety 0) (debug 0)))
-;; #+sbcl(sb-ext:without-package-locks
-;; 	(defmacro assert (&rest foo) (declare (ignore foo)) nil))
+#+sbcl(sb-ext::set-floating-point-modes :traps nil)
+
+(defconstant +no-value+ 
+  (if (boundp '+no-value+) (symbol-value '+no-value+) (gensym)))
 
 (defun nshuffle (sequence)
   (let ((temp (coerce sequence 'vector)))
@@ -37,6 +52,11 @@ miscelaneous non-numerical utilities |#
   `(do ()
        ((not ,test))
      ,@body))
+(defmacro do-until (test &body body)
+  `(progn ,@body 
+	  (do ()
+	      (,test)
+	    ,@body)))
 (defmacro dorange ((var count-start count-end &rest result) &body body
 		   &aux (end (gensym)))
   `(do ((,var ,count-start (1+ ,var)) (,end ,count-end))
@@ -55,8 +75,6 @@ miscelaneous non-numerical utilities |#
 (defun acar (x) (and (consp x) (car x)))
 (defun icar (x) (if (consp x) (car x) x))
 
-(defmacro collector () '(lambda (x) (collect x)))
-
 ;;; abbreviations
 (defmacro mvbind (vars values &body body)
   `(multiple-value-bind ,vars ,values ,@body))
@@ -64,6 +82,8 @@ miscelaneous non-numerical utilities |#
   `(destructuring-bind ,llist ,expr ,@body))
 (defmacro secondary (values)
   `(nth-value 1 ,values))
+(defmacro primary (values)
+  `(nth-value 0 ,values))
 (define-test secondary (assert-equal (secondary (floor 3.5)) 0.5))
 (defmacro ternary (values)
   `(nth-value 2 ,values))
@@ -109,7 +129,7 @@ miscelaneous non-numerical utilities |#
   (odds (cdr l)))
 
 ;;; (split fn (vector l1 d1) (vector l2 d2) ... (vector lN dN))
-;;; li are lists, fn is a function of 2N arguments
+;;; li are lists, fn is a func of 2N arguments
 ;;; Sequentially tests lists l1 ... lN for emptiness - if some list li is found
 ;;; to be empty, returns the value di. If no lists are empty, then fn is called
 ;;; with argument list (first1 rest1 first2 rest2 ... firstN restN), where 
@@ -137,7 +157,8 @@ miscelaneous non-numerical utilities |#
   (labels ((num-to-varname (i)
 	     (read-from-string (concatenate 'string "/" (write-to-string i))))
 	   (num-from-varname (x)
-	     (when (eql (elt (symbol-name x) 0) #\/)
+	     (when (and (> (length (symbol-name x)) 1)
+			(eql (elt (symbol-name x) 0) #\/))
 	       (aprog1 (- (char-int (elt (symbol-name x) 1)) (char-int #\0))
 		 (setf (gethash it appears) t))))
 	   (arg-max-arg-idx (x)
@@ -161,11 +182,8 @@ miscelaneous non-numerical utilities |#
       (setf (apply #'aref array indices) (apply fn indices))))
 
 ;;; testing
-(defmacro define-all-equal-test (name pairs)
-  `(define-test ,name 
-     (dolist (p ,pairs)
-       (dolist (x (cadr p))
-	 (assert-equal (car p) (funcall #',name x) (cadr p))))))
+(defmacro map-assert-equal (fn to &body values)
+  `(progn ,@(mapcar (lambda (value) `(assert-equal ,to (,fn ,value))) values)))
 (defmacro assert-for-all (f l &rest args)
   `(mapcar (lambda (x)
 	     (assert-true (funcall ,f x) x ,@args))
@@ -253,7 +271,7 @@ miscelaneous non-numerical utilities |#
 ;;; not very efficient...
 (defun uniq (seq &key (test 'eql) &aux (table (make-hash-table :test test)))
   (map 'nil (lambda (x) (setf (gethash x table) t)) seq)
-  (coerce (collecting (maphash-keys (collector) table)) (type-of seq)))
+  (coerce (collecting (maphash-keys #'collect table)) (icar (type-of seq))))
 
 (defun map-adjacent (result-type fn seq)
   (map result-type fn seq 
@@ -290,6 +308,24 @@ miscelaneous non-numerical utilities |#
     (itest nil nil)
     (itest '(3) '(3))
     (itest '(52) nil)))
+
+(defun subtract-sorted-seqs (seq1 seq2 cmp &key (key #'identity) &aux (i 0)
+			     (n (length seq2)))
+  (collecting
+    (map nil (lambda (x &aux (xk (funcall key x)))
+	       (while (and (< i n) (funcall cmp (funcall key (elt seq2 i)) xk))
+		 (incf i))
+	       (when (or (eql i n) (funcall cmp xk (funcall key (elt seq2 i))))
+		 (collect x)))
+	 seq1)))
+(define-test subtract-sorted-seqs
+  (assert-equal '(5 6 7 8 9) (subtract-sorted-seqs (iota 10) (iota 5) #'<))
+  (assert-equal nil (subtract-sorted-seqs (iota 5) (iota 10)  #'<))
+  (assert-equal '(3 4 5 6 7 8 9) 
+		(subtract-sorted-seqs (iota 10) '(0 0 1 2)  #'<))
+  (assert-equal '(3 4 5 6 7 8)
+		(subtract-sorted-seqs (append (iota 10) (list 9))
+				      '(0 0 1 2 2 9)  #'<)))
 
 (defun strict-includes-p (l1 l2 cmp)
   (and (includesp l1 l2 cmp) (not (eql (length l1) (length l2)))))
@@ -356,8 +392,14 @@ miscelaneous non-numerical utilities |#
   (maphash (bind fn /2) table))
 (defun hash-table-empty-p (table) ;;could be faster
   (eql (hash-table-count table) 0))
-(defun keys (table) (collecting (maphash-keys (collector) table)))
+(defun keys (table) (collecting (maphash-keys #'collect table)))
 (defun has-key-p (key table) (secondary (gethash key table)))
+(defun hash-table-to-vector (table &key (key #'cons) &aux (i 0))
+  (aprog1 (make-array (hash-table-count table))
+    (maphash (lambda (k v)
+	       (setf (elt it i) (funcall key k v))
+	       (incf i))
+	     table)))
 
 (macrolet ((declare-argcmp (name cmp)
 	     `(defun ,name (f l ) 
@@ -387,7 +429,15 @@ miscelaneous non-numerical utilities |#
     (if tree (rec tree))))
 (define-test map-subtrees
   (assert-equal '((1 (2 3) 4) (2 3) 3 4) 
-		(collecting (map-subtrees (collector) '(1 (2 3) 4)))))
+		(collecting (map-subtrees #'collect '(1 (2 3) 4)))))
+(defun deep-substitute (x &rest values)
+  (labels ((sub (x &aux (match (getf values x +no-value+)))
+	     (if (eq match +no-value+)
+		 (cond  ((vectorp x) (map 'vector #'sub x))
+			((listp x) (mapcar #'sub x))
+			(t x))
+		 match)))
+    (sub x)))
 
 ;;; io
 (defun print* (&rest args)
@@ -414,6 +464,11 @@ miscelaneous non-numerical utilities |#
 		 (y (append y (ntimes (- n (length y)) nil))))
 	      (mapc #'tree-diff x y)))
       t)))
+
+(defun max-tree-depth (tree)
+  (if (atom tree)
+      1 
+      (1+ (secondary (max-element (cdr tree) #'< :key #'max-tree-depth)))))
 
 (defmacro catch* (tags &body body)
   (labels ((rec (tags)
@@ -449,17 +504,16 @@ miscelaneous non-numerical utilities |#
   (do ((l fns (if (funcall test x (setf x (funcall (car l) x))) (cdr l) fns)))
       ((not l) x)))
 
-(defun insert-if (item list pred)
-  (declare (function pred))
+(defun ninsert (item list cmp)
   (cond ((not list) (list item))
-	((funcall pred (car list)) (cons item list))
+	((funcall cmp item (car list)) (cons item list))
 	(t (setf (cdr (do ((at list (cdr at))
 			   (next (cdr list) (cdr next)))
 			  ((not next) at)
-                       (when (funcall pred (car next))
-                         (setf (cdr at) (cons item next))
-                         (return-from insert-if list))))
-                (cons item nil))
+			(when (funcall cmp item (car next))
+			  (setf (cdr at) (cons item next))
+			  (return-from ninsert list))))
+		 (cons item nil))
 	   list)))
 
 (defmacro prog-until (test &body body &aux (blockname (gensym)))
@@ -475,7 +529,7 @@ miscelaneous non-numerical utilities |#
 	     (unless (gethash node visited)
 	       (setf (gethash node visited) t)
 	       (funcall action node)
-	       (mapc #'visit (funcall expander node)))))
+	       (map nil #'visit (funcall expander node)))))
     (when hasroot (visit root))
     (when hasroots (mapc #'visit roots))))
 
@@ -541,8 +595,6 @@ miscelaneous non-numerical utilities |#
     (let* ((x (random 42)) (sampler (make-sampler x)))
       (assert-equal (iota x) (sort (generate x sampler) #'<)))))
 
-(defun atom-else-fn (fn) (lambda (x) (if (atom x) x (funcall fn x))))
-
 (defmacro atom-else (x else &aux (result (gensym)))
   `(let ((,result ,x)) (if (atom ,result) ,result ,else)))
 
@@ -555,26 +607,18 @@ miscelaneous non-numerical utilities |#
   (sort (collecting (maphash (lambda (k v) (collect (list v k))) table)) 
 	#'> :key #'car))
 
-;;; for sbcl
-(defmacro define-constant (name value &optional doc)
-  `(defconstant ,name 
-     (if (and (boundp ',name) (equalp (symbol-value ',name) ,value))
-	 (symbol-value ',name)
-	 ,value)
-     ,@(when doc (list doc))))
-
 (defun max-element (seq cmp &key (key #'identity) &aux max-elem max (start t))
   (map nil (lambda (x &aux (y (funcall key x)))
 	     (cond (start (setf max-elem x max y start nil))
 		   ((funcall cmp max y) (setf max-elem x max y))))
        seq)
-  max-elem)
+  (values max-elem max))
 (defun min-element (seq cmp &key (key #'identity) &aux min-elem min (start t))
   (map nil (lambda (x &aux (y (funcall key x)))
 	     (cond (start (setf min-elem x min y start nil))
 		   ((funcall cmp y min) (setf min-elem x min y))))
        seq)
-  min-elem)
+  (values min-elem min))
 
 (defun max-position (seq cmp &key (start 0) end (key #'identity) &aux best)
   (when (emptyp seq) (return-from max-position nil))
@@ -589,26 +633,43 @@ miscelaneous non-numerical utilities |#
   (assert-equal nil (max-position nil #'>))
   (assert-equal 99 (max-position (nconc (iota 100) (nreverse (iota 99))) #'<)))
 
-(defun impulse (x) (if x 1 0))
-
 (define-constant +infinities+
-    #+sbcl(list sb-ext:single-float-negative-infinity
-		sb-ext:single-float-positive-infinity
-		sb-ext:double-float-negative-infinity
-		sb-ext:double-float-positive-infinity))
-(defun finitep (x) (and (numberp x) (not (find x +infinities+ :test #'=))))
+    (append
+     #+sbcl(list sb-ext:single-float-negative-infinity
+		 sb-ext:single-float-positive-infinity
+		 sb-ext:double-float-negative-infinity
+		 sb-ext:double-float-positive-infinity)
+     nil))
+(defvar +nans+
+  (append
+   #+sbcl(list (- sb-ext:single-float-positive-infinity
+		  sb-ext:single-float-positive-infinity)
+	       (- sb-ext:double-float-positive-infinity
+		  sb-ext:double-float-positive-infinity))
+   (list 'nan)))
+(declaim (inline finitep))
+(defun finitep (x) 
+  (and (numberp x) 
+       (not (find x +infinities+ :test #'=))
+       (= x x)))
+
+(defun impulse (x) (ecase x ((nil) 0) ((t) 1)))
+(defun 0< (x) (< 0 x))
+
 (defstruct dyad arg result)
 
-;;; least-recently-used cache for memoizing the last n calls to the function f
+;;; least-recently-used cache for memoizing the last n calls to the func f
 ;;; lru uses a hash table for the cache, and a doubly linked list of lru-nodes
 ;;; for the queue of least-recently-used items the keys in the hash table are
 ;;; arg, the values are nodes in the list
 ;;; nodes may be immortalized to keep them in the cache without being eligible
 ;;; for deletion - immortal nodes still count towards the size of the cache
 (defstruct (lru (:constructor make-lru
-                 (f n &key (test 'eql) (hash-size (ceiling (* 1.35 n))) &aux
+                 (f n &key (test 'eql) (hash-size (ceiling (* 1.35 n)))
+		  (key #'identity) &aux
 	 	  (cache (make-hash-table :test test :size hash-size)))))
-  (f nil :type function)
+  (f nil :type (function (*) *))
+  (key nil :type (function (*) *))
   (n nil :type (integer 0))
   (q nil :type (or null lru-node))
   (cache nil :type hash-table))
@@ -625,6 +686,25 @@ miscelaneous non-numerical utilities |#
   (assert (<= (hash-table-count (lru-cache lru)) (lru-n lru)))
   (eql (hash-table-count (lru-cache lru)) (lru-n lru)))
 
+;; mapping
+(defun maplru-values (f lru &aux (front (lru-q lru)))
+  (when front
+    (funcall f (lru-node-result front))
+    (do ((i (lru-node-next front) (lru-node-next i))) ((eq i front) nil)
+      (funcall f (lru-node-result i)))))
+(defun maplru-dyads (f lru &aux (front (lru-q lru)))
+  (when front
+    (funcall f front)
+    (do ((i (lru-node-next front) (lru-node-next i))) ((eq i front) nil)
+      (funcall f i))))
+(define-test maplru
+  (let* ((lru (make-lru (lambda (x) (1+ x)) 4)))
+    (mapcar (bind #'lru-get lru /1) (nconc (iota 3) (iota 3)))
+    (assert-equal '(3 2 1) (collecting (maplru-values #'collect lru)))))
+
+;; accessor
+(defun lru-front-value (lru) (lru-node-result (lru-q lru)))
+
 (labels ((validate-lru-node (x)		; for testing
 	   (when x
 	     (do ((at x (lru-node-next at)))
@@ -635,7 +715,7 @@ miscelaneous non-numerical utilities |#
 	       (assert (eq at (lru-node-prev (lru-node-next at))) () 
 		       "next mismatch, ~S vs. ~S" 
 		       at (lru-node-prev (lru-node-next at))))) t)
-	 (make-node (lru arg) (make-lru-node arg (funcall (lru-f lru) arg)))
+	 (make-node (lru arg k) (make-lru-node k (funcall (lru-f lru) arg)))
 	 (node-disconnect (node)
 	   (setf (lru-node-prev node) node (lru-node-next node) nil))
 	 (q-init (lru node)
@@ -657,30 +737,37 @@ miscelaneous non-numerical utilities |#
 	   (when (lru-full-p lru)
 	     (let* ((last (lru-node-prev (lru-q lru)))
 		    (rem (remhash (lru-node-arg last) (lru-cache lru))))
+	       (declare (ignorable rem))
 	       (assert rem () "you junked the hash keys ~S ~S"
 		       (lru-node-arg last) (lru-cache lru))
 	       (q-pop lru last)))))
   (defun lru-lookup (lru arg)	 ;  doesn't compute or move arg to top of queue
 ;    (print* 'lookup (p2sexpr arg)) fixme - attend to resampling
-    (gethash arg (lru-cache lru)))
+    (gethash (funcall (lru-key lru) arg) (lru-cache lru)))
+  (defun lru-has-key-p (lru key) (gethash key (lru-cache lru)))
   ;; compute if not there & moves arg to top of the queue
-  (defun lru-get (lru arg &aux (q (lru-q lru)) (cache (lru-cache lru)))
+  (defun lru-get (lru arg &aux (q (lru-q lru)) (cache (lru-cache lru))
+		  (k (funcall (lru-key lru) arg)))
     (assert (validate-lru-node q))
     (assert (<= (hash-table-count cache) (lru-n lru)) ()
 	     "cache ~S is too big" cache)
-    (acond ((gethash arg cache) (unless (or (lru-node-immortal-p it) (eq it q))
-				  (q-remove it)
-				  (q-insert lru it))
-	    it)
+    (acond ((gethash k cache) (unless (or (lru-node-immortal-p it) (eq it q))
+				(q-remove it)
+				(q-insert lru it))
+	                      (values it t))
 	   (q (pop-if-full lru)
 	      (if (lru-q lru)
-		  (progn (q-insert lru (make-node lru arg))
-			 (setf (gethash arg cache) (lru-q lru)))
-		  (setf (gethash arg cache) (q-init lru (make-node lru arg)))))
-	   (t (aprog1 (make-node lru arg)
+		  (progn (q-insert lru (make-node lru arg k))
+			 (setf (gethash k cache) (lru-q lru)))
+		  (setf (gethash k cache) (q-init lru (make-node lru arg k)))))
+	   (t (aprog1 (make-node lru arg k)
 		(if (lru-full-p lru) ; no room for any lru queueing..
 		    (node-disconnect it)
-		    (setf (gethash arg cache) (q-init lru it)))))))
+		    (setf (gethash k cache) (q-init lru it)))))))
+  (defun lru-promote (lru node) ; more node to the front of the q
+    (unless (eq node (lru-q lru))
+      (q-remove node)
+      (q-insert lru node)))
   (defun lru-immortalize (lru node &aux (cache (lru-cache lru)))
     (assert (validate-lru-node (lru-q lru)))
     (unless (lru-node-immortal-p node)
@@ -826,33 +913,51 @@ miscelaneous non-numerical utilities |#
 
     (assert-equal 42 (funcall lookup 41))
     (assert-equal 5 ncalls)))
+(define-test lru-with-key
+  (flet ((lru-node-length (x)
+	   (if x
+	       (do ((n 1 (1+ n)) (at x (lru-node-next at))) 
+		   ((eq at (lru-node-prev x)) n))
+	       0)))
+    (let* ((ncalls 0) 
+	   (lru (make-lru (lambda (x) (incf ncalls) (1+ (abs x))) 3 
+			  :key #'abs))
+	   (lookup (lambda (x &aux (cache (lru-cache lru)))
+		     (prog1 (lru-node-result (lru-get lru 
+						      (if (randbool) x (- x))))
+		       (assert-eql (lru-node-length (lru-q lru))
+				   (hash-table-count cache) 
+				   (lru-q lru) cache)))))
+      (assert-equal '(1 2 3 1 2 3) 
+		    (mapcar lookup (nconc (iota 3) (iota 3))))
+      (assert-equal 3 ncalls)
+      (assert-equal '(1 2 3 4) (mapcar lookup (iota 4)))
+      (assert-equal 4 ncalls))
+    (let* ((ncalls 0) 
+	   (lru (make-lru (lambda (x) (incf ncalls) (1+ (abs x))) 5
+			  :key #'abs))
+	   (lookup (lambda (x) 
+		     (lru-node-result (lru-get 
+				       lru (if (randbool) x (- x)))))))
+      (assert-equal '(1 2 3 4 5 1 2 3 4 5) 
+		    (mapcar lookup (nconc (iota 5) (iota 5))))
+      (assert-equal 5 ncalls)
+      (assert-equal '(1 2 3 4 5 6) (mapcar lookup (iota 6)))
+      (assert-equal 6 ncalls)
+      (assert-equal '(6 5 4 3 2 1) (mapcar lookup (nreverse (iota 6))))
+      (assert-equal 7 ncalls)
+      (assert-equal '(1 2 3 4 5 6) (mapcar lookup (iota 6)))
+      (assert-equal 8 ncalls)
+      (dotimes (i 100)
+	(let ((l (shuffle (iota 6 :start 1))))
+	  (assert-equal (mapcar #'1+ l) (mapcar lookup l)))
+	(assert-equal 8 ncalls))
+      (dotimes (i 100)
+	(let ((l (shuffle (iota 6))))
+	  (assert-equal (mapcar #'1+ l) (mapcar lookup l)))))))
 
 (defun xor (&rest args)
   (reduce (lambda (x y) (not (eq x y))) args :initial-value nil))
-
-;;; some basic file munging
-(defun whitespacep (char)
-  (member char '(#\Space #\Tab #\Newline)))
-
-(defun read-word (stream &aux b c) 
-  (while (and (setf b (read-byte stream nil)) ; chomps whitespace
-	      (whitespacep (setf c (code-char b)))))
-  (let ((word (with-output-to-string (out)
-		(while (and b (not (whitespacep 
-				    (setf c (code-char b)))))
-		  (write-char c out)
-		  (setf b (read-byte stream nil))))))
-    (unless (eql 0 (length word)) word)))
-
-(defun tokenize (str) ;very brittle!
-  (unless (eql (length str) 0)
-    (aif (position-if #'whitespacep str)
-	 (cons (make-array it :element-type 'character :displaced-to str)
-	       (tokenize (make-array (- (length str) it 1)
-				     :element-type 'character
-				     :displaced-to str
-				     :displaced-index-offset (1+ it))))
-	 (list str))))
 
 #+sbcl(defun profile (code &key except plus)
  	(sb-profile:unprofile)
@@ -864,17 +969,22 @@ miscelaneous non-numerical utilities |#
  	(sb-profile:report)
  	(sb-profile:unprofile))
 
-(defun approx= (x y &optional (precision 4) &aux (m (expt 10 precision))
-		(s1 (signum x)) (s2 (signum y)))
-  (setf x (log (1+ (abs (coerce x 'long-float))))
-	y (log (1+ (abs (coerce y 'long-float)))))
-  (= (floor (* m s1 x)) (floor (* m s2 y))))
+(defun approx= (x y &optional (precision 4) &aux (m (expt 10 precision)))
+  (or (= x y) ; handles infinities and suchlike
+      (< (abs (- x y))
+	 (+ least-positive-single-float 
+	    (if (or (= x 0) (= y 0))
+		0.1L-14
+		(min (/ (abs x) m) (/ (abs y) m)))))))
 (define-test approx=
   (assert-true (approx= 5.000001 5))
   (assert-false (approx= 5.000001 4))
   (assert-false (approx= 5.000001 5 20))
   (assert-true (approx= 70.0 (reduce #'+ (vector 69 0.0f0 1.0f0)))))
-
+(defun approx<= (x y &optional (precision 4))
+  (or (<= x y) (approx= x y precision)))
+(defun approx>= (x y &optional (precision 4))
+  (or (>= x y) (approx= x y precision)))
 ;; member-if at least twice, returns 2nd match
 (defun member-if-2 (pred list &key key)
   (member-if pred (cdr (member-if pred list :key key)) :key key))
@@ -885,3 +995,137 @@ miscelaneous non-numerical utilities |#
 						       (collect x) t))
 						   list)))))
     (values matches rest)))
+
+(defun zip (fn zipper initial-value &rest seqs)
+  (apply #'map nil (lambda (&rest args) 
+		     (setf initial-value
+			   (funcall fn initial-value (apply zipper args))))
+	 seqs)
+  initial-value)
+(defun zip-remove-if (fn &rest seqs)
+  (let ((bits (apply #'map 'simple-bit-vector 
+		     (lambda (&rest args) (if (apply fn args) 1 0)) seqs)))
+    (apply #'values (mapcar (lambda (seq &aux (i 0))
+			      (remove-if (lambda (elt) (declare (ignore elt))
+						 (prog1 (eql (sbit bits i) 1)
+						   (incf i)))
+					 seq))
+			    seqs))))
+(define-test zip-remove-if
+  (mvbind (a b) (zip-remove-if #'eql '(1 2 3) '(1 0 5))
+    (assert-equal a '(2 3))
+    (assert-equal b '(0 5))))
+
+(defmacro assert-approx= (x y &rest rest)
+  `(assert-equality #'approx= ,x ,y ,@rest))
+
+(defmacro with-mock (fn mock &body body &aux (fname (gensym)))
+  `(let ((,fname (fdefinition ',fn)))
+     (unwind-protect (progn (setf (fdefinition ',fn) ,mock) ,@body)
+       (setf (fdefinition ',fn) ,fname))))
+
+;; filter if
+(defun fif (test filter result)
+  (if (funcall test result) (funcall filter result) result))
+
+(defmacro collecting-max (cmp &body body)
+  (with-unique-names (max)
+    `(let (,max)
+      (labels ((collect (thing)
+		 (when (or (not ,max) (funcall ,cmp ,max thing))
+		     (setf ,max thing))))
+	,@body)
+      ,max)))
+(defmacro collecting-min (cmp &body body)
+  (with-unique-names (min)
+    `(let (,min)
+      (labels ((collect (thing)
+		 (when (or (not ,min) (funcall ,cmp thing ,min))
+		     (setf ,min thing))))
+	,@body)
+      ,min)))
+
+(defun median (seq &key (key #'identity) &aux 
+	       (v (sort (map '(simple-array number (*)) key seq) #'>))
+	       (n (length v)) (m (floor n 2)))
+  (if (oddp n)
+      (aref v m)
+      (* 0.5L0 (+ (aref v (1- m)) (aref v m)))))
+
+(defvar *debug-level* 0)
+(defmacro dbg (level &rest items)
+  (when (< level *debug-level*)
+    (let ((s (concatenate 
+	      'string (coerce (ntimes (* 2 level) #\Space) 'string) "  @"
+	      (apply #'concatenate 'string (ntimes (length items) " ~S"))
+	      "~%")))
+    `(format t ,s ,@items))))
+
+(defun make-stream-sampler (&aux (max 0) x)
+  ;; simulates k repeated draws
+  (lambda (y &optional (k 1))
+	   ;(m (/ (* 2 (random most-positive-fixnum) k) (1+ k))))
+    (dorepeat k 
+      (let ((m (random most-positive-fixnum)))
+	(when (>= m max)
+	  (setf max m x y))))
+    x))
+(define-test stream-sampler
+  (let ((scores (make-array 10 :initial-element 0)))
+    (dorepeat 400
+      (let ((ss (make-stream-sampler)) res)
+	(dotimes (i 10) (setf res (funcall ss i)))
+	(incf (elt scores res))))
+    (map nil (lambda (score) (assert-true (> score 20) scores)) scores)))
+
+(defun random-elt (seq) (elt seq (random (length seq))))
+
+;; _Artificial intelligence with Common Lisp_, by Noyes, p. 197
+(let ((tau (/ (- 3 (sqrt 5L0)) 2)) (phi (/ (1- (sqrt 5L0)) 2)))
+  (defun line-search (f a b epsilon n &aux (d (- b a)))
+    (unless (<= d epsilon)
+      (let* ((v (+ a (* tau d))) (fv (funcall f v))
+	     (w (+ a (* phi d))) (fw (funcall f w)))
+	(dotimes (i (- n 2))
+	  (if (< fv fw)
+	      (setf b w w v fw fv d (- b a) 
+		    v (+ a (* tau d)) fv (funcall f v))
+	      (setf a v v w fv fw d (- b a)
+		    w (+ a (* phi d)) fw (funcall f w)))
+	  (when (<= d epsilon)
+	    (return)))))
+    (/ (+ a b) 2)))
+(define-test line-search
+  (flet ((qf (x) (+ (* (- x 0.5) x) 5.0625)))
+    (assert-approx= 0.25 (line-search #'qf 0 1 1e-6 50))))
+
+;; strings
+(defun suffixp (suffix seq &aux (l1 (length suffix)) (l2 (length seq)))
+  (and (>= l2 l1) (equalp (subseq seq (- l2 l1)) suffix)))
+(define-test suffixp
+  (assert-true (suffixp "_x" "foobar_x"))
+  (assert-true (suffixp "_x" "_x"))
+  (assert-false (suffixp "_x" "foo_x2" )))
+;; i can has awk?
+(defun strcat (&rest strings)
+  (apply #'concatenate 'string
+	 (if (and (singlep strings) (listp (car strings)))
+	     (car strings)
+	     strings)))
+(defun substr (str start &optional (end (length str)))
+  (make-array (- end start) :element-type 'character
+	      :displaced-to str :displaced-index-offset start))
+(defun gsub (from to str &aux (i 0) (l (length from)))
+  (strcat (collecting (awhile (search from str :start2 i)
+			(collect (substr str i it))
+			(collect to)
+			(setf i (+ it l)))
+		      (collect (subseq str i)))))
+(define-test gsub
+  (assert-equal "barobarbaz" (gsub "foo" "bar" "fooofoobaz")))
+(defun tolower (str)
+  (with-output-to-string (s nil)
+    (format s "~(~a~)" str)))
+(defun toupper (str)
+  (with-output-to-string (s nil)
+    (format s "~:@(~a~)" str)))

@@ -15,7 +15,7 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) 
 
 General-purpose reductions that can apply to any type are defined here |#
-(in-package :plop)
+(in-package :plop)(plop-opt-set)
 
 (define-reduction sort-commutative (fn args markup)
   :condition (and (commutativep fn) (not (sortedp args #'total-order)))
@@ -50,7 +50,7 @@ General-purpose reductions that can apply to any type are defined here |#
 ;; (find-const-reducible %(and x y false z true)) -> (false z true)
 (defun find-const-reducible (expr)
   (cond ((or (atom expr) (not (purep expr))) nil)
-	((const-expr-p expr) (not (matches (fn expr) (list tuple))))
+	((const-expr-p expr) (not (matches (fn expr) (list tuple order))))
 	((commutativep (fn expr))
 	 (awhen (member-if #'const-expr-p (args expr))
 	   (when (member-if #'const-expr-p (cdr it)) it)))))
@@ -61,9 +61,11 @@ General-purpose reductions that can apply to any type are defined here |#
 
 (define-reduction eval-const (expr)
   :condition (find-const-reducible expr)
-  :action 
-  (if (eq it t) 
-      (value-to-expr (peval expr))
+  :action
+  (if (eq it t)
+      (if (translation-invariant-p (fn expr)) ; a hack - fixme
+	  0
+	  (value-to-expr (peval expr)))
       (bind-collectors (constants others)
 	  (progn (constants (car it))
 		 (mapc (lambda (arg) 
@@ -100,12 +102,20 @@ General-purpose reductions that can apply to any type are defined here |#
   :type (or bool num)
   :condition (and (ring-op-p fn) 
 		  (or (singlep args)
-		      (member-if (lambda (x) (or (equalp x (identity-elem fn))
-						 (short-circuits-p x fn)))
+		      (member-if (lambda (x) 
+				   (or (if (numberp x)
+					   (approx= x (identity-elem fn) 12)
+					   (equalp x (identity-elem fn)))
+				       (short-circuits-p x fn)))
 				 args)))
-  :action (if (eq it t) (car args)
+  :action (if (eq it t) 
+	      (car args)
 	      (or (find-if (bind #'short-circuits-p /1 fn) it)
-		  (aif (remove (identity-elem fn) args :test #'equalp)
+		  (aif (remove-if (lambda (x) 
+				    (if (numberp x)
+					(approx= x (identity-elem fn) 12)
+					(equalp x (identity-elem fn))))
+				  args)
 		       (if (singlep it) (car it) (pcons fn it markup))
 		       (identity-elem fn))))
   :order upwards)
@@ -115,16 +125,17 @@ General-purpose reductions that can apply to any type are defined here |#
   (assert-for-all (compose (bind #'eq false /1) #'ring-op-identities)
 		  (mapcar #'sexpr2p 
 			  '((and false x y) (and x false y) (and x y false))))
-  (assert-equal 'x  (eval-const (ring-op-identities %(and x))))
+  (assert-equal 'x  (eval-const (ring-op-identities (pclone %(and x)))))
   ;;; tests for or
-  (assert-equal true (ring-op-identities %(or x true y)))
+  (assert-equal true (ring-op-identities (pclone %(or x true y))))
   (mapc (lambda (expr) 
 	  (assert-equal '(or x y) 
 			(p2sexpr (ring-op-identities (sexpr2p expr)))))
 	'((or false x y) (or x false y) (or x y false)))
-  (assert-equal 'x  (eval-const (ring-op-identities %(or x))))
+  (assert-equal 'x  (eval-const (ring-op-identities (pclone %(or x)))))
   ;;; test over general boolean expressions
   (test-by-truth-tables #'ring-op-identities)
   ;;; numerical tests
-  (assert-equal 'x (ring-op-identities %(+ 0 (* 1 x))))
-  (assert-equal '(< 2 x) (p2sexpr (ring-op-identities %(< 2 (+ 0 (* 1 x)))))))
+  (assert-equal 'x (ring-op-identities (pclone %(+ 0 (* 1 x)))))
+  (assert-equal '(< 2 x) (p2sexpr (ring-op-identities
+				   (pclone %(< 2 (+ 0 (* 1 x))))))))

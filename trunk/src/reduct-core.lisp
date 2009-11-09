@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Author: madscience@google.com (Moshe Looks) |#
-(in-package :plop)
+(in-package :plop)(plop-opt-set)
 
 (defparameter *reduction-fns* (make-hash-table))
 (defparameter *reduction-generators* nil)
@@ -59,7 +59,7 @@ Author: madscience@google.com (Moshe Looks) |#
     (or (gethash type type-to-reductions)
 	(setf (gethash type type-to-reductions)
 	      (reduce (lambda (x y) (delete-duplicates (nconc x y)))
-		      (if (function-type-p type)  ;;terribly inefficient..
+		      (if (func-type-p type)  ;;terribly inefficient..
 			  (collecting (maphash (lambda (type2 reductions)
 						 (when (isa type type2)
 						   (collect reductions)))
@@ -190,32 +190,65 @@ Author: madscience@google.com (Moshe Looks) |#
 		      (funcall (gethash ',name *reduction-fns*) expr))
 		    (generate-reduction ,name ,@rest)))))
 
+(defun map-let-bindings (fn bs)
+  (maplist (lambda (l &aux (result (funcall fn (car l))))
+	     (unless (eql result (car l))
+	       (return-from map-let-bindings
+		   (make-let-bindings 
+		    (copy-list (let-bindings-names bs))
+		    (nconc (copy-range (let-bindings-values bs) l)
+			   (list result)
+			   (mapcar #'fn (cdr l)))))))
+	     (let-bindings-values bs))
+  bs)
+(defun map-let-bindings-with-type (fn bs &optional (context *empty-context*))
+  (map-let-bindings (lambda (arg) 
+		      (funcall fn arg (expr-type arg context)))
+		    bs))
+	       
 (defparameter *reduction-context* *empty-context*)
 (defun reduct (expr context type)
   (setf *reduction-context* context)
   (assert (not (canonp expr)) () "can't reduct canonized expr ~S" expr)
   (labels ((reduce-subtypes (expr)
 	     (cond 
-	       ((atom expr) expr)
+	       ((atom expr) 
+		(if (eq (icar type) num)
+ 		    (cond ((rationalp expr) (coerce expr 'long-float))
+ 			  ((and (numberp expr) (not (finitep expr))) nan)
+ 			  (t expr))
+ 		    expr))
 	       ((closurep (fn expr)) (mapargs #'reduce-subtypes expr))
 	       ((eq 'lambda (fn expr))
 		(with-bound-types context (fn-args expr) (cadr type)
 		  (let ((body (reduct (fn-body expr) context (caddr type))))
 		    (if (eql body (fn-body expr)) expr 
 			(mklambda (fn-args expr) body (markup expr))))))
+	       ((eq 'let (fn expr))
+		(let* ((bs (map-let-bindings-with-type 
+			    (bind #'reduct /1 context /2) (let-bindings expr)))
+		       (body (with-let-expr-bindings context bs
+			       (reduct (let-body expr) context type))))
+		  (if (and (eq bs (let-bindings expr))
+			   (eql body (let-body expr)))
+		      expr
+		      (pcons 'let (list bs body) (markup expr)))))
 	       (t (mapargs-with-types (lambda (x type2)
 					(if (or (atom x) (equal type type2)) x
 					    (reduct x context type2)))
 				      expr (arg-types expr context type))))))
-    (if (or (atom expr) (eq (car (mark simp expr)) fully-reduced)) expr
-	(aprog1 (cummulative-fixed-point 
-		 (cons #'reduce-subtypes (reductions type)) expr)
-	  (when (consp it)
-	    (push fully-reduced (mark simp it)))))))
+    (cond ((atom expr) (if (and (numberp expr) (not (finitep expr)))
+			   nan
+			   expr))
+  	  ((eq (car (mark simp expr)) fully-reduced) expr)
+	  (t (aprog1 (cummulative-fixed-point 
+		      (cons #'reduce-subtypes (reductions type)) expr)
+	       (when (consp it)
+		 (push fully-reduced (mark simp it))))))))
 (define-test reduct
   (assert-equal 'x (reduct (copy-tree %(and x (or y x))) *empty-context* bool))
   (with-bound-types *empty-context* '(f g) 
-      '((function (num num) bool) (function (bool) num))
+      '((func (num num) bool) (func (bool) num))
     (let* ((expr (copy-tree %(and (f 42 (+ m (g (or a b)))) (or x y))))
 	   (r (reduct expr *empty-context* bool))
 	   (bool-exprs (list r (arg0 r) (arg1 r)
@@ -237,7 +270,16 @@ Author: madscience@google.com (Moshe Looks) |#
       (assert-for-none 
        (bind #'exact-simp-p /1 'dominant-and-command-clear-root) num-exprs)
       (assert-for-all (bind #'exact-simp-p /1 'factor)
-		      num-exprs))))
+		      num-exprs)))
+     
+  (assert-equal 'nan
+ 		(p2sexpr (reduct (pcons 'order (list (- (car +infinities+) 
+ 							(car +infinities+))))
+ 				 *empty-context* num)))
+  (assert-equal 'x (reduct %x *empty-context* num))
+  (assert-equal '(order x) (p2sexpr (reduct %(order x) *empty-context* num)))
+  (assert-equal nan (reduct (- (car +infinities+) (car +infinities+))
+ 			    *empty-context* num)))
 
 ;; for convenience
 (defun qreduct (expr) 

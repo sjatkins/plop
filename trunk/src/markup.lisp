@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Author: madscience@google.com (Moshe Looks) |#
-(in-package :plop)
+(in-package :plop)(plop-opt-set)
 
 (define-constant simp 'simp) ; for simplified subexpressions
 (define-constant canon 'canon) ; for canonical form subexpressions
@@ -32,6 +32,7 @@ Author: madscience@google.com (Moshe Looks) |#
 
 (declaim (inline mark))
 (defun mark (tag expr) (getf (markup expr) tag))
+(declaim (inline set-mark))
 (defun set-mark (tag expr value) (setf (getf (cdar expr) tag) value))
 (defsetf mark set-mark)
 
@@ -48,10 +49,20 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun clear-simp (expr &optional exceptions)
   (setf (mark simp expr) 
 	(when exceptions
-	  (intersection (mark simp expr) exceptions :test #'eq))))
+	  (nintersection (mark simp expr) exceptions :test #'eq))))
+(declaim (inline mark-simp))
 (defun mark-simp (expr reduction)
   (pushnew reduction (mark simp expr) :test #'eq))
-
+;; the below version is slightly faster but leaves dangling 'simp nil
+;; properties in the markup which are annoying
+;; (defun mark-simp (expr reduction &aux (l (markup expr)))
+;;   (if l
+;;       (let ((m (getf l simp)))
+;; 	(if m 
+;; 	    (setf (cdr m) (cons reduction (cdr m)))
+;; 	    (setf (markup expr) (cons simp (cons (cons reduction nil) l)))))
+;;       (setf (markup expr) (cons simp (cons (cons reduction nil) nil)))))
+(declaim (inline simpp))
 (defun simpp (expr reduction)
   (awhen (mark simp expr)
     (or (eq (car it) fully-reduced) (member reduction it :test #'eq))))
@@ -71,11 +82,16 @@ Author: madscience@google.com (Moshe Looks) |#
 
 ;;; also ensures that the expr is a deep copy of the original
 (defun canon-clean (cexpr)
-  (cond ((atom cexpr) (pclone cexpr))
+  (cond ((tuple-value-p cexpr) (map 'vector #'canon-clean cexpr))
+	((let-bindings-p cexpr)
+	 (make-let-bindings 
+	  (copy-list (let-bindings-names cexpr))
+	  (mapcar #'canon-clean (let-bindings-values cexpr))))
+	((atom cexpr) (pclone cexpr))
 	((or (not (canonp cexpr)) (mark mung cexpr))
 	 (aprog1 (pcons (fn cexpr) (mapcar #'canon-clean (args cexpr))
 			(when (consp (canon-expr cexpr))
-			  (markup (canon-expr cexpr))))
+			  (copy-list (markup (canon-expr cexpr)))))
 	   (unmark simp it)))
 	(t (pclone (canon-expr cexpr)))))
 
@@ -83,14 +99,19 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun ccons (fn args expr)
   (assert (not (eq fn 'lambda)))
   (aprog1 (pcons fn args (list canon (list expr)))
-    (mapc (lambda (arg) (when (consp arg)
-			  (if (mark canon arg)
-			      (set-canon-parent arg it)
-			      (setf (mark canon arg) (cons arg it)))))
-	  (args it))))
+    (flet ((parent (arg)
+	     (when (consp arg)
+	       (if (mark canon arg)
+		   (set-canon-parent arg it)
+		   (setf (mark canon arg) (cons arg it))))))
+      (mapc (lambda (arg) 
+	      (parent arg)
+	      (when (let-bindings-p arg) 
+		(mapc #'parent (let-bindings-values arg))))
+	    (args it)))))
 
 (defun ccons-lambda (args body expr)
-  (aprog1 (pcons 'lambda (list (mklambda-list args) body)
+  (aprog1 (pcons 'lambda (list (make-lambda-list args) body)
 		 (list canon (list expr)))
     (mapc (lambda (arg) (when (consp arg)
 			  (if (mark canon arg)

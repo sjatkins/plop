@@ -15,9 +15,132 @@ limitations under the License.
 Author: madscience@google.com (Moshe Looks) 
 
 numerical functions |#
-(in-package :plop)
+(in-package :plop)(plop-opt-set)
 
-;;; gaussian sampling
+;; numerical constants
+(define-constant two-pi (* pi 2))
+(define-constant half-pi (/ pi 2))
+(define-constant log2 (log 2L0))
+(define-constant log3 (log 3L0 2))
+
+;; choose
+(defun choose (n k)
+  (/ (factorial n) (* (factorial k) (factorial (- n k)))))
+(defun log-choose (n k)
+  (/ (- (numrecip:factln n) (+ (numrecip:factln (- n k)) (numrecip:factln k)))
+     log2))
+(define-test log-choose
+  (assert-approx= 817190 (expt 2 (log-choose 23 14))))
+
+;; factorial
+(let (fs k)
+  (defun reset-factorials ()
+    (setf fs (make-array 2 :element-type '(integer 1) :initial-element 1 
+			 :fill-pointer 2 :adjustable t)
+	  k 1))
+  (reset-factorials)
+  (defun factorial (n)
+    (declare (type integer n))
+    (if (> n k)
+	(do* ((i (1+ k) (1+ i)) (f (* i (aref fs k)) (* i f)))
+	     ((>= i n) (progn (vector-push-extend f fs) (setf k n) f))
+	  (vector-push-extend f fs))
+	(aref fs n)))
+  (defun partial-factorial (i j) (/ (factorial j) (factorial i))))
+(define-test factorial
+  (reset-factorials)
+  (dorepeat 200 (let ((x (random 34))) 
+		  (assert-approx= (numrecip:factrl x) (factorial x)))))
+
+;; histogram
+(defun hist (elems &optional (nbins (min (ceiling (/ (length elems) 10)) 20))
+	     &aux (bins (make-array nbins :initial-element 0))
+	     (min (min-element elems #'<)) (max (max-element elems #'<))
+	     (width (/ (- max min) nbins)))
+  (mapc (lambda (x)
+	  (incf (elt bins (min (1- nbins) (floor (/ (- x min) width)))))) 
+	elems)
+  bins)
+
+;;; cauchy sampling & pdf
+(defun random-cauchy (&optional (a 0.0) (b 1.0))
+  (+ a (* b (tan (* pi (random 1.0))))))
+(defun cauchy-density (x &optional (a 0.0) (b 1.0) &aux (d (- x a)))
+  (/ b (* pi (+ (* d d) (* b b)))))
+
+;; exponential and geometric distributions
+(defun random-exp (exp-lambda &aux)
+  (declare (type long-float exp-lambda))
+  (do ((v (random 1L0) (random 1L0)))
+      ((not (eql v 0L0)) (/ (- (log (- 1 v))) exp-lambda))))
+
+;(defun random-geo (p) (primary (floor (random-exp (- (log (- 1 p)))))))
+(defun random-geo (p)
+  (declare (type (long-float 0L0 1L0) p))
+  (the fixnum
+    (primary 
+     (the (values fixnum &rest t)
+       (floor 
+	(do ((v (random 1L0) (random 1L0)))
+	    ((not (eql v 0L0)) (/ (the long-float (log (- 1L0 v)))
+				  (the long-float (log (- 1L0 p)))))))))))
+
+(defun geo-cdf (p n)
+  (declare (type long-float p) (type integer n))
+  (- 1 (expt (- 1 p) (+ n 1))))
+
+;; bounded geometric distribution, always lies in [0,bound)
+;; remaining probability mass is distributed uniformly
+;; secondary value is the probability of the given result
+(declaim (inline random-bounded-geo))
+(defun random-bounded-geo (p bound &aux (v (random-geo p)) (inv (- 1L0 p)))
+  (declare (type long-float p) (type fixnum bound v))
+  (when (>= v bound)
+    (setf v (the fixnum (random bound))))
+  (values v (+ (* p (expt inv v)) (/ (expt inv bound) bound))))
+(defun bounded-geo-pmf (p bound n &aux (inv (- 1L0 p)))
+  (+ (* p (expt inv n)) (/ (expt inv bound) bound)))
+(define-test random-bounded-geo
+  (let* ((n 100000) (vs (generate n (bind #'random-bounded-geo 0.1L0 4)))
+	 (hist (sort (group-equals vs) #'< :key #'cadr)))
+    (assert-equal 4 (length hist) hist)
+    (assert-equal '(0 1 2 3) (mapcar #'cadr hist))
+    (assert-true 
+     (< (* 0.9 (* n (+ (* 0.9 0.1) (* 1/4 (expt 0.9 4))
+		       (* 2 (+ (* 0.9 0.9 0.1) (* 1/4 (expt 0.9 4))))
+		       (* 3 (+ (* 0.9 0.9 0.9 0.1) (* 1/4 (expt 0.9 4)))))))
+	(reduce #'+ vs)))
+    (assert-true
+     (> (* 1.1 (* n (+ (* 0.9 0.1) (* 1/4 (expt 0.9 4))
+		       (* 2 (+ (* 0.9 0.9 0.1) (* 1/4 (expt 0.9 4))))
+		       (* 3 (+ (* 0.9 0.9 0.9 0.1) (* 1/4 (expt 0.9 4)))))))
+	(reduce #'+ vs))))
+  (dorepeat 100 (mvbind (x p) (random-bounded-geo 0.1L0 4)
+		  (assert-approx= (ecase x 
+				    (0 (- 1
+					  (* 3/4 (expt 0.9 4))
+					  (* 0.1 (expt 0.9 1))
+					  (* 0.1 (expt 0.9 2))
+					  (* 0.1 (expt 0.9 3))))
+				    (1 (+ (* 1/4 (expt 0.9 4))
+					  (* 0.1 (expt 0.9 1))))
+				    (2 (+ (* 1/4 (expt 0.9 4))
+					  (* 0.1 (expt 0.9 2))))
+				    (3 (+ (* 1/4 (expt 0.9 4))
+					  (* 0.1 (expt 0.9 3)))))
+				 p x))))
+(defun bounded-geo-cdf (p bound n &optional (cdf-bound (geo-cdf p (1- bound))))
+  (declare (type (integer 1) bound))
+  (+ (geo-cdf p n) (/ (* (1+ n) (- 1 cdf-bound)) bound)))
+(define-test bounded-geo-cdf
+  (let ((prev 0L0))
+    (mapcar (lambda (x &aux (v (bounded-geo-cdf 0.1L0 10 x)))
+	      (assert-approx= (- v prev) (bounded-geo-pmf 0.1L0 10 x) x v)
+	      (setf prev v))
+	    (iota 10))))
+
+
+;;; normal distribution
 (flet ((box-muller ()
 	 "Based on code at http://www.taygeta.com/random/gaussian.html"
 	 (loop
@@ -31,140 +154,107 @@ numerical functions |#
   (defun random-normal (&optional (mean 0.0) (sd 1.0))
     (+ (* (box-muller) sd) mean)))
 
-;;; histogram
-(defun hist (elems &optional (nbins (min (ceiling (/ (length elems) 10)) 20))
-	     &aux (bins (make-array nbins :initial-element 0))
-	     (min (min-element elems #'<)) (max (max-element elems #'<))
-	     (width (/ (- max min) nbins)))
-  (mapc (lambda (x)
-	  (incf (elt bins (min (1- nbins) (floor (/ (- x min) width)))))) 
-	elems)
-  bins)
+;; Coefficients in rational approximations.
+(let ((a0 -3.969683028665376L1) (a1 2.209460984245205L2)
+      (a2 -2.759285104469687L2) (a3 1.383577518672690L2)
+      (a4 -3.066479806614716L1) (a5 2.506628277459239L0)
+      (b0 -5.447609879822406L1) (b1 1.615858368580409L2)
+      (b2 -1.556989798598866L2) (b3 6.680131188771972L1)
+      (b4 -1.328068155288572L1)
+      (c0 -7.784894002430293L-3) (c1 -3.223964580411365L-1)
+      (c2 -2.400758277161838L0) (c3 -2.549732539343734L0)
+      (c4 4.374664141464968L0) (c5 2.938163982698783L0)
+      (d0 7.784695709041462L-3) (d1 3.224671290700398L-1)
+      (d2 2.445134137142996L0) (d3 3.754408661907416L0)
+      (low 0.02425L0) (high 0.97575L0))
+  (defun inverse-normal-cdf (p)
+    (declare (type long-float p))
+    (unless (<= 0 p 1)
+      (error "P must be a probability, i.e., between 0 and 1."))
+    (cond ((= p 0) most-negative-double-float)
+	  ((= p 1) most-positive-double-float)
+	  ((< p low)
+	   ;; Rational approximation for lower region.
+	   (let ((q (sqrt (- (* 2 (log p))))))
+	     (/ (+ (* (+ (* (+ (* (+ (* (+ (* c0 q)
+					   c1)
+					q)
+				     c2)
+				  q)
+			       c3)
+			    q)
+			 c4)
+		      q)
+		   c5)
+		(1+ (* (+ (* (+ (* (+ (* d0 q)
+				      d1)
+				   q)
+				d2)
+			     q)
+			  d3)
+		       q)))))
+	  ((> p high)
+	   ;; Rational approximation for upper region.
+	   (let ((q (sqrt (- (* 2 (log (- 1 p)))))))
+	     (- (/ (+ (* (+ (* (+ (* (+ (* (+ (* c0 q) c1)
+					   q)
+					c2)
+				     q)
+				  c3)
+			       q)
+			    c4)
+			 q)
+		      c5)
+		   (1+ (* (+ (* (+ (* (+ (* d0 q)
+					 d1)
+				      q)
+				   d2)
+				q)
+			     d3)
+			  q))))))
+	  (t
+	   ;; Rational approximation for central region.
+	   (let* ((q (- p 0.5))
+		  (r (* q q)))
+	     (/ (* (+ (* (+ (* (+ (* (+ (* (+ (* a0 r)
+					      a1)
+					   r)
+					a2)
+				     r)
+				  a3)
+			       r)
+			    a4)
+			 r)
+		      a5)
+		   q)
+		(1+ (* (+ (* (+ (* (+ (* (+ (* b0 r)
+					    b1)
+					 r)
+				      b2)
+				   r)
+				b3)
+			     r)
+			  b4)
+		       r))))))))
+;; mean & sd 
+(defun moments (seq &key (key #'identity) &aux (n (length seq))
+		(s (reduce #'+ seq :key key :initial-value 0L0)) (m (/ s n)))
+  (values m (sqrt (/ (reduce #'+ seq :key  ; yes, i am an fp weenie
+			     (compose (bind #'* /1 /1) (bind #'- /1 m) key)
+			     :initial-value 0L0)
+		     (1- n)))))
 
-;;; i can has maxima?
-(defun has-maxima-p () (find-package 'maxima))
-
-;;; erf = the gaussian error function
-;;; this is a bit ugly, but I'm not sure what would be a better way
-;;; to do it...
-(let ((fn (cond ((fboundp 'cl-user::erf) ; clisp supports this
-		 (symbol-function (find-symbol "ERF" (find-package 'cl-user))))
-		((has-maxima-p)
-		 (symbol-function (find-symbol "ERF" (find-package 'maxima))))
-		(t (let ((table (make-array 
-				 300 :initial-contents
- '(0.0d0 0.011283415555849618d0 0.022564574691844943d0
-   0.03384122234173543d0 0.04511110614512475d0 0.05637197779701662d0
-   0.06762159439330843d0 0.07885771977089075d0 0.09007812584101817d0
-   0.10128059391462688d0 0.1124629160182849d0 0.12362289619947431d0
-   0.13475835181992007d0 0.14586711483569575d0 0.15694703306285582d0
-   0.1679959714273635d0 0.17901181319810566d0 0.1899924612018088d0
-   0.20093583901869577d0 0.21183989215774973d0 0.22270258921047847d0
-   0.23352192298210356d0 0.2442959115991287d0 0.2550225995922732d0
-   0.265700058953792d0 0.27632639016823696d0 0.28689972321574914d0
-   0.2974182185470128d0 0.30788006802903406d0 0.3182834958609522d0
-   0.3286267594591274d0 0.33890815031079025d0 0.34912599479558276d0
-   0.359278654974359d0 0.36936452934465863d0 0.3793820535623103d0
-   0.38932970112866416d0 0.39920598404299923d0 0.409009453419694d0
-   0.4187387000697961d0 0.42839235504666845d0 0.4379690901554395d0
-   0.4474676184260253d0 0.4568866945495403d0 0.4662251152779575d0
-   0.47548171978692366d0 0.4846553900016797d0 0.4937450508860821d0
-   0.5027496706947648d0 0.511668261188523d0 0.5204998778130465d0
-   0.5292436198411704d0 0.5378986304788544d0 0.5464640969351418d0
-   0.5549392504563903d0 0.563323366325109d0 0.5716157638237684d0
-   0.579815806163996d0 0.5879229003816007d0 0.5959364971979085d0
-   0.6038560908479259d0 0.6116812188758802d0 0.6194114618987212d0
-   0.6270464433381957d0 0.6345858291221413d0 0.6420293273556719d0
-   0.6493766879629542d0 0.6566277023003051d0 0.663782202741358d0
-   0.6708400622350777d0 0.6778011938374184d0 0.6846655502174442d0
-   0.6914331231387512d0 0.6981039429170445d0 0.7046780778547458d0
-   0.7111556336535151d0 0.7175367528055908d0 0.7238216139648593d0
-   0.7300104312985789d0 0.7361034538206911d0 0.7421009647076605d0
-   0.7480032805977895d0 0.7538107508749625d0 0.759523756937773d0
-   0.7651427114549946d0 0.7706680576083526d0 0.7761002683235567d0
-   0.7814398454905507d0 0.7866873191739325d0 0.7918432468144954d0
-   0.7969082124228322d0 0.8018828257659413d0 0.8067677215477617d0
-   0.8115635585845578d0 0.8162710189760625d0 0.8208908072732779d0
-   0.8254236496438182d0 0.8298702930356671d0 0.8342315043402079d0
-   0.8385080695553698d0 0.8427007929497149d0 0.8468104962282768d0
-   0.850838017700942d0 0.8547842114541484d0 0.8586499465266515d0
-   0.8624361060900967d0 0.8661435866351082d0 0.8697732971635866d0
-   0.8733261583878896d0 0.8768031019375383d0 0.8802050695740817d0
-   0.883533012414718d0 0.8867878901652547d0 0.8899706703629623d0
-   0.8930823276298567d0 0.8961238429369149d0 0.899096202879712d0
-   0.9020003989659356d0 0.9048374269152168d0 0.907608285971685d0
-   0.9103139782296353d0 0.9129555079726694d0 0.9155338810266468d0
-   0.9180501041267614d0 0.9205051842990297d0 0.9229001282564582d0
-   0.9252359418101295d0 0.9275136292954247d0 0.9297341930135782d0
-   0.9318986326887336d0 0.9340079449406524d0 0.9360631227731995d0
-   0.9380651550787114d0 0.9400150261583302d0 0.9419137152583653d0
-   0.943762196122724d0 0.9455614365614331d0 0.947312398035252d0
-   0.9490160352563626d0 0.9506732958050964d0 0.9522851197626488d0
-   0.9538524393597054d0 0.9553761786408962d0 0.9568572531449688d0
-   0.9582965696005648d0 0.9596950256374592d0 0.961053509513118d0
-   0.9623728998544058d0 0.9636540654142689d0 0.9648978648432042d0
-   0.9661051464753108d0 0.9672767481287117d0 0.9684134969201231d0
-   0.9695162090933357d0 0.9705856898613637d0 0.9716227332620125d0
-   0.9726281220266002d0 0.9736026274615671d0 0.9745470093426969d0
-   0.9754620158216677d0 0.976348383344644d0 0.9772068365826186d0
-   0.9780380883732035d0 0.9788428396735701d0 0.979621779524232d0
-   0.9803755850233603d0 0.9811049213113221d0 0.9818104415651265d0
-   0.9824927870024648d0 0.9831525868950262d0 0.9837904585907745d0
-   0.9844070075448683d0 0.9850028273589058d0 0.9855784998281805d0
-   0.9861345949966329d0 0.9866716712191824d0 0.9871902752311301d0
-   0.9876909422243223d0 0.9881741959297683d0 0.9886405487064082d0
-   0.9890905016357308d0 0.9895245446219444d0 0.9899431564974076d0
-   0.9903468051330306d0 0.9907359475533626d0 0.9911110300560857d0
-   0.9914724883356396d0 0.9918207476107067d0 0.9921562227552937d0
-   0.992479318433148d0 0.9927904292352575d0 0.9930899398201835d0
-   0.9933782250569848d0 0.9936556501704964d0 0.9939225708887325d0
-   0.9941793335921891d0 0.9944262754648279d0 0.9946637246465299d0
-   0.9948920003868136d0 0.995111413199617d0 0.9953222650189527d0
-   0.9955248493552482d0 0.995719451452192d0 0.995906348443912d0
-   0.9960858095123195d0 0.9962580960444569d0 0.996423461789696d0
-   0.9965821530166384d0 0.9967344086695764d0 0.9968804605243777d0
-   0.997020533343667d0 0.9971548450311778d0 0.9972836067851606d0
-   0.9974070232507334d0 0.9975252926710697d0 0.9976386070373253d0
-   0.9977471522372077d0 0.9978511082021002d0 0.9979506490526588d0
-   0.9980459432428015d0 0.9981371537020182d0 0.9982244379759344d0
-   0.9983079483650648d0 0.9983878320616982d0 0.9984642312848625d0
-   0.9985372834133188d0 0.9986071211165418d0 0.9986738724836454d0
-   0.998737661150219d0 0.9987986064230412d0 0.9988568234026434d0
-   0.9989124231037001d0 0.998965512573224d0 0.9990161950065498d0
-   0.9990645698610919d0 0.9991107329678676d0 0.9991547766407751d0
-   0.9991967897836264d0 0.9992368579949287d0 0.9992750636704192d0
-   0.999311486103355d0 0.9993462015825646d0 0.9993792834882711d0
-   0.9994108023856942d0 0.9994408261164486d0 0.999469419887749d0
-   0.999496646359442d0 0.9995225657288812d0 0.9995472358136659d0
-   0.9995707121322661d0 0.999593047982555d0 0.9996142945182758d0
-   0.9996345008234653d0 0.9996537139848648d0 0.9996719791623431d0
-   0.9996893396573608d0 0.9997058369795081d0 0.9997215109111428d0
-   0.9997363995701628d0 0.9997505394709432d0 0.9997639655834707d0
-   0.9997767113907082d0 0.9997888089442238d0 0.9998002889181156d0
-   0.9998111806612685d0 0.999821512247976d0 0.9998313105269613d0
-   0.9998406011688324d0 0.9998494087120056d0 0.9998577566071316d0
-   0.9998656672600594d0 0.9998731620733717d0 0.9998802614865254d0
-   0.9998869850146334d0 0.9998933512859194d0 0.9998993780778803d0
-   0.9999050823521899d0 0.9999104802883753d0 0.9999155873163016d0
-   0.9999204181474947d0 0.9999249868053346d0 0.9999293066541523d0
-   0.9999333904272599d0 0.9999372502539452d0 0.999940897685461d0
-   0.9999443437200386d0 0.9999475988269556d0 0.9999506729696856d0
-   0.9999535756281589d0 0.9999563158201618d0 0.9999589021219005d0
-   0.9999613426877595d0 0.9999636452692755d0 0.9999658172333573d0
-   0.999967865579774d0 0.9999697969579359d0 0.9999716176829931d0
-   0.9999733337512747d0 0.9999749508550908d0 0.9999764743969194d0))))
-		     (lambda (x)
-		       (if (>= x 3) 1 (elt table (floor (* x 300))))))))))
-  (defun erf (x) (funcall fn x)))
-
-(define-constant two-pi (* pi 2))
-(define-constant half-pi (/ pi 2))
+;; Chauvenet's criterion for outlier detection
+(defun chauvnet (m sd n)
+  (+ m (* sd (inverse-normal-cdf (- 1L0 (/ 1L0 (* 4 n)))))))
 
 ;;; E(X|X>x) for gaussian var X with mean m and variance v
-(let* ((sqrt2 (sqrt 2.0L0))
-       (sqrt2-over-pi (sqrt (/ 2.0L0 pi)))
-       (erf-max-arg 4.97L0)
-       (min-erfc (- 1.0L0 (erf erf-max-arg)))
+(let* ((sqrt2 (sqrt 2L0))
+       (sqrt2-over-pi (sqrt (/ 2L0 pi)))
+       (sqrt2-pi (sqrt (* 2L0 pi)))
+       #+sbcl(erf-max-arg 4.97L0)
+       #+clisp(erf-max-arg 3.9L0)
+       (min-erfc (numrecip:erfc erf-max-arg))
        (gain-factor 
 	(- (/ (* sqrt2-over-pi (exp (- (* erf-max-arg erf-max-arg)))) min-erfc)
 	   (* erf-max-arg sqrt2))))
@@ -176,19 +266,21 @@ numerical functions |#
 	  sd (sqrt v)
 	  erf-arg (/ d (* sd sqrt2)))
     (if (<= erf-arg erf-max-arg) ; if erf-arg is too big, inerpolate with exp
-	(+ m (/ (* sd sqrt2-over-pi (exp (/ (* d d) (* -2.0L0 v))))
-		(- 1.0L0 (erf erf-arg))))
+	(+ m (/ (* sd sqrt2-over-pi (exp (/ (* d d) (* -2L0 v))))
+		(- 1L0 (numrecip:erf erf-arg))))
 	(+ x (* sd gain-factor (exp (- erf-max-arg erf-arg))))))
   (defun normal-cdf (m v x)
     (setf m (coerce m 'long-float)
 	  v (coerce v 'long-float)
 	  x (coerce x 'long-float))
-    (+ 0.5L0 (* 0.5L0 (erf (/ (- x m) (* (sqrt v) sqrt2)))))))
+    (+ 0.5L0 (* 0.5L0 (numrecip:erf (/ (- x m) (* (sqrt v) sqrt2))))))
+  (defun normal-density (x &optional (m 0.0) (sd 1.0) (d (- x m)))
+    (/ (exp (/ (* d d) (* -2L0 sd sd))) (* sd sqrt2-pi))))
 (define-test conditional-tail-expectation
   ;; ensure that we are at least somewhat stable
   (let* ((values (iota 6.97 :start 6 :step 0.01))
 	 (l (mapcar (lambda (x) 
-		     (- (conditional-tail-expectation 0.0L0 1.0L0 x) x))
+		     (- (conditional-tail-expectation 0L0 1L0 x) x))
 		    values)))
     (mapcar (lambda (x y) 
 	      (assert-true (> x y) x y 
@@ -199,3 +291,38 @@ numerical functions |#
   (assert-equalp 0.5 (normal-cdf 0 1 0))
   (assert-true (< 0.99 (normal-cdf 0 1 100)))
   (assert-true (> 0.01 (normal-cdf 0 1 -100))))
+
+;; based on http://www.cs.jhu.edu/~jason/software/fractions/fractions.lisp
+(defun reduce-rational (x epsilon &aux (pprev 0) (p 1) (qprev 1) (q 0) (y x)
+			(lower epsilon) (upper epsilon) pq leftover validp)
+  (assert (> x 0))
+  (assert (>= epsilon 0))
+  (macrolet ((advance (prev current a)
+	       `(psetf ,prev ,current ,current (+ ,prev (* ,current ,a)))))
+    (while (finitep upper)
+      (setf (values pq leftover) (floor y)
+	    validp (= (floor (- y lower)) (floor (+ y upper))))
+      (advance pprev p pq)
+      (advance qprev q pq)
+      (when (or (zerop leftover) (not validp) (= leftover lower))
+	(return))
+      (psetf lower (/ upper leftover (+ leftover upper))
+	     upper (/ lower leftover (- leftover lower))
+	     y (/ leftover))))
+  (/ p q))
+
+;; numerical intervals represented as cons cells
+(defun interval-width (i) (- (cdr i) (car i)))
+(defun interval-contains-p (i1 i2)
+  (and (<= (car i1) (car i2)) (>= (cdr i1) (cdr i2))))
+(defun interval-intersects-p (i1 i2)
+  (not (or (<= (cdr i1) (car i2)) (<= (cdr i2) (car i1)))))
+(define-test interval-intersects-p
+  (assert-true (interval-intersects-p (cons 1 2) (cons 1.5 2.5)))
+  (assert-true (interval-intersects-p (cons 1.5 2.5) (cons 1 2)))
+  (assert-true (interval-intersects-p (cons 1 3) (cons 1.5 2.5)))
+  (assert-true (interval-intersects-p (cons 1.5 2.5) (cons 1 3)))
+  (assert-false (interval-intersects-p (cons 1.5 2.5) (cons 2.6 3)))
+  (assert-false (interval-intersects-p (cons 2.6 3) (cons 1.5 2.5))) 
+  (assert-false (interval-intersects-p (cons 1 2) (cons 2 2.5)))
+  (assert-false (interval-intersects-p (cons 2 2.5) (cons 1 2)))) 
