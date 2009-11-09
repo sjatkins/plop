@@ -20,7 +20,7 @@ Expressions in the language are either lisp atoms or function
 applications. Function applications are ((fn . markup) . args) where args are
 the arguments to the function fn, and markup is an alist of metadata. Note that
 args and markup must be proper lists. |#
-(in-package :plop)
+(in-package :plop)(plop-opt-set)
 
 ;;; getters/setters to use instead of car/cdr & friends
 (declaim (inline fn))
@@ -34,6 +34,7 @@ args and markup must be proper lists. |#
 (defun args (expr) (cdr expr))
 (defun set-args (expr v) (setf (cdr expr) v))
 (defsetf args set-args)
+(defun iargs (expr) (unless (atom expr) (args expr)))
 
 (declaim (inline arg0))
 (defun arg0 (expr) (second expr))
@@ -80,42 +81,84 @@ args and markup must be proper lists. |#
 (defun eqfn (expr fn) (and (consp expr) (eq (fn expr) fn)))
 
 ;;; dealing with lambdas
+(declaim (inline fn-args))
 (defun fn-args (expr)
   (assert (eqfn expr 'lambda))
   (coerce (lambda-list-argnames (arg0 expr)) 'list))
+(declaim (inline fn-body))
 (defun fn-body (expr)
   (assert (eqfn expr 'lambda))
   (arg1 expr))
-(defstruct lambda-list ;;; the lambda-list type - an exceptional construct
+;;; the lambda-list type - an exceptional construct
+(defstruct (lambda-list 
+	     (:constructor make-lambda-list-raw)
+	     (:constructor make-lambda-list
+	      (names &aux (argnames (coerce names '(vector symbol))))))
   (argnames (vector) :type (vector symbol) :read-only t))
-(defun mklambda-list (args) 
-  (make-lambda-list :argnames (coerce args '(vector symbol))))
-(defun mklambda (args body &optional markup)
-  (list (cons 'lambda (copy-list markup)) (mklambda-list args) body))
-
-(deftype pexpr () t)
-
 (defmethod make-load-form ((self lambda-list) &optional environment)
    (declare (ignore environment))
-   `(make-lambda-list :argnames ',(lambda-list-argnames self)))
+   `(make-lambda-list ',(lambda-list-argnames self)))
+(defun mklambda (args body &optional markup)
+  (list (cons 'lambda (copy-list markup)) (make-lambda-list args) body))
+(defun fn-arity (expr)
+  (length (lambda-list-argnames (arg0 expr))))
+;;; the let-bindings type - another exceptional construct
+(defstruct (let-bindings (:constructor make-let-bindings-raw)
+			 (:constructor make-let-bindings (names values))
+			 (:copier nil))
+ names values)
+(defmethod make-load-form ((self let-bindings) &optional environment)
+   (declare (ignore environment))
+   `(make-let-bindings (mapcar 'pclone ',(let-bindings-names self))
+		       (mapcar 'pclone ',(let-bindings-values self))))
+(defun copy-let-bindings (b)
+  (make-let-bindings (copy-list (let-bindings-names b))
+		     (copy-list (let-bindings-values b))))
+(defun extend-let-bindings (b name value)
+  (push name (let-bindings-names b))
+  (push value (let-bindings-values b)))
+(defun mklet (bindings body)
+  (list (list 'let) 
+	(make-let-bindings (mapcar #'car bindings)
+			   (mapcar (compose #'sexpr2p #'cadr) bindings))
+	body))
+(defun let-bindings (expr) (arg0 expr))
+(defun let-body (expr) (arg1 expr))
+
+(deftype pexpr () t)
 
 ;;; input and output in the language
 (defun pcons (fn args &optional markup) 
   (cons (cons fn markup) args))
 (defun plist (fn &rest args) (cons (cons fn nil) args))
 (defun p2sexpr (expr)
-  (cond ((or (atom expr) (atom (car expr))) expr)
+  (cond ((vectorp expr) (map 'vector #'p2sexpr expr))
+	((let-bindings-p expr) (mapcar (lambda (n v) (list n (p2sexpr v)))
+				       (let-bindings-names expr)
+				       (let-bindings-values expr)))
+	((lambda-list-p expr) (coerce (lambda-list-argnames expr) 'list))
+	((or (atom expr) (atom (car expr))) expr)
 	((eq (fn expr) 'lambda)
 	 (list (fn expr) (fn-args expr) (p2sexpr (fn-body expr))))
 	(t (cons (fn expr) (mapcar #'p2sexpr (args expr))))))
+(define-constant +p-special-plist+ (list 'lambda 'mklambda 'let 'mklet))
 (defun sexpr2p (expr) 
-  (cond ((or (atom expr) (consp (car expr))) expr)
-	((eq (car expr) 'lambda) (mklambda (cadr expr) (sexpr2p (caddr expr))))
+  (acond ((or (atom expr) (consp (car expr))) expr)
+	 ((getf +p-special-plist+ (car expr))
+	  (assert (eql-length-p expr 3) () "malform ~S-expression ~S" 
+		  (car expr) expr)
+	  (funcall it (cadr expr) (sexpr2p (caddr expr))))
 	(t (cons (list (car expr)) (mapcar #'sexpr2p (cdr expr))))))
 (set-macro-character
  #\% (lambda (stream char)
        (declare (ignore char))
        (list 'quote (sexpr2p (read stream t nil t)))) t)
+
+(defun printable (expr)
+  (p2sexpr (cond ((eqfn expr 'lambda) (fn-body expr))
+		 ((eqfn expr 'tuple)
+		  (map 'vector #'printable (args expr)))
+		 (t expr))))
 
 ;;; for convenience in constructing canonized expressions
 (defun canonize-from-template (template values)
@@ -123,10 +166,10 @@ args and markup must be proper lists. |#
       (progn (assert (not values) () "for template ~S got invalid values ~S"
 		     template values)
 	     template)
-      (ccons (car template)
-	     (mapcar #'canonize-from-template (cdr template) 
-		     (pad (cdr values) (length template)))
-	     (car values))))
+      (funcall 'ccons (car template)
+	       (mapcar #'canonize-from-template (cdr template) 
+		       (pad (cdr values) (length template)))
+	       (car values))))
 (set-macro-character
  #\~ (lambda (stream char)
        (declare (ignore char))

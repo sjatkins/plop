@@ -16,7 +16,7 @@ Author: madscience@google.com (Moshe Looks)
 
 A simple directed acyclic graph representation based on hash tables that
 only supports edge insertion, not removal. |#
-(in-package :plop)
+(in-package :plop)(plop-opt-set)
 
 (defun make-dag () (make-hash-table))
 (defun clrdag (dag) (clrhash dag))
@@ -68,7 +68,7 @@ only supports edge insertion, not removal. |#
       t))
 
 (defun dag-order-insert (x l dag)
-  (insert-if x l (bind #'descendantp /1 x dag)))
+  (ninsert x l (bind #'descendantp /2 /1 dag)))
 
 (define-test dag
   (let ((items (iota 10)) (dag (make-dag)))

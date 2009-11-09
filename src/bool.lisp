@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Author: madscience@google.com (Moshe Looks) |#
-(in-package :plop)
+(in-package :plop)(plop-opt-set)
 
 (defun enum-bindings (arity)
   (if (eql arity 1) '((true) (false))
@@ -95,10 +95,12 @@ Author: madscience@google.com (Moshe Looks) |#
 				(mapcar #'negate (args expr)) (markup expr)))
 	(t (pcons 'not (list expr)))))
 (defun litvariable (x) (if (consp x) (arg0 x) x))
-(defun negatesp (x y &key (pred #'eq))
-  (flet ((check (neg other) 
+(defun negatesp (x y &key (pred #'pequal))
+  (flet ((negation-of (neg other) 
 	   (and (eq (fn neg) 'not) (funcall pred (arg0 neg) other))))
-  (if (consp x) (check x y) (if (consp y) (check y x)))))
+    (if (consp x)
+	(or (negation-of x y) (and (consp y) (negation-of y x)))
+	(and (consp y) (negation-of y x)))))
 (define-test negatesp
   (assert-true (negatesp %(not x) 'x))
   (assert-true (negatesp 'x %(not x)))
@@ -363,10 +365,10 @@ Author: madscience@google.com (Moshe Looks) |#
      (subs-to-clauses nil))
   ;; return immediately if we have a negation or tautology
   (mapc (lambda (x y)
-	  (if (and (singlep x) (singlep y) (negatesp (car x) (car y)))
-	      (return-from reduce-clauses (values nil t))))
+	  (when (and (singlep x) (singlep y) (negatesp (car x) (car y)))
+	    (return-from reduce-clauses (values nil t))))
 	clauses (cdr clauses))
-  ;; populate the clause-map array (clauses indexed by length
+  ;; populate the clause-map array (clauses indexed by length-1)
   (mapc (lambda (pair) (push (car pair) (elt clause-map (cdr pair))))
 	clause-length-pairs)
   ;; populate core-clauses with the clauses which are not supersets of others
@@ -422,17 +424,19 @@ Author: madscience@google.com (Moshe Looks) |#
 	implications)
   ;; use implications to delete redundant third clauses
   (mapc (lambda (impl)
-	  (dotimes (i (min (length (car impl)) (1+ clause-max-length)))
-	    (mapc (lambda (smaller) 
-		    (when (and (not (eq smaller (cadr impl)))
-			       (not (eq smaller (caddr impl)))
-			       (includesp (car impl) smaller #'total-order))
-		      (rplaca smaller nil)
+	  (dorange (i (1- (length (car impl))) (1+ clause-max-length))
+	    (mapc (lambda (larger)
+		    (when (and (not (eq larger (cadr impl)))
+			       (not (eq larger (caddr impl)))
+			       (car larger) (caadr impl) (caaddr impl)
+			       (includesp larger (car impl)  #'total-order))
+		      (rplaca larger nil)
 		      (return)))
 		  (elt clause-map i))))
 	implications)
   (setf core-clauses (delete-if-not #'car core-clauses))
   ;; redo the computation if the core-clauses have shrunk
+
   (let ((current-size (reduce #'+ core-clauses :key #'length)))
     (if (eql initial-size current-size)
 	(values core-clauses munged)
@@ -459,7 +463,7 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-test reduce-bool-by-clauses
   (flet ((assert-reduces-to (target exprs)
 	   (dolist (expr exprs)
-	     (let* ((pexpr (sexpr2p expr)))
+	     (let ((pexpr (sexpr2p expr)))
 	       (assert-equal target (p2sexpr 
 				     (sort-commutative
 				      (reduce-bool-by-clauses pexpr))))
@@ -510,6 +514,7 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun big-bool-test () ; too slow to go in the unit tests..
   (map-exprs (lambda (expr &aux (r (reduct (pclone expr) *empty-context* bool))
 		      (r2 (reduct (sexpr2p (p2sexpr r)) *empty-context* bool)))
+	       (declare (ignorable r2))
 	       (assert (equal (truth-table expr '(x y z)) 
 			       (truth-table r '(x y z))) ()
 			"mismatched truth tables ~S, ~S -> ~S, ~S"

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Author: madscience@google.com (Moshe Looks) |#
-(in-package :plop)
+(in-package :plop)(plop-opt-set)
 
 (defun enum-sums (n count) ; all sums to n of count naturals
   (let ((sums (make-array (list (1+ n) (1+ count)) :initial-element nil)))
@@ -26,6 +26,49 @@ Author: madscience@google.com (Moshe Looks) |#
 				 collect (cons (- n i) rest))))))
 	 (get-sums (n count) (tabulate #'compute-sums sums n count)))
       (compute-sums n count))))
+
+;; returns (values ((subexpr . type) ... (subexpr . type)) size)
+;; subexprs are listed in pre-order, left to right
+(defun enum-subexprs (min-size expr context type &aux subexprs (size 1))
+  (while (eqfn expr 'order) 
+    (setf expr (arg0 expr)))
+  (when (and (literalp expr) (consp expr))
+    (decf size))
+  (if (eqfn expr 'lambda)
+      (setf size (expr-size expr))
+      (setf subexprs (mapcan (lambda (arg type)
+			       (mvbind (subs subsize) 
+				   (enum-subexprs min-size arg context type)
+				 (incf size subsize)
+				 subs))
+			     (iargs expr) (arg-types expr context type))))
+  (values (when (>= size min-size)
+	    (cons (cons expr type) subexprs))
+	  size))
+#| fixme!!!
+< (defun enum-subexprs (min-size expr context type &aux (size 1))
+<   (let ((subexprs (mapcan (lambda (arg type)
+<                           (mvbind (subs subsize) 
+<                               (enum-subexprs min-size arg context type)
+<                             (incf size subsize)
+<                             subs))
+<                         (iargs expr) (arg-types expr context type))))
+---
+> (defun enum-subexprs (min-size expr context type &aux subexprs (size 1))
+>   (while (eqfn expr 'order) 
+>     (setf expr (arg0 expr)))
+>   (when (and (literalp expr) (consp expr))
+>     (decf size))
+>   (if (eqfn expr 'lambda)
+>       (setf size (expr-size expr))
+>       (setf subexprs (mapcan (lambda (arg type)
+>                              (mvbind (subs subsize) 
+>                                  (enum-subexprs min-size arg context type)
+>                                (incf size subsize)
+>                                subs))
+>                            (iargs expr) (arg-types expr context type))))
+41c47
+|#
 
 ; enum-exprs takes an alist of symbols and their arities
 ; returns a list of all exprs with up to n-internal-nodes
