@@ -101,23 +101,7 @@ Mixed discrete-continuous optimization problems
      Symposium on Computational Intelligence, 2002)
      http://jiri.ocenasek.com/papers/eisci02.pdf 
 |#
-(in-package :plop)
-
-(defun ppnode (pnode)
-  (format t "~S ~S ~S ~S~%" 
-	  (pnode-err pnode) 
-	  (- (pnode-err pnode) 1 
-	     (elt (pnode-scores pnode) (- (length (pnode-scores pnode)) 2)))
-	  (pnode-scores pnode) 
-	  (funcall (compose #'p2sexpr (bind #'reduct /1 *empty-context* bool)
-			    (lambda (expr) (if (eqfn expr 'lambda)
-					       (fn-body expr)
-					       expr))
-			    #'make-expr-from-pnode) pnode)))
-
-(defun ppnodes (pnodes)
-  (mapc #'ppnode (sort (copy-seq pnodes) #'< :key #'pnode-err))
-  nil)
+(in-package :plop)(plop-opt-set)
 
 (defstruct benchmark
   (name nil :type symbol) (cost 0 :type integer)
@@ -135,19 +119,22 @@ Mixed discrete-continuous optimization problems
 	#'< :key #'benchmark-cost))
 
 (defmacro defbenchmark (name &key cost type target start)
-  `(mvbind (scorers terminationp-gen) (make-problem-desc ,target ,cost ,type)
-     (setf (gethash ',name *benchmarks*)
-	   (make-benchmark :name ',name :cost ,cost :type ,type 
-			   :scorers scorers :terminationp-gen
-			   (lambda 
-			       (&aux (terminationp (funcall terminationp-gen)))
-			     (lambda (err &optional scores)
-			       (when scores
-				 (dorange (i (length scorers) (length scores))
-				   (decf err (elt scores i))))
-			       (funcall terminationp err)))
-			   :start (or ,start 
-				      (lambda () (default-expr ,type)))))))
+  (with-unique-names (scorers terminationp-gen scorers-len)
+    `(mvbind (,scorers ,terminationp-gen)
+	 (make-problem-desc ,target ,cost ,type)
+       (let ((,scorers-len (length ,scorers)))
+	 (setf (gethash ',name *benchmarks*)
+	       (make-benchmark :name ',name :cost ,cost :type ,type 
+			       :scorers ,scorers :terminationp-gen
+			       (lambda (&aux (terminationp 
+					      (funcall ,terminationp-gen)))
+				 (lambda (err &key scores)
+				   (when scores
+				     (dorange (i ,scorers-len (length scores))
+				       (decf err (elt scores i))))
+				   (funcall terminationp err)))
+			       :start (or ,start (lambda () 
+						   (default-expr ,type)))))))))
 (defmacro defbenchmark-seq (name (range) &key cases cost type target start)
   `(progn
      ,@(mapcar (lambda (n)
@@ -159,56 +146,48 @@ Mixed discrete-continuous optimization problems
 			:start ,(and start `(lambda () ,start)))))
 	       (if (consp (car cases))
 		   (mapcan (bind #'apply #'iota /1) cases)
-		   (apply #'iota cases)))))
+		   (if (eq (car cases) 'list)
+		       (cdr cases)
+		       (apply #'iota cases))))))
 
-(defun run-benchmark (name fn &key verbose &aux
+(defparameter *last-benchmark-random-seed* nil)
+(defun run-benchmark (name fn &key verbose start &aux
 		      (b (if (benchmark-p name) name 
 			     (gethash name *benchmarks*))))
   (format t "~S " (benchmark-name b))
   (when verbose (format t "seed: ~S " *random-state*))
-  (setf *count-with-duplicates* 0)
-  (mvbind (termination-result scored-solutions)
+  (setf *last-benchmark-random-seed* (make-random-state *random-state*)
+	*count-with-duplicates* 0)
+  (mvbind (cost scored-solutions)
       (funcall fn (benchmark-scorers b) 
 	       (funcall (benchmark-terminationp-gen b))
-	       (funcall (benchmark-start b)) *empty-context* 
+	       (or start (funcall (benchmark-start b))) *empty-context* 
 	       (benchmark-type b))
-    (aprog1 (numberp termination-result)
-      (if (consp (car scored-solutions))
-	  (if it 
-	      (progn 
-		(format t "passed with cost ~S (~S)" termination-result
-			*count-with-duplicates*)
-		(if verbose
-		    (let ((best (min-element scored-solutions #'< :key #'car)))
-		      (format t ", best was ~S with a score of ~S.~%" 
-			      (p2sexpr (cdr best)) (car best)))
-		    (format t "~%")))
-	      (let ((best (min-element scored-solutions #'< :key #'car)))
-		(format t "failed with cost ~S (~S), best " (benchmark-cost b)
-			*count-with-duplicates*)
-		(if verbose 
-		    (format t "was ~S with a score of ~S.~%" 
-			    (p2sexpr (cdr best)) (car best))
-		    (format t "score was ~S.~%"  (car best)))))
-	  (progn
-	    (if it
-		(format t "passed with cost ~S (~S)~%" termination-result
-			*count-with-duplicates*)
-		(let ((best (min-element scored-solutions #'< 
-					 :key #'pnode-err)))
-		  (format t "failed with cost ~S (~S), best score was ~S~%"
-			  (benchmark-cost b) *count-with-duplicates*
-			  (pnode-err best))))
-	    (when verbose 
-	      (ppnodes scored-solutions)))))))
+    (aprog1 (numberp cost)
+      (let ((best (min-element scored-solutions #'< :key #'car))
+	    (ndup (- *count-with-duplicates* (if it cost (benchmark-cost b)))))
+	(if it 
+	    (progn (format t "passed with cost ~S (~S dups)" cost ndup)
+		   (if verbose
+		       (format t ", best was ~S with a score of ~S.~%" 
+			       (printable (cadr best)) (car best))
+		       (format t "~%")))
+	    (progn (format t "failed with cost ~S (~S dups), best " 
+			   (benchmark-cost b) ndup)
+		   (if verbose 
+		       (format t "was ~S with a score of ~S.~%" 
+			       (p2sexpr (cadr best)) (car best))
+		       (format t "score was ~S.~%"  (car best))))))
+      (when verbose (mapc (lambda (x) (print* (printable (car x)) (cadr x)))
+			  scored-solutions)))))
 
 (defun score-on-benchmark (name expr)
+  (funcall (benchmark-terminationp-gen (gethash name *benchmarks*)))
   (let* ((scores (mapcar (bind #'funcall /1 expr) 
 			 (benchmark-scorers (gethash name *benchmarks*))))
 	 (err (reduce #'+ scores)))
     (format t "err: ~S, scores: ~S.~%" err scores)))
   
-		
 ;;; runs from easiest to hardest
 (defun run-benchmarks 
     (fn cost-cutoff &key verbose &aux
@@ -237,16 +216,16 @@ Note that the above results for parity are for learning *without* any
 abstraction mechanisms. Learning large parity functions with function
 abstaction should be far easier. |#
 (defbenchmark easy-bool 
-    :cost 500 :type '(function (bool bool bool) bool)
+    :cost 500 :type '(func (bool bool bool) bool)
     :target '(true false true false true true false false))
 (defbenchmark-seq even-parity (n)
   :cases (8 :start 2) :cost (+ 1000 (expt n (+ n 4)))
-  :type `(function ,(ntimes n 'bool) bool)
+  :type `(func ,(ntimes n 'bool) bool)
   :target (lambda (&rest args)
 	    (reduce (lambda (x y) (not (eq x y))) args :initial-value t)))
 (defbenchmark-seq multiplexer (n)
-  :cases (5 :start 1) :cost (ecase n (1 500) (2 20000) (3 350000) (4 10000000))
-  :type `(function ,(ntimes (+ n (expt 2 n))  'bool) bool)
+  :cases (4 :start 1) :cost (ecase n (1 500) (2 20000) (3 350000) (4 10000000))
+  :type `(func ,(ntimes (+ n (expt 2 n))  'bool) bool)
   :target (lambda (&rest args &aux (addr 0) (pow 1))
 	    (dorepeat n
 	      (when (car args) (incf addr pow))
@@ -255,41 +234,76 @@ abstaction should be far easier. |#
 
 #| Numerical functions |#
 (defbenchmark easy-num
-    :cost 500 :type '(function (num) num)
+    :cost 500 :type '(func (num) num)
     :target (mapcar (lambda (x) (list (+ 0.1 (* 2 x)) x)) '(-1 .3 .5)))
 (defbenchmark-seq linear-funs (n)
   :cases ((10 :start 1) (100 :start 10 :step 10))
-  :cost (* 1000 n) :type `(function ,(ntimes n num) num)
+  :cost (* 1000 n) :type `(func ,(ntimes n num) num)
   :target
   (let ((constants (generate (1+ n) #'random-normal)))
     (mapcar (lambda (xs) (cons (reduce #'+ (mapcar #'* (cdr constants) xs)
 					  :initial-value (car constants))
 			       xs))
 	    (generate (1+ n) (lambda () 
-			       (generate (1+ n) (lambda () 
-						  (1- (random 2.0)))))))))
+			       (generate n (lambda () (1- (random 2.0)))))))))
+(defbenchmark num-const
+    :cost 500 :type '(func (num) num)
+    :target (mapcar (lambda (x) (list (* 3.45 x) x)) '(-1 .3 .5)))
+
 (defbenchmark-seq koza-polynomial (n)
-  :cases (9 :start 1) :cost (* 100 (expt n 2)) :type '(function (num) num)
+  :cases (9 :start 1) :cost (* 1000 (expt n 2)) :type '(func (num) num)
   :target 
   (mapcar (lambda (x &aux (y 0))
 	    (list (dotimes (k n y) (incf y (expt x (1+ k)))) x))
 	  (generate 20 (lambda () (1- (random 2.0))))))
 
+(defbenchmark sextic-polynomial
+    :cost 20000 :type '(func (num) num)
+    :target (mapcar (lambda (x)
+		      (list (+ (expt x 6) (* -2 (expt x 4)) (expt x 2)) x))
+		    (generate 50 (lambda () (1- (random 2.0))))))
+
+(defbenchmark num-inv
+    :cost 20000 :type '(func (num) num)
+    :target (generate 20 (lambda (&aux (x (+ +aa-precision+ (random 2.0))))
+			   (list (/ x) x))))
+
+
 #| Mixed Boolean-Real functions |#
 ;; if (and (y < 3) x) then y else -y
 (defbenchmark easy-mixed-num
-    :cost 500 :type '(function (bool num) num)
+    :cost 2000 :type '(func (bool num) num)
     :target '((-3.1 true 3.1) (-3.1 false 3.1)
 	      (-2.9 false 2.9) (2.9 true 2.9)))
 ;; (or (not x) (y < 3))
-;;fixme (defbenchmark easy-mixed-num
-;;     :cost 500 :type '(function (bool num) bool)
+;; fixme (defbenchmark easy-mixed-num
+;;     :cost 500 :type '(func (bool num) bool)
 ;;     :target '((-3.1 true 3.1) (-3.1 false 3.1)
 ;; 	      (-2.9 false 2.9) (2.9 true 2.9)))
 
+#| Iteration over lists |#
+;;; a perfect solution would be
+;;; %(lambda (x) 
+;;;     (fold (lambda (a b) (or (and a (not b)) (and (not a) b))) x true))
+(defbenchmark list-even-parity 
+    :cost 10000 :type '(func ((list bool)) bool)
+    :target (mapcar (lambda (x) 
+		      (list (cl-bool-atom-to-p 
+			     (reduce (lambda (x y) (not (eq x y))) x
+				     :initial-value t))
+			    (mapcar #'cl-bool-atom-to-p x)))
+		    (mapcar #'p-to-cl (enum-bindings 3))))
+(defbenchmark list-variance
+    :cost 1000000 :type '(func ((list num)) num)
+    :target (mapcar (lambda (l) (list (variance l) l))
+		    (generate 50 (lambda () 
+				   (generate (+ 5 (random 6))
+					     (lambda ()
+					       (- (random 20.0) 10.0)))))))
+
 #| Discrete optimization |#
 (defbenchmark-seq onemax (n)
-  :cases ((300 :start 60 :step 60) (1200 :start 300 :step 300))
+  :cases ((300 :start 10 :step 60) (1200 :start 300 :step 300))
   :cost (+ (* 10 n) 3000) :type `(tuple ,@(ntimes n bool))
   :target (lambda (x) (count false x))
   :start (apply #'vector (generate n (lambda () (if (randbool) true false)))))
@@ -303,6 +317,16 @@ abstaction should be far easier. |#
 							  (bind #'eq /1 true))
 				      :start idx :end (+ idx 3)))))))
   :start (apply #'vector (generate n (lambda () (if (randbool) true false)))))
+
+(defun make-parallel-hyper-ellipsoids (n)
+  (lambda (xs &aux (res 0.0))
+    (dotimes (i n) (incf res (let ((x (* (1+ i) (elt xs i)))) (* x x))))
+    (* (expt 10 8) res)))
+
+(defbenchmark parallel-hyper-ellipsoids
+    :cost 12000 :type `(tuple ,@(ntimes 30 'num)) 
+    :start (lambda () (make-array 30 :initial-element 1.0))
+    :target (make-parallel-hyper-ellipsoids 30))
 
 #| Continuous optimization |#
 (defmacro defdejong (name target &key precision max cost cases &aux 
@@ -318,7 +342,7 @@ abstaction should be far easier. |#
 					  (+ (random (- ,max ,min)) ,min))))))
 
 (defdejong sphere (lambda (xs) (reduce #'+ xs :key (bind #'* /1 /1)))
-  :precision 10 :max 5.12 :cost (* 200 n) :cases (11 :start 3))
+  :precision 10 :max 5.12 :cost (* 200 n) :cases (list 3 5 10 30))
 (defdejong rosenbrock
     (lambda (xs &aux (res 0.0))
       (map-adjacent nil (lambda (x1 x2)
@@ -326,7 +350,7 @@ abstaction should be far easier. |#
 				       (expt (- x1 1) 2))))
 		    xs)
       res)
-  :precision 12 :max 5.12 :cost (* 1500 n) :cases (11 :start 2))
+  :precision 12 :max 5.12 :cost (* 1500 n) :cases (16 :start 2))
 (defdejong step (lambda (xs) (+ (* 6 n) (reduce #'+ xs :key #'floor)))
   :precision 10 :max 5.12 :cost (* n 1000) :cases (11 :start 5))
 (defdejong noisy-quartic ; note - this is *not* the same as dejong's problem
@@ -339,17 +363,18 @@ abstaction should be far easier. |#
     (let ((a (vector -32.0 -16.0 0.0 16.0 32.0))
 	  (b (vector -32.0 -16.0 0.0 16.0 32.0)))
       (lambda (xs &aux (sum 0))
-	(flet ((f (x) (+ 1 x 
+	(flet ((f (x) (+ x 
 			 (expt (- (elt xs 0) (svref a (mod x 5))) 6)
 			 (expt (- (elt xs 1) (svref b (floor (/ x 5)))) 6))))
-	  (+ 1.0 (/ 1.0 (+ 0.002 (dotimes (x 25 sum)
-				   (incf sum (/ 1.0 (f x))))))))))
+	  (- (/ 1.0 (+ 0.002 (dotimes (x 25 sum)
+			       (incf sum (/ 1.0 (f x))))))
+	     1.0))))
   :precision 12 :max 65.536 :cost 5000 :cases (3 :start 2))
 
 (defun run-expensive-tests ()
   (time (run-tests))
-  (time (dorepeat 30 (run-benchmark 'easy-bool #'run-lllsc)))
-  (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'run-lllsc)))
-  (time (run-benchmarks #'run-lllsc 5000))
-  (time (dorepeat 30 (run-benchmark 'even-parity-3 #'run-lllsc)))
+  (time (dorepeat 30 (run-benchmark 'easy-bool #'moses)))
+  (time (dorepeat 30 (run-benchmark 'koza-polynomial-2 #'moses)))
+  (time (run-benchmarks #'moses 5000))
+  (time (dorepeat 30 (run-benchmark 'even-parity-3 #'moses)))
   (time (big-bool-test)))

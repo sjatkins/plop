@@ -200,8 +200,13 @@ represent evolved programs. |#
   (if (atom expr) 1 
       (reduce #'+ (args expr) :key #'expr-size :initial-value 1)))
 (defun arity (expr) (length (args expr)))
+(defun expr-uses-var-p (expr varname)
+  (typecase expr 
+    (vector (some (bind #'expr-uses-var-p /1 varname) expr))
+    (cons (some (bind #'expr-uses-var-p /1 varname) (args expr)))
+    (t (eq expr varname))))
 (defun free-variables (expr &optional (context *empty-context*))
-  (cond ((atom expr) (unless (const-atom-p expr context) (list expr)))
+  (cond ((atom expr) (unless (const-expr-p expr context) (list expr)))
 	((lambdap expr) (with-bound-value context (fn-args expr) nil
 			  (free-variables (fn-body expr) context)))
 	(t (reduce (lambda (x y) (delete-duplicates (nconc x y)))
@@ -220,32 +225,49 @@ represent evolved programs. |#
       (coerce expr 'list)
       (progn (assert (eqfn expr 'tuple)) (args expr))))
 
-;;; constness
-(defun const-atom-p (x &optional (context *empty-context*))
-  (and (atom x) (or (not (symbolp x)) 
-		    (matches x (true false nan nil)) 
-		    (valuedp x context))))
+(defun fold-args (fold) (lambda-list-argnames (arg0 (arg0 fold))))
+(defun fold-body (fold) (fn-body (arg0 fold)))
 
+(defun pe-fold (argnames fn-body list initial leftp &aux (i (impulse leftp)))
+  (reduce (lambda (expr value)
+	    (expr-substitute fn-body 
+			     (elt argnames i) expr
+			     (elt argnames (- 1 i)) value))
+	  list :initial-value initial :from-end (not leftp)))
+
+;;; constness
+(defun const-atom-value-p (x)
+  (or (numberp x) (matches x (true false nan nil and or not + - * /  log exp sin
+			      fold cons car cdr if impulse 0< nand nor tuple 
+			      order list append))))
+(defun const-value-p (x)
+  (cond ((atom x) (const-atom-value-p x))
+	((lambdap x) (with-bound-value *empty-context* (fn-args x) nil
+		       (const-expr-p (fn-body x) *empty-context*)))
+	(t (every #'const-value-p x))))
+
+;;; fixme pure
+;;  ((eq (fn expr) 'lambda) (with-bound-value context (fn-args expr) nil
+;;	      (const-expr-p (fn-body expr) context)))
+;;  ((purep (fn expr)) (every (bind #'const-value-p /1 context) (args expr)))))
 (defun const-expr-p (expr &optional (context *empty-context*))
-  (cond ((atom expr) (const-atom-p expr context))
-	((eq (fn expr) 'lambda)
-	 (with-bound-value context (fn-args expr) nil
-	   (const-expr-p (fn-body expr) context)))
-	((eq (fn expr) 'let) nil)
-	(t (every (bind #'const-expr-p /1 context) (args expr)))))
-(defun const-value-p (expr &optional (context *empty-context*))
-  (cond
-    ((atom expr) (const-atom-p expr context))
-    ((eq (fn expr) 'lambda) (with-bound-value context (fn-args expr) nil
-			      (const-expr-p (fn-body expr) context)))
-    ((purep (fn expr)) (every (bind #'const-value-p /1 context) (args expr)))))
-(define-test const-value-p
-  (assert-false (const-value-p 'x))
-  (assert-true (const-value-p 42))
-  (assert-true (const-value-p %(lambda (x) (+ x 1))))
-  (assert-false (const-value-p %(lambda (x) (+ x y))))
-  (assert-true (const-value-p %(list 1 2 3)))
-  (assert-false (const-value-p %(list 1 2 x 3))))
+  (cond ((atom expr) (or (const-atom-value-p expr) (valuedp expr context)))
+	((eq (fn expr) 'lambda) (with-bound-value context (fn-args expr) nil
+				  (const-expr-p (fn-body expr) context)))
+	((eq (fn expr) 'let) (and (every (bind #'const-expr-p /1 context)
+					 (let-bindings-values (arg0 expr)))
+				  (with-bound-value context 
+				      (let-bindings-names (arg0 expr)) nil
+				      (const-expr-p (arg1 expr)))))
+	(t (and (const-expr-p (fn expr))
+		(every (bind #'const-expr-p /1 context) (args expr))))))
+(define-test const-expr-p
+  (assert-false (const-expr-p 'x))
+  (assert-true (const-expr-p 42))
+  (assert-true (const-expr-p %(lambda (x) (+ x 1))))
+  (assert-false (const-expr-p %(lambda (x) (+ x y))))
+  (assert-true (const-expr-p %(list 1 2 3)))
+  (assert-false (const-expr-p %(list 1 2 x 3))))
 
 ;;; converting values to expressions (like quote)
 (defun value-to-expr (value)
@@ -411,3 +433,14 @@ represent evolved programs. |#
 		    (every #'funcall subs array)))))
     (list (let ((sub (make-validator (cadr type))))
 	    (lambda (list) (every sub list))))))
+
+;;; note: strips markup
+(defun expr-substitute (expr &rest values)
+  (labels ((sub (x &aux (match (getf values x +no-value+)))
+	     (if (eq match +no-value+)
+		 (typecase x
+		   (vector (map 'vector #'sub x))
+		   (cons (pcons (fn x) (mapcar #'sub (args x))))
+		   (t x))
+		 (pclone match))))
+    (sub expr)))

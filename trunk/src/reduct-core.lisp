@@ -233,10 +233,12 @@ Author: madscience@google.com (Moshe Looks) |#
 			   (eql body (let-body expr)))
 		      expr
 		      (pcons 'let (list bs body) (markup expr)))))
-	       (t (mapargs-with-types (lambda (x type2)
-					(if (or (atom x) (equal type type2)) x
-					    (reduct x context type2)))
-				      expr (arg-types expr context type))))))
+	       (t (mapargs-with-types 
+		   (lambda (x type2)
+		     (cond ((atom x) x)
+			   ((equal type type2) (reduce-subtypes x))
+			   (t (reduct x context type2))))
+		   expr (arg-types expr context type))))))
     (cond ((atom expr) (if (and (numberp expr) (not (finitep expr)))
 			   nan
 			   expr))
@@ -285,6 +287,7 @@ Author: madscience@google.com (Moshe Looks) |#
 (defun qreduct (expr) 
   (if (atom expr) expr 
       (reduct expr *empty-context* (expr-type expr *empty-context*))))
+(defun qqreduct (expr) (p2sexpr (qreduct expr)))
 
 (defun reductsp (expr context type)
   (labels ((subtypesp (expr)

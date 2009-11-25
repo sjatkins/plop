@@ -43,18 +43,6 @@ for speed have an all-positive marker? |#
 
 (defparameter *peval-counter* 0) ;fixme - need to increment this appropriately!
 
-(defun peval-atom-cl (x context)
-  (if (symbolp x) 
-      (case x 
-	(true t)
-	(false nil)
-	(nan nan)
-	((nil) nil)
-	(t (acase (getvalue x context)
-	     (true t)
-	     (false nil)
-	     (t it))))
-      x))
 (defun peval-cl (expr context)
   (labels ((and-op (args) (and (peval-cl (car args) context)
 			       (aif (cdr args) (and-op it) t)))
@@ -73,7 +61,7 @@ for speed have an all-positive marker? |#
 				   (throw nan nan)
 				   (exp result))))))
     (if (atom expr)
-	(peval-atom-cl expr context)
+	(p-to-cl (atom-value expr context))
 	(case (fn expr)
 	  (and (and-op (args expr)))
 	  (or (or (not (args expr)) (or-op (args expr))))
@@ -97,11 +85,6 @@ for speed have an all-positive marker? |#
 	  (let (with-let-value-bindings context (arg0 expr)
 		 (peval-cl (arg1 expr) context)))
 	  (lambda expr)
-	  (split (apply #'split 
-			(lambda (&rest fn-args)
-			  (papply (peval-cl (arg0 expr) context) fn-args))
-			(mapcar (bind #'peval-cl /1 context)
-				(cdr (args expr)))))
 	  (t (papply-cl (fn expr)
 			(mapcar (bind #'peval-cl /1 context) (args expr))
 			context))))))
@@ -124,15 +107,23 @@ for speed have an all-positive marker? |#
     (order (car args))
     (nand (not (and (car args) (cadr args))))
     (nor (not (or (car args) (cadr args))))
-    
+
     (and (every #'identity args))
     (or (find t args))
     (if (if (car args)
 	    (cadr args)
 	    (caddr args)))
-    (split (apply #'split (lambda (&rest fn-args)
-			    (papply (car args) fn-args))
-		  (cdr args)))
+    
+    ;; fold :: (func (a b) b) (list a) b bool -> b
+    ;; the boolean argument is true for leftward fold, false for rightward
+    ;; (the oppoisite of CL's reduce's :from-end keyword)
+    (fold (let ((from-end (not (cadddr args))))
+	    (assert (eql (length args) 4))
+	    (reduce 
+	     (if from-end
+		 (lambda (x y) (papply-cl (car args) (list x y) context))
+		 (lambda (x y) (papply-cl (car args) (list y x) context)))
+	     (cadr args) :initial-value (caddr args) :from-end from-end)))
 
     (t (if (lambdap fn) 
 	   (with-bound-values-and-type context (fn-args fn) args t 
@@ -143,36 +134,34 @@ for speed have an all-positive marker? |#
 		    (papply-cl (findvalue fn context) args context))
 		(apply fn args))))))
 
-(defun cl-bool-atom-to-p (atom) (ecase atom ((t) true) ((nil) false)))
-(defun cl-vector-to-p (x type)
-  (map-into x (lambda (arg arg-type)
-		(cond ((vectorp arg) (cl-vector-to-p arg arg-type))
-		      ((eq arg-type bool) (cl-bool-atom-to-p arg))
-		      (t arg)))
-	    x (cdr type)))
-(macrolet ((handling-errors (eval-expr type-expr)
-	     `(blockn 
-		(handler-case 
-		    (catch nan 
-		      (return (let ((result ,eval-expr))
-				(case result
-				  ((t) true)
-				  ((nil) (when (eq ,type-expr bool)
-					   false))
-				  (t (if (vectorp result)
-					 (cl-vector-to-p result ,type-expr)
-					 result))))))
-		  #+clisp(system::simple-floating-point-overflow ())
-		  #+clisp(system::simple-arithmetic-error ())
-		  (type-error ())
-		  (division-by-zero ()))
-		nan)))
+(macrolet 
+    ((handling-errors (eval-expr type-expr)
+       `(blockn 
+	  (handler-case 
+	      (catch nan 
+		(return 
+		  (let ((result ,eval-expr))
+		    (case result
+		      ((t) true)
+		      ((nil) (when (eq ,type-expr bool)
+			       false))
+		      (t (typecase result
+			   (vector (n-cl-vector-to-p result (cdr ,type-expr)))
+			   (cons (if (and (consp (car result))
+					  (eq (caar result) 'lambda))
+				     result
+				     (n-cl-list-to-p result (cadr ,type-expr))))
+			   (t result)))))))
+	    #+clisp(system::simple-floating-point-overflow ())
+	    #+clisp(system::simple-arithmetic-error ())
+	    (type-error ())
+	    (division-by-zero ()))
+	  nan)))
   (defun peval (expr &optional (context *empty-context*) type)
     (handling-errors (peval-cl expr context) 
 		     (or type (expr-type expr context))))
   (defun papply (fn args &optional (context *empty-context*) type)
-    (handling-errors (papply-cl fn (deep-substitute args true t false nil) 
-				context)
+    (handling-errors (papply-cl fn (mapcar #'p-to-cl args) context)
 		     (or type (funcall-type fn args context))))
   (defun pfuncall (fn &rest args) (papply fn args)))
 
@@ -200,6 +189,9 @@ for speed have an all-positive marker? |#
   (with-bound-values-and-types *empty-context* '(l f)
       `((true false true) ,%(lambda (p l) (impulse (and p (car l)))))
       '((list bool) (func (bool (list bool)) num))
-    (assert-equal 0 (peval-cl %(split f (tuple l true)) *empty-context*))
-    (assert-equal 0 (peval %(split f (tuple l true))))
-    (assert-equal 0 (peval %(f false nil)))))
+    (assert-equal 0 (peval-cl %(f (fold (lambda (x y) x) l true false) (cdr l))
+			      *empty-context*))
+    (assert-equal 1 (peval-cl %(impulse (fold (lambda (x y) x) nil true false))
+			      *empty-context*))
+    (assert-equal 0 (peval %(f (fold (lambda (x y) x) l true false) (cdr l))))
+    (assert-equal false (peval %(fold (lambda (x y) x) nil false false)))))

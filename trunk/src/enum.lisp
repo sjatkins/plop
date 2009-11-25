@@ -94,14 +94,14 @@ Author: madscience@google.com (Moshe Looks) |#
        (get-exprs (n) (tabulate #'compute-exprs exprs n)))
     (loop for i from 0 to n-internal-nodes append (compute-exprs i))))
 
-(defun map-exprs (fn symbol-pairs n-internal-nodes &aux
-		   (exprs (make-array n-internal-nodes :initial-element nil))
-		   (arity-to-syms 
-		    (reduce (lambda (table symbol-pair)
-			      (push (car symbol-pair)
-				    (gethash (cdr symbol-pair) table))
-			      table)
-			    symbol-pairs :initial-value (make-hash-table))))
+(defun map-all-exprs (fn symbol-pairs n-internal-nodes &aux
+		      (exprs (make-array n-internal-nodes :initial-element nil))
+		      (arity-to-syms 
+		       (reduce (lambda (table symbol-pair)
+				 (push (car symbol-pair)
+				       (gethash (cdr symbol-pair) table))
+				 table)
+			       symbol-pairs :initial-value (make-hash-table))))
   (labels
       ((compute-exprs (n)
 	 (if (eql n 0) 
