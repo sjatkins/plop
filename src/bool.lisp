@@ -51,7 +51,7 @@ Author: madscience@google.com (Moshe Looks) |#
 (defmacro test-by-truth-tables (rewrite)
   `(let ((vars (collecting (dolist (x *enum-exprs-test-symbols*)
 			     (if (and (eql 0 (cdr x)) 
-				      (not (const-atom-p (car x))))
+				      (not (const-value-p (car x))))
 				 (collect (car x)))))))
      (dolist (expr (enum-exprs *enum-exprs-test-symbols* 2) t)
        (strip-markup expr)
@@ -67,26 +67,39 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-reduction push-nots (expr)
     :type bool
     :condition (and (eq (fn expr) 'not)
-		    (matches (afn (arg0 expr)) (and or not)))
+		    (matches (afn (arg0 expr)) (and or not fold)))
     :action
-    (if (eq (fn (arg0 expr)) 'not)
-	(arg0 (arg0 expr))
-	(pcons (bool-dual (fn (arg0 expr)))
-	       (let ((no-duplicates (simpp expr 'remove-bool-duplicates))
-		     (no-consts (simpp expr 'eval-const)))
-		 (mapcar (lambda (subexpr)
-			   (aprog1 (pcons 'not (list subexpr))
-			     (when no-duplicates
-			       (mark-simp it 'remove-bool-duplicates))
-			     (when no-consts
-			       (mark-simp it 'eval-const))))
-			 (args (arg0 expr))))
-	       (markup expr)))
+    (case (fn (arg0 expr))
+      (not (arg0 (arg0 expr)))
+      (fold (let* ((fold (arg0 expr)) (body (fold-body fold)))
+	      (if (or (junctorp body) (eqfn body 'not))
+		  (pcons 'fold 
+			 (cons (mklambda (fold-args fold) 
+					 (push-nots (plist 'not body)))
+			       (copy-list (cdr (args fold))))
+			 (markup fold))
+		  expr)))
+      (t (pcons (bool-dual (fn (arg0 expr)))
+		(let ((no-duplicates (simpp expr 'remove-bool-duplicates))
+		      (no-consts (simpp expr 'eval-const)))
+		  (mapcar (lambda (subexpr)
+			    (aprog1 (pcons 'not (list subexpr))
+			      (when no-duplicates
+				(mark-simp it 'remove-bool-duplicates))
+			      (when no-consts
+				(mark-simp it 'eval-const))))
+			  (args (arg0 expr))))
+		(markup expr))))
     :order downwards
     :preserves (remove-bool-duplicates eval-const))
 (define-test push-nots
-  (assert-equal  '(and (not p) (not q)) 
-		 (p2sexpr (push-nots (copy-tree %(not (or p q))))))
+  (flet ((pns (expr) (p2sexpr (push-nots (copy-tree expr)))))
+    (assert-equal '(and (not p) (not q)) (pns %(not (or p q))))
+    (with-bound-type *empty-context* '(l) '(list bool) 
+      (assert-equal '(fold (lambda (x y) (or (not x) (not y))) l true)
+		    (pns %(not (fold (lambda (x y) (and x y)) l true))))
+      (assert-equal '(fold (lambda (x y) (and x y)) l true)
+		    (pns %(not (fold (lambda (x y) (not (and x y))) l true))))))
   (test-by-truth-tables #'push-nots))
 
 (defun negate (expr)
@@ -512,14 +525,15 @@ Author: madscience@google.com (Moshe Looks) |#
 
 
 (defun big-bool-test () ; too slow to go in the unit tests..
-  (map-exprs (lambda (expr &aux (r (reduct (pclone expr) *empty-context* bool))
-		      (r2 (reduct (sexpr2p (p2sexpr r)) *empty-context* bool)))
-	       (declare (ignorable r2))
-	       (assert (equal (truth-table expr '(x y z)) 
-			       (truth-table r '(x y z))) ()
-			"mismatched truth tables ~S, ~S -> ~S, ~S"
-			(p2sexpr expr) (truth-table expr '(x y z)) 
-			(p2sexpr r) (truth-table r '(x y z)))
-	       (assert (equal (p2sexpr r) (p2sexpr r2)) ()
-		       "badly marked reduct: ~S -> ~S -> ~S" expr r r2))
-	     '((and . 2) (or . 2) (not . 1) (x . 0) (y . 0) (z . 0)) 5))
+  (map-all-exprs 
+   (lambda (expr &aux (r (reduct (pclone expr) *empty-context* bool))
+	    (r2 (reduct (sexpr2p (p2sexpr r)) *empty-context* bool)))
+     (declare (ignorable r2))
+     (assert (equal (truth-table expr '(x y z)) 
+		    (truth-table r '(x y z))) ()
+		    "mismatched truth tables ~S, ~S -> ~S, ~S"
+		    (p2sexpr expr) (truth-table expr '(x y z)) 
+		    (p2sexpr r) (truth-table r '(x y z)))
+     (assert (equal (p2sexpr r) (p2sexpr r2)) ()
+	     "badly marked reduct: ~S -> ~S -> ~S" expr r r2))
+   '((and . 2) (or . 2) (not . 1) (x . 0) (y . 0) (z . 0)) 5))

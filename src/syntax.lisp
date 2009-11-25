@@ -99,7 +99,7 @@ args and markup must be proper lists. |#
    (declare (ignore environment))
    `(make-lambda-list ',(lambda-list-argnames self)))
 (defun mklambda (args body &optional markup)
-  (list (cons 'lambda (copy-list markup)) (make-lambda-list args) body))
+  (list (cons 'lambda (copy-seq markup)) (make-lambda-list args) body))
 (defun fn-arity (expr)
   (length (lambda-list-argnames (arg0 expr))))
 ;;; the let-bindings type - another exceptional construct

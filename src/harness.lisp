@@ -26,16 +26,11 @@ function, an initial expression or list of expressions, a context, and a
 type. It returns three values - a boolean indicating if the 
 
 |#
-(in-package :plop)
+(in-package :plop)(plop-opt-set)
 
 ;;fixme- update the outdated comments above
 ;; terminationp needs to be more general - make a struct that has
 ;; info regrading best solutions found, etc..
-
-
-;;; this should be big enough to outweigh other sources of error,
-;;; but not big enough to cause overflow when summed
-(define-constant +solution-fail-value+ (/ most-positive-single-float 1000))
 
 (defun epsilon-size (type)
   (ecase (icar type)
@@ -55,10 +50,14 @@ type. It returns three values - a boolean indicating if the
   (values scorers 
 	  (lambda () 
 	    (setf counter 0 last-counter 0 panic 0) ;reset
-	    (lambda (err)
+	    (lambda (err &rest foo)
+	      (declare (ignore foo))
+	      ;(print* 'count counter)
+	      (incf *count-with-duplicates* (- counter last-counter))
 	      (if (eql counter last-counter)
-		  (progn (incf panic) (incf *count-with-duplicates*))
+		  (incf panic)
 		  (setf last-counter counter panic 0))
+	      (when (>= panic cost) (print 'panic!!!))
 	      (or (>= (max counter panic) cost)
 		  (and (funcall terminationp err) counter))))))
 
@@ -75,27 +74,32 @@ type. It returns three values - a boolean indicating if the
 
 (defdefbytype define-problem-desc-maker make-problem-desc :args (target cost))
 
-(define-problem-desc-maker function (target cost type &aux result-scorer
-				     (epsilon (* (if (atom target) 1 
-						     (length target))
-						 (epsilon-size (caddr type))))
-				     (result-type (caddr type))
-				     (arg-names (make-arg-names (cadr type))))
+(define-problem-desc-maker func (target cost type &aux result-scorer
+				 (epsilon (* (if (atom target) 1 
+						 (length target))
+					     (epsilon-size (caddr type))))
+				 (result-type (caddr type))
+				 (arg-names (make-arg-names (cadr type))))
   (ecase (icar result-type)
     (num (setf result-scorer (lambda (result actual)
 			       (if (eq actual nan)
 				   +solution-fail-value+ 
-				   (log (+ 1 (/ (abs (- result actual)) ;fixme
-						(epsilon-size result-type)))
-					2)))))
+				   (abs (- result actual))))))
     (bool ; target may a truth table, function for computing one, 
           ; or a list of (result ,@args) lists as above
-     (let* ((arity (length arg-names)) (penalty (+ 1 (* 200 arity))))
+     (let* ((arity (length arg-names)) 
+	    (penalty 1;; (+ 1 (* 2 (- (prior-penalty  fixme
+;; 				   (plist 'and 'x 
+;; 					  (pcons 'or (ntimes arity 'x)))
+;; 				   *empty-context* bool)
+;; 				  (prior-penalty 'x *empty-context* bool))))
+		     ))
+					;(+ 1 (* 200 arity))))
 ;					 (+ 2 arity (log arity 2))))
 ;fixme       shouldn't the penalty depend on how much data you actually have?
        (setf result-scorer (lambda (result actual)
 				 (if (or (eq result 'unk) (eq result actual))
-				     0
+				     0.0
 				     penalty)))
        (unless (and (consp target) (consp (car target)))
 	 (setf target 

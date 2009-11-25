@@ -27,7 +27,7 @@ be passed between subprocesses. |#
 ;;; type-map maps from type to hashes 
 (defstruct (context (:constructor make-context-raw ()))
   (symbol-bindings (make-hash-table) :type hash-table)
-  (type-map (make-hash-table) :type hash-table)
+  (type-map (make-hash-table :test 'equal) :type hash-table)
   (problem-stack nil :type list)
   (num-aa-map (make-hash-table) :type hash-table)
   symbol-value-table)
@@ -51,6 +51,10 @@ be passed between subprocesses. |#
 (defun getvalue (name context)
  (assert (valuedp name context) () "unbound variable ~S in ~S" name context)
  (findvalue name context))
+(defun atom-value (atom context)
+  (if (and (symbolp atom) (not (matches atom (true false nan nil))))
+      (getvalue atom context)
+      atom))
 
 (defun gettype (name context)
   (assert (typedp name context) () "untyped variable ~S in ~S" name context)

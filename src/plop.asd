@@ -46,6 +46,7 @@ Author: madscience@google.com (Moshe Looks) |#
  	       (:file "semantics")
  	       (:file "type")
  	       (:file "enum")
+	       (:file "convert")
 
  	       (:file "eval")         ; p language evaluator
 

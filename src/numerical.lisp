@@ -243,6 +243,8 @@ numerical functions |#
 			     (compose (bind #'* /1 /1) (bind #'- /1 m) key)
 			     :initial-value 0L0)
 		     (1- n)))))
+(defun variance (seq &key (key #'identity)) 
+  (expt (secondary (moments seq :key key)) 2))
 
 ;; Chauvenet's criterion for outlier detection
 (defun chauvnet (m sd n)
@@ -326,3 +328,13 @@ numerical functions |#
   (assert-false (interval-intersects-p (cons 2.6 3) (cons 1.5 2.5))) 
   (assert-false (interval-intersects-p (cons 1 2) (cons 2 2.5)))
   (assert-false (interval-intersects-p (cons 2 2.5) (cons 1 2)))) 
+
+(defun linear-regress (ys zs epsilon &aux (n (length ys)) 
+		       (yavg (/ (reduce #'+ ys) n)) (zavg (/ (reduce #'+ zs) n))
+		       (d (reduce #'+ zs :key 
+				  (lambda (z) (expt (- z zavg) 2)))))
+  (if (< d epsilon) ; flat
+      (values yavg 0)
+      (let ((b (/ (zip #'+ (lambda (y z) (* (- y yavg) (- z zavg))) 0 ys zs)
+		  d)))
+	(values (- yavg (* b zavg)) b))))

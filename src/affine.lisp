@@ -227,7 +227,7 @@ http://www.dcc.unicamp.br/~stolfi/EXPORT/projects/affine-arith/
 	(setf (aa-min it) 0L0
 	      (aa-max it) (max (aa-max it) (- (aa-min it))))))))
 (defun aa-inv (x &aux (a (aa-min x)) (b (aa-max x)))
-  (cond ((and (minusp a) (minusp a)) (psetf a (- b) b (- a)))
+  (cond ((and (minusp a) (minusp b)) (psetf a (- b) b (- a)))
 	((or (not (plusp a)) (not (plusp b))) (return-from aa-inv)))
   (let* ((alpha (/ -1 (* b b))) (lower (/ 2 b)) (upper (- (/ a) (* alpha a))))
     (general-aa x alpha (/ (+ lower upper) (if (< (aa-central x) 0) -2 2))

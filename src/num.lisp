@@ -218,6 +218,9 @@ Author: madscience@google.com (Moshe Looks) |#
 	(t (getaa x context))))
 (defun expr-aa (x &optional (context *reduction-context*))
   (if (consp x) (or (mark aa x) (getaa x context)) (atom-aa x context)))
+(defun aa-computable-p (expr)
+  (and (consp expr)
+       (matches (fn expr) (if impulse log exp sin + * order let / sqrt -))))
 (defun compute-aa (fn args aas &aux (aa0 (car aas)))
   (blockn
     (when (member nil aas)
@@ -273,6 +276,8 @@ Author: madscience@google.com (Moshe Looks) |#
 	     (reduce (lambda (x y)
 		       (unless x (return))
 		       (aa-+ x y)) aas)))
+      (- (assert (and (not (aa-unreal-p aa0)) (eql (length args) 1)))
+	 (aa-* (make-aa -1) aa0))
       (sin (if (aa-unreal-p aa0)
 	       (return)
 	       (aa-sin aa0)))
@@ -282,7 +287,9 @@ Author: madscience@google.com (Moshe Looks) |#
 		 (t (aa-log aa0))))
       (/ (if (some #'aa-unreal-p aas)
 	     (return)
-	     (aa-/ aa0 (cadr aas))))
+	     (if (eql-length-p aas 1)
+		 (aa-inv aa0)
+		 (aa-/ aa0 (cadr aas)))))
       (sqrt (if (aa-unreal-p aa0)
 		(return)
 		(aa-sqrt aa0)))
@@ -295,8 +302,7 @@ Author: madscience@google.com (Moshe Looks) |#
     (t (compute-aa (fn expr) (args expr) (mapcar #'expr-aa (args expr))))))
 (defun validate-aa (expr)
   (cond ((atom expr) (atom-aa expr))
-	((not (matches (fn expr) (if impulse log exp sin + * order let / sqrt)))
-	 (getaa expr *reduction-context*))
+	((not (aa-computable-p expr)) (getaa expr *reduction-context*))
 	((eq (fn expr) 'impulse) (make-aa 0.5 0 (list (cons (arg0 expr) 0.5))))
 	(t (aprog1 (compute-aa (fn expr) (args expr)
 			       (mapcar #'validate-aa (args expr)))
@@ -306,7 +312,7 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-reduction reduce-num-by-aa (expr)
   :type num
   :assumes (factor)
-  :condition (matches (fn expr) (if impulse log exp sin + * order let / sqrt))
+  :condition (aa-computable-p expr)
   :action (let ((x (expr-compute-aa expr)))
 	    (assert (mapc #'validate-aa (args expr)))
 	    (if (aa-finitep x)
@@ -412,7 +418,7 @@ Author: madscience@google.com (Moshe Looks) |#
 	(t (pcons '* (list -1 expr)))))
 
 (define-test num-negate
-  (map-exprs
+  (map-all-exprs
    (lambda (expr &aux (r (qreduct (sexpr2p (p2sexpr expr))))) 
      (assert-equalp (p2sexpr r) (p2sexpr (num-negate (num-negate r))) 
 		    r expr (num-negate r)))
@@ -520,10 +526,12 @@ Author: madscience@google.com (Moshe Looks) |#
 (define-reduction reduce-translation-invariant (fn args markup)
   :type num
   :assumes (reduce-scale-invariant)
-  :condition (and (translation-invariant-p fn)
-		  (cond ((numberp (car args)) (not (= 0 (car args))))
-			((eqfn (car args) '+)
-			 (numberp (arg0 (car args))))))
+  :condition ;(or 
+(and (translation-invariant-p fn)
+		      (cond ((numberp (car args)) (not (= 0 (car args))))
+			    ((eqfn (car args) '+)
+			     (numberp (arg0 (car args))))))
+	;	 *linear-regression-x
   :action (pcons fn (list (retranslate (car args))) markup)
   :order upwards)
 (define-test reduce-translation-invariant
@@ -648,10 +656,16 @@ Author: madscience@google.com (Moshe Looks) |#
 	nil))))
 
 (defun big-num-test ()
-  (map-exprs
+  (map-all-exprs
    (lambda (expr &aux (r (reduct (pclone expr) *empty-context* num))
 	    (r2 (reduct (sexpr2p (p2sexpr r)) *empty-context* num)))
      (declare (ignorable r2))
      (assert (equalp (p2sexpr r) (p2sexpr r2)) ()
 	     "badly marked reduct: ~S -> ~S -> ~S" expr r r2))
    '((+ . 2) (* . 2) (sin . 1) (log . 1) (x . 0) (2 . 0) (-1 . 0)) 5))
+
+;;; expr should be a function of one variable
+(defun linear-scale (expr xs ys)
+  (mvbind (a b) (linear-regress ys (mapcar (bind #'pfuncall expr /1) xs))
+    (reduct (mklambda (fn-args expr) (plist '+ a (plist '* b (fn-body expr))))
+	    *empty-context* '(func (num) num))))

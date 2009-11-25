@@ -71,7 +71,7 @@ miscelaneous non-numerical utilities |#
 (defun singlep (lst)
   "Test list for one element."   ; LMH
   (and (consp lst) (not (cdr lst)))) 
-
+(defun tolist (x) (if (listp x) x (list x)))
 (defun acar (x) (and (consp x) (car x)))
 (defun icar (x) (if (consp x) (car x) x))
 
@@ -127,29 +127,6 @@ miscelaneous non-numerical utilities |#
   (if l (cons (car l) (odds (cddr l)))))
 (defun evens (l)
   (odds (cdr l)))
-
-;;; (split fn (vector l1 d1) (vector l2 d2) ... (vector lN dN))
-;;; li are lists, fn is a func of 2N arguments
-;;; Sequentially tests lists l1 ... lN for emptiness - if some list li is found
-;;; to be empty, returns the value di. If no lists are empty, then fn is called
-;;; with argument list (first1 rest1 first2 rest2 ... firstN restN), where 
-;;; firsti is (car li) and resti is (cdr li)
-(defun split (fn &rest pairs)
-  (apply fn (mapcan (lambda (pair) (aif (elt pair 0)
-					(list (car it) (cdr it))
-					(return-from split (elt pair 1))))
-		    pairs)))
-(define-test split
-  (assert-equal '(1 (2) x (y))
-		(split (lambda (a b c d) (list a b c d)) 
-		       (vector '(1 2) 3) (vector '(x y) 'z)))
-  (assert-equal '(1 (2 7) x (y a))
-		(split (lambda (a b c d) (list a b c d))
-		       (vector '(1 2 7) 3) (vector '(x y a) 'z)))
-  (assert-equal 'z (split (lambda (a b c d) (values a b c d)) 
-			  (vector '(1 2 7) 3) (vector nil 'z)))
-  (assert-equal 3 (split (lambda (a b c d) (values a b c d))
-			 (vector nil 3) (vector nil 'z))))
 
 ;;; generalized argument-binding construct that works like boost::bind
 ;;; takes arguments /1 ... /9
@@ -433,9 +410,10 @@ miscelaneous non-numerical utilities |#
 (defun deep-substitute (x &rest values)
   (labels ((sub (x &aux (match (getf values x +no-value+)))
 	     (if (eq match +no-value+)
-		 (cond  ((vectorp x) (map 'vector #'sub x))
-			((listp x) (mapcar #'sub x))
-			(t x))
+		 (typecase x
+		   (vector (map 'vector #'sub x))
+		   (cons (mapcar #'sub x))
+		   (t x))
 		 match)))
     (sub x)))
 
