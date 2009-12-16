@@ -26,7 +26,7 @@ Author: madscience@google.com (Moshe Looks) |#
  "NUMRECIP not found. Try (load \"plop-dir/thirdparty/numrecip.lisp\")")
 
 (in-package :plop-asd)
-(asdf:defsystem "os-plop"
+(asdf:defsystem "plop"
   :description "Plop: Probabilistic Learning Of Programs"
   :serial t
   :components ((:file "packages")
@@ -58,20 +58,20 @@ Author: madscience@google.com (Moshe Looks) |#
 
 	       (:file "gp")           ; basic genetic programming system
 
-;; 	       (:file "list")
-;; 	       (:file "action")
-;; 	       (:file "abstraction")
+	       (:file "list")
+	       (:file "action")
+	       (:file "abstraction")
 
-;; 	       (:file "canonize")     ; representation-building
-;; 	       (:file "knobs")
+	       (:file "canonize")     ; representation-building
+	       (:file "knobs")
 
-;; 	       (:file "prior")        ; prior over programs
-;; 	       (:file "sample")       ; random sampling
+	       (:file "prior")        ; prior over programs
+	       (:file "sample")       ; random sampling
 
 
-;;   	       (:file "moses")        ; optimization
-;; 	       (:file "tune")
+  	       (:file "moses")        ; optimization
+	       (:file "tune")
 
-;;  	       (:file "harness")      ; comparison/benchmarking
-;;  	       (:file "benchmark")
+ 	       (:file "harness")      ; comparison/benchmarking
+ 	       (:file "benchmark")
 	       ))
