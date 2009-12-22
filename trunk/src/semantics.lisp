@@ -157,8 +157,14 @@ represent evolved programs. |#
 (defun purep (x) ; for now no side-effects - these will be introduced soon
   (declare (ignore x))
   t)
+(define-constant +monotypic-fns+ 
+    '((and bool bool) (or bool bool) (not bool bool) (0< num bool) (< num bool)
+      (<= num bool) (>= num bool) (> num bool) (+ num num) (- num num) 
+      (* num num) (/ num num) (exp num num) (log num num) (sin num num)
+      (abs num num) (impulse bool num) (order num num) (sqr num num) 
+      (sqrt num num) (cos num num)))
 (defun closurep (x) ; gp closure - all args are of same type as the output
-  (matches x (and or not + * - / exp log sin append order)))
+  (aand (assoc x +monotypic-fns+) (equal (cadr it) (caddr it))))
 (defun anti-symmetric-p (x)
   (matches x (sin)))
 (defun scale-invariant-p (x)

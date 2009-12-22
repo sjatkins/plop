@@ -278,9 +278,7 @@ as of 11/04/08, enum and act-result types are not yet implemented |#
 			(union-type (funcall fn (cadr args))
 				    (funcall fn (caddr args))))))))))
   (labels ((easy-lookup-fn (fn)
-	     (case fn
-	       ((and or not 0< < <= >= >) bool)
-	       ((+ - * / exp log sin abs impulse order) num)))
+	     (aand (assoc fn +monotypic-fns+) (caddr it)))
 	   (lookup-fn (fn args lookup context)
 	     (or (easy-lookup-fn fn)
 		 (aand (gethash fn type-finders) (funcall it lookup args))
