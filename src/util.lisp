@@ -22,7 +22,7 @@ miscelaneous non-numerical utilities |#
 	 (symbol-value ',name)
 	 ,value)
      ,@(when doc (list doc))))
-(define-constant +plop-declaim-optimize-p+ nil)
+(define-constant +plop-declaim-optimize-p+ t)
 (defmacro plop-opt-set ()
   (if +plop-declaim-optimize-p+
       `(declaim (optimize (speed 3) (safety 0) (debug 0)))

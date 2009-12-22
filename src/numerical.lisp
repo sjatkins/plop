@@ -329,6 +329,7 @@ numerical functions |#
   (assert-false (interval-intersects-p (cons 1 2) (cons 2 2.5)))
   (assert-false (interval-intersects-p (cons 2 2.5) (cons 1 2)))) 
 
+;; fit zs to ys
 (defun linear-regress (ys zs epsilon &aux (n (length ys)) 
 		       (yavg (/ (reduce #'+ ys) n)) (zavg (/ (reduce #'+ zs) n))
 		       (d (reduce #'+ zs :key 

@@ -231,7 +231,7 @@ http://www.dcc.unicamp.br/~stolfi/EXPORT/projects/affine-arith/
 	((or (not (plusp a)) (not (plusp b))) (return-from aa-inv)))
   (let* ((alpha (/ -1 (* b b))) (lower (/ 2 b)) (upper (- (/ a) (* alpha a))))
     (general-aa x alpha (/ (+ lower upper) (if (< (aa-central x) 0) -2 2))
-		(/ (- upper lower) 2))))
+		(max 0L0 (/ (- upper lower) 2)))))
 (defun aa-expt (x y)
   (declare (type aa x) (type integer y))
   (cond ((eql y 0) (make-aa 1))
