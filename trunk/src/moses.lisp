@@ -643,6 +643,7 @@ semantic evolutionary search (moses) |#
 	       #'< :key #'car))))
 
 (defun moses-on-target (target cost type)
-  (mvbind (scorers terminationp) (make-problem-desc target cost type)
-    (secondary (moses scorers (bind terminationp /1) (default-expr type)
-		      *empty-context* type))))
+   (mvbind (scorers terminationp-gen) (make-problem-desc target cost type)
+     (let ((terminationp (funcall terminationp-gen)))
+       (secondary (moses scorers (bind terminationp /1) (default-expr type)
+ 			*empty-context* type)))))

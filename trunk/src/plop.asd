@@ -26,7 +26,7 @@ Author: madscience@google.com (Moshe Looks) |#
  "NUMRECIP not found. Try (load \"plop-dir/thirdparty/numrecip.lisp\")")
 
 (in-package :plop-asd)
-(asdf:defsystem "plop"
+(asdf:defsystem "os-plop"
   :description "Plop: Probabilistic Learning Of Programs"
   :serial t
   :components ((:file "packages")

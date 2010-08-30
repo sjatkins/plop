@@ -22,7 +22,7 @@ miscelaneous non-numerical utilities |#
 	 (symbol-value ',name)
 	 ,value)
      ,@(when doc (list doc))))
-(define-constant +plop-declaim-optimize-p+ t)
+(define-constant +plop-declaim-optimize-p+ nil)
 (defmacro plop-opt-set ()
   (if +plop-declaim-optimize-p+
       `(declaim (optimize (speed 3) (safety 0) (debug 0)))
@@ -1107,3 +1107,47 @@ miscelaneous non-numerical utilities |#
 (defun toupper (str)
   (with-output-to-string (s nil)
     (format s "~:@(~a~)" str)))
+
+(defun enum-bit-vectors (arity &aux (n (ash 1 arity)))
+  (iota n :key (lambda (i)
+		 (aprog1 (make-array arity :element-type 'bit)
+		   (dotimes (j arity)
+		     (setf (elt it (- arity j 1)) (logand (ash i (- j)) 1)))))))
+
+(defun enum-qnums (n &optional (mean 0) (step 1/2) lo hi)
+  (unless (< n 0)
+    (decf n)
+    (nconc 
+     (let ((step (if lo (/ step 2) (* step 2))))
+       (enum-qnums n (- mean step) step lo t))
+     (list mean)
+     (let ((step (if hi (/ step 2) (* step 2))))
+       (enum-qnums n (+ mean step) step t hi)))))
+
+(defun qdecode (num &optional (mean 0) (step 1) (epsilon 0))
+  (setf num (- num mean))
+  (cond
+    ((> num epsilon)
+     (aprog1 (make-array 1 :element-type 'bit :adjustable t :fill-pointer t
+			 :initial-element 1)
+       (while (> num step)
+	 (vector-push-extend 1 it)
+	 (setf num (- num step) step (* 2 step)))
+       (decf num step)
+       (while (and (> (abs num) epsilon) (> step 0))
+	 (setf step (/ step 2))
+	 (if (< num 0)
+	     (progn (incf num step) (vector-push-extend 0 it))
+	     (progn (decf num step) (vector-push-extend 1 it))))))
+    ((< num epsilon) (bit-not (qdecode (- num) mean step) t))
+    (t (make-array 0 :element-type 'bit))))
+(define-test qdecode
+  (let ((n 16))
+    (dotimes (i n)
+      (map nil 
+	   (lambda (bits num) 
+	     (assert-equalp bits (qdecode num) num)
+	     (assert-equalp bits (qdecode num 0.0 1.0 (/ 1.0 (ash 1 i))) num))
+	   (enum-bit-vectors i)
+	   (sort (set-difference (enum-qnums i) (enum-qnums (1- i))) #'<)))))
+
