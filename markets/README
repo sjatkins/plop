@@ -1,0 +1,2 @@
+A prototype implementation of MCMC markets, a mechanism designed to
+improve the mixing of Markov chains in complex state spaces.
